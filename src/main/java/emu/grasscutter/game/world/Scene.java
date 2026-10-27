@@ -248,6 +248,7 @@ public class Scene {
     }
 
     public synchronized void removePlayer(Player player) {
+        PvpDuels.onPlayerLeave(player);
 
         if (this.getChallenge() != null && this.getChallenge().inProgress()) {
             player.sendPacket(new PacketDungeonChallengeFinishNotify(this.getChallenge()));
@@ -482,6 +483,7 @@ public class Scene {
     }
 
     public void handleAttack(AttackResult result) {
+        if (PvpDuels.handleAttack(this, result)) return;
         // Remap OSREL defenseId + clamp ore/breakable damage (multi-hit HP).
         try {
             result = emu.grasscutter.game.entity.gadget.OreMiningHelper.fixAttackResult(this, result);

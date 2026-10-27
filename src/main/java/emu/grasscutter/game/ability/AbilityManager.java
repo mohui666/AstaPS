@@ -552,7 +552,7 @@ public final class AbilityManager extends BasePlayerManager {
             key = GameData.getAbilityHashes().get(entry.getKey().getHash());
         }
 
-        if (key == null) return;
+        if (key == null || emu.grasscutter.game.world.PvpClientTargeting.KEY.equals(key)) return;
 
         // A global reset alone does not identify a burst; it also occurs during normal sync.
         if (isArlecchinoBoLFloatKey(key)

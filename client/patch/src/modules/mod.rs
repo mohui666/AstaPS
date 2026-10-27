@@ -14,6 +14,7 @@ mod native_sdk;
 mod sdk_product_diagnostics;
 mod local_recharge;
 mod ifix_capture;
+mod pvp;
 
 pub use ccp_blocker::CcpBlocker;
 pub use http::Http;
@@ -22,6 +23,7 @@ pub use security::Security;
 pub use winhttp::WinHttp;
 pub use native_sdk::start_when_loaded as start_native_sdk_prices;
 pub use ifix_capture::enable_when_requested as enable_ifix_capture;
+pub use pvp::Pvp;
 
 #[derive(Default)]
 pub struct ModuleManager {
@@ -56,6 +58,7 @@ pub enum ModuleType {
     WinHttp,
     NativeSdkPrices,
     IfixCapture,
+    Pvp,
 }
 
 pub trait MhyModule {

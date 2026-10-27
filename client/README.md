@@ -47,6 +47,14 @@ Start-Process -FilePath (Join-Path $gameDirectory 'YuanShen.exe') -WorkingDirect
 
 部署脚本默认使用仓库的服务器登录公钥，连接自行更换密钥的服务器时，通过 `-PassportPublicKeyPath` 指定对应公钥。源码中的 `server_public_key.bin` 和 `sdk_public_key.xml` 都是公钥；服务器私钥不应分发给客户端。
 
+## PVP
+
+PVP 模块支持已核对的国服 Windows 7.1 客户端，只放行服务端标记的对战角色。命中仍经过原生碰撞和攻击计算；服务端校验攻击归属并结算护盾、无敌和死亡。换角色时更新标记，关闭 PVP 或离开场景时撤销。
+
+双方进入同一世界和场景并安装补丁后，使用 `/pvp on`；`/pvp off` 关闭，`/pvp status` 查看状态。当前授权 UID 1/2，或 UID 1 与 `/pvp bot` 创建的临时测试玩家；重复执行可添加多个目标，人数沿用世界上限。`/pvp removebot` 移除自己的全部测试玩家。机器人站在召唤者当前位置，召唤后退开几步再测试。
+
+`LUNAGC_DISABLE` 增加 `pvp` 可禁用此模块。客户端样本或函数入口不匹配时，日志记录 `PvP native targeting disabled`，不会安装 PVP 钩子。弓箭、技能若使用独立 Gadget 作为攻击来源，需要实机核对其归属链。
+
 ## 来源与许可
 
 服务端沿用根目录 AGPL-3.0 许可证。客户端补丁在 `patch/LICENSE` 的 GPL-3.0 许可证下提供；原始项目与修改说明见 [patch/README.md](patch/README.md)。保留 xeondev、oureveryday、capyb2222 及原项目贡献者的署名。

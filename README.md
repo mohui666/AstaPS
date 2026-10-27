@@ -1,4 +1,6 @@
-# AstaPS
+# MGC
+
+Mohui's custom **7.1.0** server and Windows client patch. Native PvP and multiple player targets are included; setup is documented in [client/](client/README.md).
 
 English · [简体中文](README_zh-CN.md) · [繁體中文](README_zh-TW.md)
 

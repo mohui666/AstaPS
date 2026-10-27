@@ -17,13 +17,13 @@ mod util;
 mod exclog;
 mod swap;
 
-use crate::modules::{Http, MhyContext, ModuleManager, Security, WinHttp};
+use crate::modules::{Http, MhyContext, ModuleManager, Pvp, Security, WinHttp};
 
 /// Bisection switch for the crash hunt. Reads a comma list from the
 /// `LUNAGC_DISABLE` env var, or from `%TEMP%\lunagc-disable.txt` -- the file
 /// is the reliable path, since Start-Process across the UAC boundary drops
 /// our session env vars. Recognised names: ccp, security, http, misc,
-/// winhttp, memguard, console, detect. Absent/empty = full patch.
+/// winhttp, memguard, console, detect, pvp. Absent/empty = full patch.
 /// `detect` is special: it does not disable a hook, it re-enables the
 /// anti-cheat's own self-check exports that proxy.rs neutralizes by default.
 /// `exclog` gates the exception recorder. It is OFF by default now -- see
@@ -160,6 +160,10 @@ unsafe fn thread_func() {
     }
     if !is_off(&off, "misc") {
         module_manager.enable(MhyContext::<Misc>::new(&exe_name));
+    }
+
+    if !is_off(&off, "pvp") {
+        module_manager.enable(MhyContext::<Pvp>::new(exe_name));
     }
 
     crate::plog!("Successfully initialized!");

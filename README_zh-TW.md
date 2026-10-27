@@ -1,4 +1,6 @@
-# AstaPS
+# MGC · 7.1 默繪定製版
+
+包含原生 PVP 與多個假玩家測試目標，客戶端編譯及部署見 [client/](client/README.md)。
 
 [English](README.md) · [简体中文](README_zh-CN.md) · 繁體中文
 

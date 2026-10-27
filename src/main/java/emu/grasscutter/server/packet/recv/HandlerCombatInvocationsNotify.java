@@ -9,6 +9,7 @@ import emu.grasscutter.game.entity.GameEntity;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.props.FightProperty;
 import emu.grasscutter.game.world.Position;
+import emu.grasscutter.game.world.PvpDuels;
 import emu.grasscutter.net.packet.*;
 import emu.grasscutter.net.proto.ForwardTypeOuterClass.ForwardType;
 import emu.grasscutter.net.proto.AttackResultOuterClass.AttackResult;
@@ -38,11 +39,13 @@ public class HandlerCombatInvocationsNotify extends PacketHandler {
                     AttackResult attackResult = hitInfo.getAttackResult();
                     Player player = session.getPlayer();
 
-                    if (attackResult.getAttackerId()
+                    int duelHit = PvpDuels.checkReportedHit(player, attackResult);
+                    if (duelHit < 0) break;
+                    if (duelHit == 0 && attackResult.getAttackerId()
                                     != player.getTeamManager().getCurrentAvatarEntity().getId()
                             && player.getAbilityManager().isAbilityInvulnerable()) break;
 
-                    {
+                    if (duelHit == 0) {
                         int defenseId = attackResult.getDefenseId();
                         float computedDamage = attackResult.getDamage();
                         boolean changed = false;
@@ -157,6 +160,7 @@ public class HandlerCombatInvocationsNotify extends PacketHandler {
                         }
                     }
 
+                    if (!PvpDuels.reportHit(player, attackResult)) break;
                     player.getAttackResults().add(attackResult);
                     player.getEnergyManager().handleAttackHit(hitInfo);
                     try {
@@ -247,9 +251,11 @@ public class HandlerCombatInvocationsNotify extends PacketHandler {
         for (var attack = attacks.poll(); attack != null; attack = attacks.poll()) {
             // Lets the DPS dummy tell reaction damage from elemental damage inside damage().
             DPSAttackContext.set(attack);
+            PvpDuels.setReporter(player, attack);
             try {
                 player.getScene().handleAttack(attack);
             } finally {
+                PvpDuels.clearReporter();
                 DPSAttackContext.clear();
             }
         }
