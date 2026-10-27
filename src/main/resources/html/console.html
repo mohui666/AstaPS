@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>AstaPS Console</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #ffffff; --panel-2: #f8f9fb; --text: #15171c; --muted: #6a717d;
+    --border: #e2e5ea; --accent: #3b5bdb; --accent-soft: #e8edff; --accent-text: #ffffff;
+    --ok: #1f8a4c; --busy: #2f6fdb; --warn: #b7791f; --bad: #c92a2a;
+    --ok-soft: #e6f4ec; --warn-soft: #fbf1df; --bad-soft: #fbe7e7; --busy-soft: #e7effc;
+    --term-bg: #0d1016; --term-text: #d5d9e0; --term-muted: #6b7380; --term-border: #1c212b;
+    --term-info: #7cb7ff; --term-warn: #f2b84b; --term-error: #ff7070; --term-debug: #8a93a3;
+    --radius: 12px; --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --panel: #171a21; --panel-2: #1c2029; --text: #e7e9ee; --muted: #959cab;
+      --border: #272c37; --accent: #6d8cff; --accent-soft: #1f2742; --accent-text: #0d1016;
+      --ok: #4cc283; --busy: #6d9cff; --warn: #e3b04b; --bad: #ff7b7b;
+      --ok-soft: #15291f; --warn-soft: #2d2414; --bad-soft: #321a1c; --busy-soft: #18233a;
+      --term-bg: #0a0c10; --term-border: #20252f;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--text); min-height: 100vh;
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  .hidden { display: none !important; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel); border-radius: 8px;
+    padding: 6px 12px; transition: background .15s, border-color .15s; }
+  button:hover { background: var(--panel-2); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.06); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type=text], input[type=password] { width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel); }
+
+  /* Language switch */
+  .lang { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .lang button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12px; color: var(--muted); background: transparent; }
+  .lang button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: .2px; }
+  .logo { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), #8a5cf6); color: #fff; font-size: 13px; font-weight: 700; }
+
+  /* Login */
+  #login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+    background: radial-gradient(1200px 500px at 50% -10%, var(--accent-soft), transparent 70%); }
+  #login .box { width: 100%; max-width: 360px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; box-shadow: var(--shadow); }
+  #login .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  #login p.hint { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+  #login form { display: grid; gap: 12px; }
+  #login button.primary { padding: 9px 12px; }
+  #login-error { color: var(--bad); min-height: 1.5em; margin: 0; font-size: 13px; }
+
+  /* App shell */
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  header .spacer { flex: 1; }
+  header > * { flex-shrink: 0; white-space: nowrap; }
+  header .spacer { flex-shrink: 1; min-width: 0; }
+  @media (max-width: 600px) {
+    header { gap: 10px; padding: 10px 12px; }
+    header .pill { padding: 4px 6px; }
+    header .pill #h-text { display: none; }
+    header .brand .logo + span > span { display: none; }
+  }
+  .pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .dot.NORMAL { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+  .dot.BUSY { background: var(--busy); box-shadow: 0 0 0 3px var(--busy-soft); }
+  .dot.WARNING { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+  .dot.DANGER { background: var(--bad); box-shadow: 0 0 0 3px var(--bad-soft); }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 16px; box-shadow: var(--shadow); min-width: 0; }
+  .card .label { color: var(--muted); font-size: 12px; }
+  .card .value { font-size: 22px; font-weight: 650; margin-top: 4px; font-variant-numeric: tabular-nums;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .sub { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .value.NORMAL { color: var(--ok); } .card .value.BUSY { color: var(--busy); }
+  .card .value.WARNING { color: var(--warn); } .card .value.DANGER { color: var(--bad); }
+  .meter { height: 4px; border-radius: 4px; background: var(--panel-2); margin-top: 10px; overflow: hidden; border: 1px solid var(--border); }
+  .meter > span { display: block; height: 100%; width: 0; background: var(--ok); transition: width .4s, background .4s; }
+  .meter > span.mid { background: var(--warn); } .meter > span.high { background: var(--bad); }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow); min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .panel-head h2 { font-size: 14px; margin: 0; font-weight: 650; }
+  .panel-head .meta { color: var(--muted); font-size: 12px; }
+  .panel-head .tools { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grid-2 { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: minmax(0, 1fr); } header { padding: 10px 16px; } main { padding: 16px; } }
+
+  /* Terminal and log */
+  .term { background: var(--term-bg); color: var(--term-text); font: 12.5px/1.55 var(--mono); }
+  .term .out { height: 300px; overflow: auto; padding: 10px 14px; white-space: pre-wrap; word-break: break-word; }
+  .term .line { padding: 1px 0; }
+  .term .cmd { color: #e7e9ee; } .term .cmd::before { content: "› "; color: var(--accent); }
+  .term .INFO { color: var(--term-text); } .term .ERROR { color: var(--term-error); }
+  .term .DEBUG, .term .TRACE, .term .note { color: var(--term-debug); }
+  .prompt { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--term-border); padding: 8px 10px 8px 14px; }
+  .prompt span { color: var(--accent); font-weight: 700; }
+  .prompt input { flex: 1; background: transparent; border: 0; color: var(--term-text); font: 13px var(--mono); padding: 6px 0; }
+  .prompt input:focus-visible { outline: none; }
+  .prompt button { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-size: 12px; font-weight: 600; }
+
+  .log .out { height: 460px; }
+  .log .row { display: grid; grid-template-columns: 64px 52px minmax(0, 1fr); gap: 10px; padding: 1px 0; }
+  .log .time { color: var(--term-muted); }
+  .log .lvl { font-size: 11px; font-weight: 700; letter-spacing: .3px; }
+  .log .lvl.INFO { color: var(--term-info); } .log .lvl.WARN { color: var(--term-warn); }
+  .log .lvl.ERROR { color: var(--term-error); } .log .lvl.DEBUG, .log .lvl.TRACE { color: var(--term-debug); }
+  .log .src { color: var(--term-muted); }
+  .log .row.WARN .msg { color: #f3d9a4; } .log .row.ERROR .msg { color: #ffb3b3; }
+  .chips { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .chips button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12px; color: var(--muted); background: transparent; }
+  .chips button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .tools input[type=text] { width: 160px; padding: 4px 10px; font-size: 12px; }
+  .tools label { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .tools button.small { padding: 4px 10px; font-size: 12px; }
+
+  /* Players */
+  .table-wrap { overflow: auto; max-height: 352px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 8px 14px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 500; font-size: 12px; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.uid { font-family: var(--mono); font-size: 12.5px; }
+  .empty { color: var(--muted); padding: 28px 14px; text-align: center; }
+
+  /* Item picker */
+  button:disabled { cursor: default; opacity: .45; }
+  input[type=search], input[type=number], select { width: 100%; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--panel); color: var(--text); min-width: 0; }
+  select:focus-visible, input[type=search]:focus-visible, input[type=number]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .item-heading { padding: 18px 20px; align-items: flex-start; }
+  .item-heading h2 { font-size: 20px; letter-spacing: -.4px; }
+  .item-heading p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+  .item-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(250px, 1fr); }
+  .item-browser { padding: 18px 20px; min-width: 0; }
+  .item-search-row { display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 8px; }
+  .item-categories, .item-common, .amount-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+  .item-categories { margin: 12px 0; }
+  .item-categories button { border-color: transparent; color: var(--muted); padding: 5px 10px; font-size: 13px; }
+  .item-categories button[aria-pressed=true] { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+  .common-label { font-size: 11px; color: var(--muted); letter-spacing: .08em; margin-bottom: 6px; }
+  .item-common button { padding: 4px 9px; border-radius: 6px; font-size: 12px; }
+  .item-common button[aria-pressed=true] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .item-results { height: 330px; overflow: auto; margin-top: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel); }
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; width: 100%; border: 0;
+    border-bottom: 1px solid var(--border); border-radius: 0; text-align: left; background: transparent; }
+  .item-row:last-child { border-bottom: 0; }
+  .item-row[aria-pressed=true] { background: var(--accent-soft); box-shadow: inset 3px 0 var(--accent); }
+  .item-mark { display: grid; place-items: center; width: 34px; height: 38px; flex: 0 0 34px;
+    border-radius: 7px; background: var(--panel-2); color: var(--muted); font-weight: 650; border-bottom: 3px solid var(--border); }
+  .item-mark[data-rank="3"] { border-color: #5c94c8; } .item-mark[data-rank="4"] { border-color: #9a78c6; }
+  .item-mark[data-rank="5"] { border-color: #d0a05a; }
+  .item-row-text { min-width: 0; flex: 1; }
+  .item-row-name { display: block; font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item-row-meta { color: var(--muted); font: 11px/1.6 var(--mono); }
+  .item-row-type { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .item-pager { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 12px; }
+  .item-pager span:first-child { flex: 1; } .item-pager button { padding: 3px 9px; }
+  .give-form { border-left: 1px solid var(--border); background: var(--panel-2); padding: 20px; }
+  .give-form fieldset { padding: 0; border: 0; margin: 0; min-width: 0; display: grid; gap: 15px; }
+  .selected-item { display: flex; gap: 12px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .selected-item .item-mark { width: 52px; height: 58px; flex-basis: 52px; font-size: 23px; background: var(--panel); }
+  .selected-item h3 { margin: 0; font-size: 19px; line-height: 1.35; overflow-wrap: anywhere; }
+  .selected-item p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+  .give-field label { display: block; font-size: 12px; font-weight: 550; margin-bottom: 6px; }
+  .give-player-label { display: flex; align-items: center; justify-content: space-between; }
+  .give-player-label button { padding: 0; border: 0; color: var(--accent); background: transparent; font-size: 12px; }
+  .give-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .amount-presets { margin-top: 7px; } .amount-presets button { padding: 3px 10px; font-size: 12px; background: var(--panel); }
+  #give-submit { width: 100%; padding: 12px; font-weight: 650; margin-top: 2px; }
+  .give-hint { color: var(--muted); font-size: 12px; margin: 0; min-height: 36px; }
+  .give-feedback { margin-top: 16px; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--panel); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .give-feedback.error { color: var(--bad); border-color: var(--bad); }
+  .give-feedback.processed { border-color: var(--accent); }
+  .gacha-body { padding: 16px 20px; }
+  .gacha-current { margin: 0 0 14px; padding: 9px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 13px; }
+  .gacha-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .gacha-picker { display: grid; gap: 8px; align-content: start; }
+  #gacha-phase { padding: 4px; height: 196px; }
+  #gacha-phase option { padding: 8px; border-radius: 5px; font-size: 12px; }
+  .gacha-preview { min-width: 0; }
+  #gacha-placeholder { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 9px; border: 1px solid var(--border); margin-bottom: 10px; }
+  #gacha-placeholder.hidden { display: none; }
+  #gacha-placeholder-note { margin: 0 0 10px; color: var(--muted); font-size: 12px; }
+  .gacha-preview h3 { margin: 0 0 10px; font-size: 16px; }
+  .gacha-preview h4 { font-size: 11px; color: var(--muted); margin: 10px 0 6px; }
+  .gacha-up { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; }
+  .gacha-up li { font-size: 12px; border-radius: 5px; padding: 3px 8px; background: var(--panel-2); border: 1px solid var(--border); }
+  #gacha-up5 li { border-color: #d0a05a; } #gacha-up4 li { border-color: #9a78c6; }
+  .gacha-hint { margin: 12px 0; color: var(--muted); font-size: 12px; }
+  #gacha-apply { width: 100%; padding: 9px 12px; }
+  #gacha-feedback { margin: 8px 0 0; min-height: 18px; font-size: 12px; color: var(--muted); }
+  #gacha-feedback.error { color: var(--bad); }
+  .tool-link { color: var(--accent); text-decoration: none; font-size: 12px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; }
+  #artifact-tool { scroll-margin-top: 76px; }
+  #artifact-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .artifact-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr); }
+  .artifact-editor { padding: 20px; }
+  .artifact-editor label, .artifact-card label { display: block; font-size: 12px; margin-bottom: 5px; color: var(--muted); }
+  .artifact-editor input[type=search] { margin-bottom: 7px; }
+  .artifact-basics { display: grid; grid-template-columns: 1.2fr .8fr .8fr; gap: 10px; margin: 14px 0; }
+  .artifact-sub-head, .artifact-sub-row { display: grid; grid-template-columns: minmax(110px, 1.2fr) minmax(90px, 1fr) 70px; gap: 7px; }
+  .artifact-sub-head { margin-top: 18px; margin-bottom: 6px; color: var(--muted); font-size: 11px; }
+  .artifact-sub-row { margin-bottom: 8px; }
+  .artifact-sub-row select, .artifact-sub-row input { padding: 7px 8px; font-size: 12px; }
+  .artifact-note { font-size: 12px; color: var(--muted); margin: 10px 0 0; }
+  .artifact-card { padding: 20px; background: var(--panel-2); border-left: 1px solid var(--border); }
+  .artifact-card h3 { font-size: 21px; margin: 0 0 3px; }
+  .artifact-preview-meta { color: #d0a05a; font-size: 12px; margin: 0 0 14px; }
+  .artifact-main-name { font-size: 12px; color: var(--muted); }
+  .artifact-main-value { font-size: 30px; font-weight: 650; margin: 1px 0 10px; font-variant-numeric: tabular-nums; }
+  #artifact-preview-subs { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; min-height: 88px; }
+  #artifact-preview-subs li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+  #artifact-preview-subs strong { font-weight: 550; font-variant-numeric: tabular-nums; }
+  #artifact-preview-status { color: var(--muted); font-size: 12px; min-height: 20px; margin: 10px 0 16px; }
+  #artifact-preview-status.error { color: var(--bad); }
+  .artifact-lock { display: flex !important; gap: 7px; align-items: center; margin: 12px 0 18px; }
+  #artifact-give { width: 100%; padding: 11px; margin-top: 12px; }
+  #artifact-give-hint { margin-top: 8px; }
+  .console-nav { display:flex; gap:8px; overflow:auto; padding:10px 0 2px; }
+  .console-nav a { color:var(--accent); text-decoration:none; padding:7px 12px; border:1px solid var(--border); border-radius:8px; background:var(--panel); white-space:nowrap; }
+  section[id$="-tool"], #player-tools { scroll-margin-top:76px; }
+  .gm-body { padding:18px 20px; }
+  .gm-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:18px; }
+  .gm-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:10px 0; }
+  .gm-row > input, .gm-row > select { width:auto; flex:1; min-width:100px; }
+  .gm-row > label { display:flex; gap:6px; align-items:center; }
+  .gm-note { font-size:12px; color:var(--muted); margin:8px 0; }
+  .gm-body fieldset { padding:0; border:0; margin:0; min-width:0; }
+  .gm-body details { border-top:1px solid var(--border); margin-top:16px; padding-top:13px; }
+  .gm-body summary { cursor:pointer; font-weight:650; }
+  .gm-feedback { white-space:pre-wrap; font-size:12px; margin:10px 0 0; min-height:18px; overflow-wrap:anywhere; }
+  .gm-feedback.error { color:var(--bad); }
+  .gm-badge { display:inline-block; padding:3px 8px; border-radius:6px; background:var(--accent-soft); color:var(--accent); font-size:12px; }
+  #activity-list { height:340px; }
+  #activity-title-detail { margin:0 0 7px; }
+  #activity-note { width:100%; min-height:65px; padding:8px; border:1px solid var(--border); border-radius:8px; color:var(--text); background:var(--panel); font:inherit; }
+  .activity-dates label { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  input[type=datetime-local] { width:100%; padding:8px; border-radius:8px; border:1px solid var(--border); color:var(--text); background:var(--panel); font:inherit; }
+  .activity-raw { max-height:220px; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:11px; background:var(--panel-2); padding:10px; border-radius:6px; }
+  #gm-stat-table { max-height:330px; overflow:auto; margin:12px 0; border:1px solid var(--border); border-radius:8px; }
+  #gm-stat-table td:first-child { white-space:normal; min-width:160px; }
+  #gm-stat-table input[type=number] { width:135px; padding:5px; }
+  .template-bar { padding:12px 20px; border-top:1px solid var(--border); }
+  .gm-state { font:12px var(--mono); color:var(--muted); }
+  @media(max-width:680px) { .gm-grid { grid-template-columns:minmax(0,1fr); } .gm-body { padding:16px; } }
+  @media (max-width: 680px) {
+    .artifact-layout { grid-template-columns: minmax(0, 1fr); }
+    .artifact-card { border-left: 0; border-top: 1px solid var(--border); }
+    .gacha-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .item-layout { grid-template-columns: minmax(0, 1fr); }
+    .give-form { border-left: 0; border-top: 1px solid var(--border); }
+    .item-heading, .item-browser, .give-form { padding: 16px; }
+    .item-results { height: 280px; }
+  }
+</style>
+</head>
+<body>
+
+<section id="login">
+  <div class="box">
+    <div class="top">
+      <div class="brand"><div class="logo">A</div><span>AstaPS <span data-i18n="console"></span></span></div>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="zh">中文</button><button type="button" data-lang="en">EN</button>
+      </div>
+    </div>
+    <p class="hint" data-i18n="loginHint"></p>
+    <form id="login-form">
+      <input id="password" type="password" data-i18n-placeholder="password" autocomplete="current-password" required>
+      <button class="primary" type="submit" data-i18n="login"></button>
+      <p id="login-error" role="alert"></p>
+    </form>
+  </div>
+</section>
+
+<section id="app" class="hidden">
+  <header>
+    <div class="brand"><div class="logo">A</div><span>AstaPS <span data-i18n="console"></span></span></div>
+    <span class="pill" title=""><span class="dot" id="h-dot"></span><span id="h-text">-</span></span>
+    <span class="spacer"></span>
+    <a class="tool-link" href="#artifact-tool" data-i18n="artifactTitle"></a>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="zh">中文</button><button type="button" data-lang="en">EN</button>
+    </div>
+    <button id="logout" type="button" data-i18n="logout"></button>
+  </header>
+
+  <main>
+    <nav class="console-nav" aria-label="GM tools">
+      <a href="#activity-tool" data-zh="活动档案" data-en="Events"></a><a href="#player-tools" data-zh="玩家实验台" data-en="Player lab"></a>
+      <a href="#gacha-tool" data-zh="历史卡池" data-en="Wish banners"></a><a href="#item-tool" data-zh="物品发放" data-en="Items"></a><a href="#monster-tool" data-zh="刷任意怪物" data-en="Spawn monsters"></a><a href="#artifact-tool" data-zh="DIY 圣遗物" data-en="DIY artifacts"></a>
+    </nav>
+    <section class="panel" id="activity-tool">
+      <div class="panel-head item-heading"><div><h2 data-zh="活动档案与重开" data-en="Event archive & replay"></h2><p data-zh="配置保存在服务器；关闭和重开默认保留玩家进度。" data-en="Schedules are saved on the server. Closing and reopening preserve progress."></p></div>
+        <div class="tools"><button id="activity-export" type="button" data-zh="导出完整档案" data-en="Export archive"></button><button id="activity-import" type="button" data-zh="导入排期" data-en="Import schedules"></button><button id="activity-refresh" type="button" data-zh="刷新" data-en="Refresh"></button><input type="file" id="activity-file" accept=".json,application/json" class="hidden"></div></div>
+      <div class="gm-body">
+        <div class="gm-grid"><div>
+          <input type="search" id="activity-search" placeholder="搜索活动名称、ID 或类型" aria-label="搜索活动">
+          <div class="gm-row"><select id="activity-filter" aria-label="活动过滤"><option value="configured" data-zh="已配置的活动" data-en="Configured"></option><option value="all" data-zh="全部活动资料" data-en="All definitions"></option><option value="open" data-zh="当前已开启" data-en="Open now"></option><option value="music" data-zh="已有音游处理器" data-en="Music handler available"></option><option value="entry" data-zh="缺少专用玩法" data-en="Gameplay missing"></option></select><span id="activity-count" class="meta"></span></div>
+          <select id="activity-list" size="12" aria-label="活动档案列表"></select>
+          <p class="gm-note" data-zh="401 条资料不等于 401 个可玩活动。音游有专用处理器，角色试用未完成，其余主要是资料和入口；旧资源缺失也会影响重玩。" data-en="Definitions are not playable implementations. Music has a handler, trials are partial, and other events mainly have metadata/entries. Missing old assets can prevent replay."></p>
+        </div><div>
+          <h3 id="activity-title-detail">—</h3><div id="activity-badges" class="gm-row"></div><p id="activity-support" class="gm-note"></p>
+          <fieldset id="activity-fields" disabled>
+            <div class="gm-row"><label for="activity-days" data-zh="重开时长" data-en="Reopen for"></label><select id="activity-days"><option value="1">1 天 / day</option><option value="7" selected>7 天 / days</option><option value="30">30 天 / days</option><option value="0" data-zh="长期（至 2099 年）" data-en="Long term (through 2099)"></option></select></div>
+            <div class="gm-row"><label><input type="checkbox" id="activity-unlock"><span data-zh="解锁活动阶段条件（不自动领奖）" data-en="Unlock stage conditions (no auto-claim)"></span></label></div>
+            <div class="gm-row" id="activity-entry-row"><label><input type="checkbox" id="activity-entry"><span data-zh="已知玩法不完整，仅尝试开启入口" data-en="Try entry despite incomplete gameplay"></span></label></div>
+            <div class="gm-row"><button type="button" class="primary" id="activity-open" data-zh="开启 / 重新开启" data-en="Open / reopen"></button><button type="button" id="activity-close" data-zh="关闭活动" data-en="Close"></button></div>
+            <details><summary data-zh="自定义排期与备注" data-en="Schedule & notes"></summary><div class="gm-grid activity-dates" style="margin-top:10px"><div><label for="activity-begin" data-zh="开始时间（本地时区）" data-en="Start (local time)"></label><input type="datetime-local" id="activity-begin"></div><div><label for="activity-end" data-zh="结束时间" data-en="End"></label><input type="datetime-local" id="activity-end"></div></div>
+              <div class="gm-row"><button type="button" id="activity-schedule" data-zh="应用排期" data-en="Apply schedule"></button></div><label for="activity-note" class="gm-note" data-zh="存档备注" data-en="Archive notes"></label><textarea id="activity-note" maxlength="1000"></textarea><div class="gm-row"><button type="button" id="activity-save" data-zh="保存备注与解锁设置" data-en="Save notes & unlock settings"></button></div></details>
+            <details><summary data-zh="玩家进度与重玩" data-en="Player progress & reset"></summary><div class="gm-row"><select id="activity-player" aria-label="活动玩家"></select><button type="button" id="activity-progress" data-zh="查看进度" data-en="View progress"></button><button type="button" id="activity-reset" data-zh="清空此活动进度" data-en="Reset event progress"></button></div><p class="gm-note" data-zh="重置只影响所选在线玩家的此活动记录和领奖标记，不收回已领取的物品；需要重新进入活动界面。" data-en="Reset clears only this online player's event progress and claim markers. Granted items remain. Re-enter the event screen."></p><pre id="activity-progress-detail" class="activity-raw">—</pre></details>
+          </fieldset>
+          <details><summary data-zh="查看原始定义、奖励与资源依赖" data-en="Definition, rewards & resource dependencies"></summary><pre id="activity-raw" class="activity-raw">—</pre></details>
+          <details open><summary data-zh="可恢复活动包" data-en="Restorable event package"></summary><p id="activity-assets-status" class="gm-note">—</p><p id="activity-assets-path" class="gm-note"></p>
+            <div class="gm-row"><button type="button" id="activity-assets-save" data-zh="保存 / 更新活动包" data-en="Save / update package"></button><button type="button" id="activity-assets-restore" data-zh="恢复原始资源" data-en="Restore original files"></button><button type="button" id="activity-assets-load" data-zh="载入已存活动设置" data-en="Load saved settings"></button><button type="button" id="activity-assets-refresh" data-zh="刷新恢复结果" data-en="Refresh restore result"></button></div>
+            <p class="gm-note" data-zh="恢复流程：退出游戏 → 恢复原始资源（Windows 管理员确认）→ 如有服务端资源则重启服务器 → 载入已存设置 → 上方重新开启。资源包限定相同 7.1.0 客户端，未实现玩法及缺失依赖仍需补齐。移动资源包时需同时带上 files 共享目录。" data-en="Restore: exit game → restore original files (Windows admin approval) → restart server for server resources → load saved settings → reopen above. Requires the same 7.1.0 client; missing gameplay/dependencies still need implementation. Keep the shared files directory with packages."></p>
+          </details>
+        </div></div><p id="activity-feedback" class="gm-feedback" role="status"></p>
+      </div>
+    </section>
+    <section class="panel" id="player-tools">
+      <div class="panel-head item-heading"><div><h2 data-zh="玩家实验台" data-en="Player lab"></h2><p data-zh="选择在线玩家，调整角色、战斗数值与世界；操作会立即生效。" data-en="Choose an online player to edit characters, combat stats and world settings."></p></div><div class="tools"><button id="gm-refresh" type="button" data-zh="刷新实际状态" data-en="Refresh state"></button></div></div>
+      <div class="gm-body">
+        <div class="gm-row"><label for="gm-player" data-zh="目标玩家" data-en="Player"></label><select id="gm-player"></select><span class="gm-state" id="gm-position">—</span></div>
+        <fieldset id="gm-fields" disabled>
+          <div class="gm-row"><span id="gm-oculi-summary" class="gm-state">—</span><button type="button" id="gm-collect-oculi" data-zh="一键收集当前地区神瞳" data-en="Collect current country's oculi"></button></div>
+          <p class="note" data-zh="按角色所在国家收集本机资源已索引的未收神瞳，物品入包并保存地图进度；不会自动供奉神像。" data-en="Collect unclaimed oculi indexed in local resources for the current country, and save map progress. Statues are not upgraded automatically."></p>
+          <div class="gm-row"><button type="button" data-gm-action="heal" data-zh="全角色回血 / 复活" data-en="Heal & revive all"></button><button type="button" data-gm-action="energy" data-zh="队伍回满能量" data-en="Refill team energy"></button><button type="button" data-gm-action="restore" data-zh="队伍状态全恢复" data-en="Restore team"></button></div>
+          <div class="gm-row"><label><input type="checkbox" data-gm-flag="godmode"><span data-zh="无敌" data-en="God mode"></span></label><label><input type="checkbox" data-gm-flag="unlimitedStamina"><span data-zh="无限体力" data-en="Unlimited stamina"></span></label><label><input type="checkbox" data-gm-flag="unlimitedEnergy"><span data-zh="无限能量" data-en="Unlimited energy"></span></label><label><input type="checkbox" data-gm-flag="timeLocked"><span data-zh="锁定世界时间" data-en="Freeze world clock"></span></label></div>
+          <details open><summary data-zh="角色培养与自定义战斗数值" data-en="Character & custom combat stats"></summary>
+            <div class="gm-row"><label for="gm-avatar" data-zh="拥有的角色" data-en="Owned character"></label><select id="gm-avatar"></select></div>
+            <div class="gm-grid"><div><div class="gm-row"><label for="gm-constellation" data-zh="命座 0–6" data-en="Constellation 0–6"></label><input type="number" id="gm-constellation" min="0" max="6" step="1" value="6"><button type="button" id="gm-set-constellation" data-zh="设置" data-en="Set"></button></div><div class="gm-row"><label for="gm-talent" data-zh="三天赋 1–10" data-en="All talents 1–10"></label><input type="number" id="gm-talent" min="1" max="10" step="1" value="10"><button type="button" id="gm-set-talent" data-zh="设置" data-en="Set"></button></div></div>
+            <div><div class="gm-row"><label for="gm-friendship" data-zh="好感 1–10" data-en="Friendship 1–10"></label><input type="number" id="gm-friendship" min="1" max="10" step="1" value="10"><button type="button" id="gm-set-friendship" data-zh="设置" data-en="Set"></button></div><div class="gm-row"><button type="button" id="gm-max-avatar" data-zh="当前选中角色与武器拉满" data-en="Max selected character & weapon"></button></div></div></div>
+            <p class="gm-note" data-zh="勾选并填入要覆盖的数值；百分比直接填 100 代表 100%。数值覆盖随角色保存，恢复按钮会重新按装备计算。客户端动画、冷却等限制可能仍存在。" data-en="Check stats to override. Enter 100 for 100%. Overrides persist on this character; restore recalculates from equipment. Client animation/cooldown limits may still apply."></p>
+            <div id="gm-stat-table"><table><thead><tr><th data-zh="覆盖 / 属性" data-en="Override / stat"></th><th data-zh="实际值" data-en="Current"></th><th data-zh="目标值" data-en="Target"></th><th></th></tr></thead><tbody id="gm-stats"></tbody></table></div>
+            <div class="gm-row"><button type="button" class="primary" id="gm-apply-stats" data-zh="应用勾选数值" data-en="Apply checked stats"></button><button type="button" id="gm-reset-stats" data-zh="清除该角色全部数值覆盖" data-en="Restore all character stats"></button></div>
+            <div class="gm-row"><input id="gm-build-name" type="text" maxlength="60" placeholder="配置名称（保存在本浏览器）"><button type="button" id="gm-save-build" data-zh="保存数值模板" data-en="Save stat preset"></button></div><div class="gm-row"><select id="gm-build-list" aria-label="数值模板"></select><button type="button" id="gm-load-build" data-zh="载入到表单" data-en="Load into form"></button><button type="button" id="gm-delete-build" data-zh="删除模板" data-en="Delete preset"></button></div>
+          </details>
+          <details><summary data-zh="世界时间、难度与树脂" data-en="World time, difficulty & resin"></summary><div class="gm-grid">
+            <div><div class="gm-row"><label for="gm-world-level" data-zh="世界等级 0–9" data-en="World level 0–9"></label><input type="number" id="gm-world-level" min="0" max="9" step="1"><button type="button" id="gm-set-world-level" data-zh="设置" data-en="Set"></button></div><div class="gm-row"><label for="gm-resin" data-zh="原粹树脂 0–2000" data-en="Original resin 0–2000"></label><input type="number" id="gm-resin" min="0" max="2000" step="1"><button type="button" id="gm-set-resin" data-zh="设置" data-en="Set"></button></div></div>
+            <div><div class="gm-row"><input type="time" id="gm-time" aria-label="世界时间"><button type="button" id="gm-set-time" data-zh="调整时间" data-en="Set time"></button></div><div class="gm-row"><button type="button" data-gm-time="360" data-zh="清晨 06:00" data-en="06:00"></button><button type="button" data-gm-time="720" data-zh="正午 12:00" data-en="12:00"></button><button type="button" data-gm-time="1080" data-zh="傍晚 18:00" data-en="18:00"></button><button type="button" data-gm-time="0" data-zh="午夜 00:00" data-en="00:00"></button></div><p class="gm-note" data-zh="时间及锁定对同一世界的玩家共同生效。世界等级变更后，已有怪物可能需重新加载场景。" data-en="Time changes affect everyone in this world. Reload the scene for existing enemies after changing world level."></p></div>
+          </div></details>
+          <details><summary data-zh="传送与地点收藏" data-en="Teleport & saved locations"></summary><div class="gm-row"><label>Scene <input type="number" id="gm-scene" min="1" step="1"></label><label>X <input type="number" id="gm-x" step="any"></label><label>Y <input type="number" id="gm-y" step="any"></label><label>Z <input type="number" id="gm-z" step="any"></label></div>
+            <div class="gm-row"><button type="button" id="gm-use-position" data-zh="填入当前坐标" data-en="Use current position"></button><button type="button" id="gm-teleport" data-zh="传送至此坐标" data-en="Teleport here"></button></div>
+            <div class="gm-row"><input type="text" id="gm-location-name" maxlength="60" placeholder="地点名称（保存在本浏览器）"><button type="button" id="gm-save-location" data-zh="收藏地点" data-en="Save location"></button></div><div class="gm-row"><select id="gm-location-list" aria-label="收藏地点"></select><button type="button" id="gm-load-location" data-zh="载入坐标" data-en="Load location"></button><button type="button" id="gm-delete-location" data-zh="删除地点" data-en="Delete location"></button></div>
+          </details>
+        </fieldset><p id="gm-feedback" class="gm-feedback" role="status"></p>
+      </div>
+    </section>
+    <section class="panel" id="recharge-tool" aria-labelledby="recharge-title">
+      <div class="panel-head item-heading"><div><h2 id="recharge-title" data-zh="本地模拟充值" data-en="Local simulated recharge"></h2><p data-zh="免费按商品到账，更新游戏内余额、月卡及纪行。" data-en="Free product delivery to the game, monthly card and battle pass."></p></div><button type="button" id="recharge-refresh" data-zh="刷新商品" data-en="Refresh products"></button></div>
+      <div class="gacha-body"><div class="gm-toolbar">
+        <label for="recharge-player" data-zh="在线玩家" data-en="Online player"></label><select id="recharge-player" aria-label="充值玩家"></select>
+        <label for="recharge-product" data-zh="充值商品" data-en="Product"></label><select id="recharge-product" aria-label="充值商品"></select>
+        <button type="button" class="primary" id="recharge-buy" disabled data-zh="免费充值并到账" data-en="Recharge for free"></button>
+      </div><p id="recharge-preview" class="gacha-hint"></p><p id="recharge-feedback" class="gm-feedback" role="status"></p></div>
+    </section>
+    <section class="panel" id="gacha-tool" aria-labelledby="gacha-title">
+      <div class="panel-head item-heading">
+        <div><h2 id="gacha-title" data-i18n="gachaTitle"></h2><p data-i18n="gachaSubtitle"></p></div>
+        <div class="tools"><button type="button" class="small" id="gacha-refresh" data-i18n="gachaRefresh"></button></div>
+      </div>
+      <div class="gacha-body">
+        <p class="gacha-current" id="gacha-current" aria-live="polite"></p>
+        <div class="gacha-layout">
+          <div class="gacha-picker">
+            <input type="search" id="gacha-search" data-i18n-placeholder="gachaSearch" aria-label="搜索历史卡池" autocomplete="off">
+            <select id="gacha-phase" size="6" aria-label="历史卡池" disabled></select>
+            <span class="meta" id="gacha-count"></span>
+          </div>
+          <div class="gacha-preview">
+            <h3 id="gacha-preview-title"></h3>
+            <img id="gacha-placeholder" class="hidden" alt="卡池占位展示" src="/console/assets/gacha-placeholder.png">
+            <p id="gacha-placeholder-note" class="hidden"></p>
+            <h4 data-i18n="gachaUp5"></h4><ul class="gacha-up" id="gacha-up5"></ul>
+            <h4 data-i18n="gachaUp4"></h4><ul class="gacha-up" id="gacha-up4"></ul>
+            <p class="gacha-hint" data-i18n="gachaHint"></p>
+            <button type="button" class="primary" id="gacha-apply" disabled data-i18n="gachaApply"></button>
+            <p id="gacha-feedback" role="status"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="panel" id="monster-tool" aria-labelledby="monster-title">
+      <div class="panel-head item-heading">
+        <div><h2 id="monster-title" data-zh="刷任意怪物" data-en="Spawn monsters"></h2><p data-zh="按名称或 ID 找怪物，在选定玩家前方生成。" data-en="Find a monster by name or ID and spawn it in front of an online player."></p></div>
+        <div class="tools"><span class="meta" id="monster-version"></span><button type="button" id="monster-reload" data-zh="刷新怪物" data-en="Reload monsters"></button></div>
+      </div>
+      <div class="item-layout">
+        <div class="item-browser">
+          <input type="search" id="monster-search" placeholder="搜索中文名称、英文名称或怪物 ID…" aria-label="搜索怪物" autocomplete="off">
+          <div class="gm-row"><label for="monster-type" data-zh="类型" data-en="Type"></label><select id="monster-type" aria-label="怪物类型"></select></div>
+          <div class="item-common" id="monster-common"></div>
+          <div class="item-results" id="monster-results" aria-label="怪物搜索结果"></div>
+          <div class="item-pager"><span id="monster-count" aria-live="polite"></span><button type="button" id="monster-prev" aria-label="上一页">←</button><span id="monster-page"></span><button type="button" id="monster-next" aria-label="下一页">→</button></div>
+          <p class="gm-note" data-zh="包括当前服务端怪物表中的全部 ID 和内部变体；未收录中文名的条目显示内部名和 ID。特殊首领的阶段玩法仍依赖原场景脚本。" data-en="Lists every loaded monster ID, including internal variants. Unnamed entries show internal names and IDs. Special boss phases still depend on scene scripts."></p>
+        </div>
+        <form id="monster-form" class="give-form">
+          <div class="selected-item"><span class="item-mark" aria-hidden="true">⚔</span><div><h3 id="monster-selected-name"></h3><p id="monster-selected-meta"></p></div></div>
+          <fieldset id="monster-fields">
+            <div class="give-field"><div class="give-player-label"><label for="monster-player" data-zh="生成在谁附近" data-en="Spawn near"></label><button type="button" id="monster-player-refresh" data-i18n="refreshPlayers"></button></div><select id="monster-player" required></select></div>
+            <div class="give-pair"><div class="give-field"><label for="monster-amount" data-zh="数量" data-en="Quantity"></label><input type="number" id="monster-amount" min="1" max="2147483647" step="1" value="1" required></div><div class="give-field"><label for="monster-level" data-zh="等级" data-en="Level"></label><input type="number" id="monster-level" min="1" step="1" value="90" list="monster-levels" required><datalist id="monster-levels"></datalist></div></div>
+            <div class="give-field"><label for="monster-distance" data-zh="玩家前方距离（米）" data-en="Distance in front (meters)"></label><input type="number" id="monster-distance" min="0" max="100" step="1" value="5" required></div>
+            <div class="amount-presets" id="monster-amount-presets"><button type="button" data-monster-amount="1">1</button><button type="button" data-monster-amount="5">5</button><button type="button" data-monster-amount="10">10</button><button type="button" data-monster-amount="50">50</button></div>
+            <button type="submit" class="primary" id="monster-spawn" disabled data-zh="生成怪物" data-en="Spawn monsters"></button>
+            <p class="give-hint" id="monster-hint" aria-live="polite"></p>
+          </fieldset><p class="gm-feedback" id="monster-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+    <section class="panel" id="item-tool" aria-labelledby="item-title">
+      <div class="panel-head item-heading">
+        <div><h2 id="item-title" data-i18n="itemTitle"></h2><p data-i18n="itemSubtitle"></p></div>
+        <div class="tools"><span class="meta" id="item-version"></span><button type="button" class="small" id="item-reload" data-i18n="reloadItems"></button></div>
+      </div>
+      <div class="item-layout">
+        <div class="item-browser">
+          <div class="item-search-row">
+            <input type="search" id="item-search" data-i18n-placeholder="itemSearch" aria-label="物品名称或 ID" autocomplete="off">
+            <select id="item-rarity" aria-label="星级"><option value="all" data-i18n="allRarities"></option><option value="5">★★★★★</option><option value="4">★★★★</option><option value="3">★★★</option><option value="2">★★</option><option value="1">★</option></select>
+          </div>
+          <div class="item-categories" id="item-categories" role="group" aria-label="物品分类"></div>
+          <div class="gm-row"><label><input type="checkbox" id="item-favorites-only"><span data-zh="只看收藏" data-en="Favorites only"></span></label><button type="button" id="item-favorite" data-zh="收藏当前物品" data-en="Favorite selected item"></button></div>
+          <div class="common-label" data-i18n="commonItems"></div>
+          <div class="item-common" id="item-common"></div>
+          <div class="item-results" id="item-results" aria-label="物品搜索结果"></div>
+          <div class="item-pager"><span id="item-count" aria-live="polite"></span><button type="button" id="item-prev" aria-label="上一页">←</button><span id="item-page"></span><button type="button" id="item-next" aria-label="下一页">→</button></div>
+        </div>
+        <form id="give-form" class="give-form">
+          <div class="selected-item"><span class="item-mark" id="selected-mark">✦</span><div><h3 id="selected-name"></h3><p id="selected-meta"></p></div></div>
+          <fieldset id="give-fields">
+            <div class="give-field"><div class="give-player-label"><label for="give-player" data-i18n="recipient"></label><button type="button" id="give-refresh" data-i18n="refreshPlayers"></button></div><select id="give-player" required></select></div>
+            <div class="give-field"><label for="give-amount" data-i18n="quantity"></label><input type="number" id="give-amount" min="1" max="2147483647" step="1" value="1" required><div class="amount-presets" id="amount-presets"></div></div>
+            <div class="give-pair hidden" id="give-equipment">
+              <div class="give-field"><label for="give-level" data-i18n="itemLevel"></label><input type="number" id="give-level" step="1"></div>
+              <div class="give-field hidden" id="give-refinement-field"><label for="give-refinement" data-i18n="refinement"></label><select id="give-refinement"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+            </div>
+            <button type="submit" class="primary" id="give-submit" disabled data-i18n="giveItem"></button>
+            <p class="give-hint" id="give-hint" aria-live="polite"></p>
+          </fieldset>
+          <div id="give-feedback" class="give-feedback hidden" role="status" aria-live="polite"></div>
+        </form>
+      </div>
+    </section>
+    <section class="panel" id="artifact-tool" aria-labelledby="artifact-title">
+      <div class="panel-head item-heading">
+        <div><h2 id="artifact-title" data-i18n="artifactTitle"></h2><p data-i18n="artifactSubtitle"></p></div>
+        <div class="tools"><button type="button" class="small" id="artifact-reload" data-i18n="artifactReload"></button></div>
+      </div>
+      <form id="artifact-form">
+        <fieldset id="artifact-fields" disabled>
+          <div class="artifact-layout">
+            <div class="artifact-editor">
+              <label for="artifact-set" data-i18n="artifactSet"></label>
+              <input type="search" id="artifact-set-search" data-i18n-placeholder="artifactSearch" aria-label="搜索圣遗物套装" autocomplete="off">
+              <select id="artifact-set" required></select>
+              <div class="artifact-basics">
+                <div><label for="artifact-slot" data-i18n="artifactSlot"></label><select id="artifact-slot"></select></div>
+                <div><label for="artifact-rank" data-i18n="artifactRank"></label><select id="artifact-rank"></select></div>
+                <div><label for="artifact-level" data-i18n="itemLevel"></label><input type="number" id="artifact-level" value="20" min="0" max="20" step="1" required></div>
+              </div>
+              <label for="artifact-main" data-i18n="artifactMain"></label><select id="artifact-main"></select>
+              <div class="artifact-sub-head"><span data-i18n="artifactSub"></span><span data-i18n="artifactTier"></span><span data-i18n="artifactRolls"></span></div>
+              <div id="artifact-subs"></div>
+              <p class="artifact-note" data-i18n="artifactRollHint"></p>
+            </div>
+            <div class="artifact-card">
+              <h3 id="artifact-preview-name" data-i18n="artifactPreview"></h3><p class="artifact-preview-meta" id="artifact-preview-meta"></p>
+              <div class="artifact-main-name" id="artifact-preview-main"></div><div class="artifact-main-value" id="artifact-preview-value">—</div>
+              <ul id="artifact-preview-subs"></ul><p id="artifact-preview-status" aria-live="polite"></p>
+              <label class="artifact-lock"><input type="checkbox" id="artifact-lock" checked><span data-i18n="artifactLock"></span></label>
+              <div class="give-player-label"><label for="artifact-player" data-i18n="recipient"></label><button type="button" id="artifact-player-refresh" data-i18n="refreshPlayers"></button></div>
+              <select id="artifact-player" required></select>
+              <button type="submit" class="primary" id="artifact-give" disabled data-i18n="artifactGive"></button>
+              <p class="give-hint" id="artifact-give-hint"></p>
+            </div>
+          </div>
+        </fieldset>
+        <div class="give-feedback hidden" id="artifact-feedback" role="status"></div>
+      </form>
+      <div class="template-bar"><div class="gm-row"><input type="text" id="artifact-template-name" maxlength="60" placeholder="圣遗物模板名称（保存在本浏览器）"><button type="button" id="artifact-template-save" data-zh="保存当前模板" data-en="Save artifact preset"></button></div><div class="gm-row"><select id="artifact-template-list" aria-label="圣遗物模板"></select><button type="button" id="artifact-template-load" data-zh="载入模板" data-en="Load preset"></button><button type="button" id="artifact-template-delete" data-zh="删除模板" data-en="Delete preset"></button></div><p class="gm-note" data-zh="模板仅保存套装和词条配置，不保存收件玩家；载入后重新校验并预览，不自动发放。" data-en="Presets store artifact settings without a recipient. Loading validates and previews without granting items."></p><p id="artifact-template-feedback" class="gm-feedback" role="status"></p></div>
+    </section>
+    <div class="cards">
+      <div class="card"><div class="label" data-i18n="players"></div><div class="value" id="s-players">-</div><div class="sub" id="s-version"></div></div>
+      <div class="card"><div class="label" data-i18n="uptime"></div><div class="value" id="s-uptime">-</div><div class="sub" id="s-started"></div></div>
+      <div class="card"><div class="label" data-i18n="health"></div><div class="value" id="s-health">-</div><div class="sub" id="s-diagnosis"></div></div>
+      <div class="card"><div class="label" data-i18n="cpu"></div><div class="value" id="s-cpu">-</div><div class="sub" id="s-syscpu"></div><div class="meter"><span id="m-cpu"></span></div></div>
+      <div class="card"><div class="label" data-i18n="jvmMem"></div><div class="value" id="s-mem">-</div><div class="sub" id="s-memsub"></div><div class="meter"><span id="m-mem"></span></div></div>
+      <div class="card"><div class="label" data-i18n="sysMem"></div><div class="value" id="s-sysmem">-</div><div class="sub" id="s-sysmemsub"></div><div class="meter"><span id="m-sysmem"></span></div></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="command"></h2><span class="meta" data-i18n="commandHint"></span>
+          <div class="tools"><button type="button" class="small" id="cmd-clear" data-i18n="clear"></button></div></div>
+        <div class="term">
+          <div class="out" id="cmd-output" aria-live="polite"></div>
+          <form class="prompt" id="cmd-form">
+            <span>›</span>
+            <input id="cmd" type="text" data-i18n-placeholder="commandPlaceholder" autocomplete="off" spellcheck="false">
+            <button type="submit" data-i18n="run"></button>
+          </form>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2 data-i18n="onlinePlayers"></h2><span class="meta" id="players-updated"></span></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>UID</th><th data-i18n="nickname"></th><th data-i18n="ar"></th><th data-i18n="wl"></th><th data-i18n="scene"></th></tr></thead>
+            <tbody id="players"></tbody>
+          </table>
+          <div class="empty hidden" id="players-empty" data-i18n="noPlayers"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2 data-i18n="serverLog"></h2>
+        <div class="tools">
+          <div class="chips" role="group" id="lvl-filter">
+            <button type="button" data-level="ALL" aria-pressed="true" data-i18n="all"></button>
+            <button type="button" data-level="INFO" aria-pressed="false">INFO</button>
+            <button type="button" data-level="WARN" aria-pressed="false">WARN</button>
+            <button type="button" data-level="ERROR" aria-pressed="false">ERROR</button>
+          </div>
+          <input id="log-filter" type="text" data-i18n-placeholder="filter">
+          <label><input id="log-follow" type="checkbox" checked> <span data-i18n="follow"></span></label>
+          <button type="button" class="small" id="log-clear" data-i18n="clear"></button>
+        </div>
+      </div>
+      <div class="term log"><div class="out" id="log"></div></div>
+    </div>
+  </main>
+</section>
+
+<script>
+(() => {
+  const I18N = {
+    zh: {
+      title: "AstaPS 控制台", console: "控制台", loginHint: "输入服务器的控制台密码。", password: "控制台密码", login: "登录",
+      logout: "退出登录", wrongPassword: "密码错误", lockedOut: "密码错误次数过多，请 10 分钟后再试",
+      unreachable: "无法连接服务器", expired: "登录已过期，请重新登录",
+      players: "在线玩家", uptime: "运行时间", health: "状态", cpu: "进程 CPU", jvmMem: "JVM 内存", sysMem: "系统内存",
+      version: "版本 {v}", startedAt: "启动于 {t}", system: "系统 {v}",
+      command: "执行命令", commandHint: "和服务器控制台一样，不用加 /，↑↓ 切换历史", commandPlaceholder: "例如：give 201 --amount 1000 @10001",
+      run: "执行", clear: "清空", noOutput: "（没有直接输出，结果请看日志）", failed: "执行失败：{e}",
+      onlinePlayers: "在线玩家", nickname: "昵称", ar: "冒险等级", wl: "世界等级", scene: "场景",
+      noPlayers: "没有在线玩家", updatedAt: "更新于 {t}",
+      serverLog: "服务器日志", all: "全部", filter: "过滤日志", follow: "自动滚动",
+      h_NORMAL: "正常", h_BUSY: "繁忙", h_WARNING: "注意", h_DANGER: "危险",
+      d_NONE: "没有发现瓶颈", d_ELEVATED_LOAD: "负载正在上升", d_REJECTED_TASKS: "有任务被拒绝",
+      d_SLOW_TASKS: "任务平均耗时过高", d_QUEUE_BACKLOG: "任务队列在堆积", d_THREADS_SATURATED: "所有线程都在忙",
+      d_FAILING_TASKS: "有任务在抛出异常", d_CPU_LIMIT: "CPU 接近上限", d_MEMORY_PRESSURE: "内存占用过高",
+      d_GAME_TICK_STALLED: "游戏主循环已停止响应", d_JVM_DEADLOCK: "检测到 JVM 死锁，游戏处理可能已卡住",
+      d_JVM_DEADLOCK_CHECK: "无法完成 JVM 死锁检测",
+      itemTitle: "物品快捷发放", itemSubtitle: "搜索物品，选择在线角色，直接放入背包。",
+      itemSearch: "搜索中文名称、英文名称或物品 ID…", reloadItems: "刷新物品", allRarities: "全部星级", commonItems: "常用物品",
+      cat_all: "全部", cat_currency: "货币", cat_weapon: "武器", cat_artifact: "圣遗物", cat_material: "素材与道具", cat_food: "食物", cat_furniture: "摆设",
+      recipient: "发放给", refreshPlayers: "刷新玩家", choosePlayer: "选择在线角色", noOnlinePlayer: "暂无在线角色",
+      quantity: "数量", itemLevel: "等级", refinement: "精炼等级", giveItem: "发放物品", giving: "正在发放…",
+      selectItem: "选择一件物品", itemsLoading: "正在加载物品字典…", itemsLoadFailed: "物品加载失败，请点击“刷新物品”。",
+      itemMatches: "{n} 件匹配物品", noItemMatches: "没有匹配的物品，试试其他名称或完整 ID。", unnamedItem: "名称未收录",
+      offlineHint: "先进入游戏，再刷新玩家列表。物品只能发给在线角色。", selectPlayerHint: "请选择要接收物品的在线角色。",
+      playersFailed: "无法获取在线状态，请刷新玩家。", readyHint: "将发给 {name}（UID {uid}），请确认角色和数量。",
+      offline: "已离线", invalidQuantity: "请输入 1–2147483647 之间的整数数量。", grantProcessed: "服务器已处理发放请求",
+      grantUnknown: "连接中断，发放结果未知。请先查看游戏背包或日志，再决定是否重新发放。",
+      gachaTitle: "选择抽卡池", gachaSubtitle: "按历史 UP 阵容选择，手动应用后生效，重启仍保留。",
+      gachaRefresh: "刷新卡池", gachaSearch: "搜索版本、角色或武器名…", gachaUp5: "★★★★★ UP", gachaUp4: "★★★★ UP",
+      gachaCurrent: "当前卡池：{phase} · {names}", gachaApply: "应用这个卡池", gachaApplied: "当前正在使用", gachaApplying: "正在切换…",
+      gachaHint: "历史阶段应用为角色 UP、武器 UP 和常驻池，游戏内可切换标签。角色与武器分别使用纠缠之缘，常驻池使用相遇之缘。切换对本服所有玩家生效。",
+      gachaCount: "{n} 个匹配阶段 / 共 {total} 个", gachaEmpty: "没有匹配的卡池", gachaLoading: "正在读取当前卡池…",
+      gachaDisabled: "历史卡池选择未启用。", gachaLoadFailed: "卡池读取失败，请点击“刷新卡池”。",
+      gachaSuccess: "已应用，游戏中重新打开祈愿界面即可查看。", gachaUnknown: "连接中断，请刷新确认当前卡池。",
+      artifactTitle: "DIY 圣遗物", artifactSubtitle: "选择套装和词条，预览最终数值，再发给在线角色。",
+      artifactReload: "刷新配置", artifactSet: "套装", artifactSearch: "搜索套装中文名、英文名或 ID…", artifactSlot: "部位", artifactRank: "星级",
+      artifactMain: "主词条", artifactSub: "副词条", artifactTier: "单次档位", artifactRolls: "次数", artifactNone: "不添加",
+      artifactRollHint: "次数包含初始 1 次，每项可设 1–200 次。按配置精确生成，不随机补词条。",
+      artifactPreview: "圣遗物预览", artifactLock: "生成后锁定", artifactGive: "生成并发放 1 件", artifactLoading: "正在读取套装和词条…",
+      artifactLoadFailed: "圣遗物配置读取失败，请点击“刷新配置”。", artifactPreviewing: "正在计算预览…", artifactInvalid: "请填写有效等级和副词条次数。",
+      artifactSummary: "共 {n} 次词条生效 · ID {id}", artifactGranted: "已发放 1 件圣遗物至 UID {uid}，物品 GUID：{guid}",
+      artifactNoMatches: "没有匹配的套装，试试其他名称或套装 ID。",
+      slot_EQUIP_BRACER: "生之花", slot_EQUIP_NECKLACE: "死之羽", slot_EQUIP_SHOES: "时之沙", slot_EQUIP_RING: "空之杯", slot_EQUIP_DRESS: "理之冠",
+    },
+    en: {
+      title: "AstaPS Console", console: "Console", loginHint: "Enter the server's console password.", password: "Console password", login: "Sign in",
+      logout: "Sign out", wrongPassword: "Wrong password", lockedOut: "Too many wrong passwords. Try again in 10 minutes.",
+      unreachable: "Cannot reach the server", expired: "Your session has expired. Please sign in again.",
+      players: "Players online", uptime: "Uptime", health: "Health", cpu: "Process CPU", jvmMem: "JVM memory", sysMem: "System memory",
+      version: "Version {v}", startedAt: "Started {t}", system: "System {v}",
+      command: "Run command", commandHint: "Same as the server console, no leading /. ↑↓ for history", commandPlaceholder: "e.g. give 201 --amount 1000 @10001",
+      run: "Run", clear: "Clear", noOutput: "(No direct output; check the log.)", failed: "Failed: {e}",
+      onlinePlayers: "Online players", nickname: "Nickname", ar: "Adventure rank", wl: "World level", scene: "Scene",
+      noPlayers: "No players online", updatedAt: "Updated {t}",
+      serverLog: "Server log", all: "All", filter: "Filter log", follow: "Follow",
+      h_NORMAL: "Normal", h_BUSY: "Busy", h_WARNING: "Warning", h_DANGER: "Danger",
+      itemTitle: "Quick item grant", itemSubtitle: "Find an item and send it to an online player's inventory.",
+      itemSearch: "Search by Chinese / English name or item ID…", reloadItems: "Reload items", allRarities: "All rarities", commonItems: "QUICK PICKS",
+      cat_all: "All", cat_currency: "Currency", cat_weapon: "Weapons", cat_artifact: "Artifacts", cat_material: "Materials", cat_food: "Food", cat_furniture: "Furnishings",
+      recipient: "Recipient", refreshPlayers: "Refresh players", choosePlayer: "Choose an online player", noOnlinePlayer: "No players online",
+      quantity: "Quantity", itemLevel: "Level", refinement: "Refinement", giveItem: "Give item", giving: "Sending…",
+      selectItem: "Select an item", itemsLoading: "Loading item dictionary…", itemsLoadFailed: "Could not load items. Click Reload items.",
+      itemMatches: "{n} matching items", noItemMatches: "No matches. Try another name or the complete item ID.", unnamedItem: "Name unavailable",
+      offlineHint: "Enter the game, then refresh players. Only online characters can receive items.", selectPlayerHint: "Choose an online recipient.",
+      playersFailed: "Could not check online status. Refresh players.", readyHint: "Recipient: {name} (UID {uid}). Check the player and quantity.",
+      offline: "Offline", invalidQuantity: "Enter an integer quantity from 1 to 2147483647.", grantProcessed: "The server processed the item request",
+      grantUnknown: "Connection lost; the result is unknown. Check the inventory or server log before sending again.",
+      gachaTitle: "Choose a wish lineup", gachaSubtitle: "Select historical UPs and apply. Your selection survives restarts.",
+      gachaRefresh: "Refresh lineups", gachaSearch: "Search a version, character, or weapon…", gachaUp5: "★★★★★ UP", gachaUp4: "★★★★ UP",
+      gachaCurrent: "Active: {phase} · {names}", gachaApply: "Apply this lineup", gachaApplied: "Currently active", gachaApplying: "Applying…",
+      gachaHint: "Apply a phase as separate character, weapon and standard tabs in the game. Event wishes use Intertwined Fate; standard uses Acquaint Fate. Changes affect all players.",
+      gachaCount: "{n} matching phases / {total} total", gachaEmpty: "No matching lineups", gachaLoading: "Loading active lineup…",
+      gachaDisabled: "Historical lineup selection is disabled.", gachaLoadFailed: "Could not load lineups. Click Refresh lineups.",
+      gachaSuccess: "Applied. Reopen the in-game Wish screen to view it.", gachaUnknown: "Connection lost. Refresh to confirm the active lineup.",
+      artifactTitle: "DIY artifacts", artifactSubtitle: "Choose a set and stats, preview the exact result, then send it to an online player.",
+      artifactReload: "Reload options", artifactSet: "Set", artifactSearch: "Search a set name or ID…", artifactSlot: "Slot", artifactRank: "Rarity",
+      artifactMain: "Main stat", artifactSub: "Substat", artifactTier: "Value per roll", artifactRolls: "Rolls", artifactNone: "None",
+      artifactRollHint: "Rolls include the initial roll; 1–200 per stat. Generates exactly these stats without random additions.",
+      artifactPreview: "Artifact preview", artifactLock: "Lock on creation", artifactGive: "Create and give 1 artifact", artifactLoading: "Loading artifact options…",
+      artifactLoadFailed: "Could not load options. Click Reload options.", artifactPreviewing: "Calculating preview…", artifactInvalid: "Enter a valid level and roll counts.",
+      artifactSummary: "{n} total rolls · ID {id}", artifactGranted: "Gave 1 artifact to UID {uid}. Item GUID: {guid}",
+      artifactNoMatches: "No matching sets. Try another name or set ID.",
+      slot_EQUIP_BRACER: "Flower", slot_EQUIP_NECKLACE: "Plume", slot_EQUIP_SHOES: "Sands", slot_EQUIP_RING: "Goblet", slot_EQUIP_DRESS: "Circlet",
+    },
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const storage = {
+    get(key) { try { return localStorage.getItem(key); } catch (e) { return null; } },
+    set(key, v) { try { v == null ? localStorage.removeItem(key) : localStorage.setItem(key, v); } catch (e) {} },
+  };
+  const session = {
+    get() { try { return sessionStorage.getItem("astaps-console-token"); } catch (e) { return null; } },
+    set(v) { try { v ? sessionStorage.setItem("astaps-console-token", v) : sessionStorage.removeItem("astaps-console-token"); } catch (e) {} },
+  };
+
+  let lang = storage.get("astaps-console-lang") || ((navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en");
+  if (!I18N[lang]) lang = "en";
+  let lastStatus = null;
+
+  function t(key, vars) {
+    let text = (I18N[lang] && I18N[lang][key]) ?? I18N.en[key] ?? key;
+    if (vars) for (const [k, v] of Object.entries(vars)) text = text.replace("{" + k + "}", v);
+    return text;
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+    document.title = t("title");
+    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => { el.placeholder = t(el.dataset.i18nPlaceholder); });
+    document.querySelectorAll("[data-zh]").forEach(el => { el.textContent = lang === "en" ? el.dataset.en : el.dataset.zh; });
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+    if (lastStatus) renderStatus(lastStatus);
+    renderItemCategories(); renderCommonItems(); renderItemResults(); renderSelectedItem(); renderGivePlayers();
+    renderGacha();
+    renderArtifactControls(); renderArtifactLines(); renderArtifactPreview(); renderArtifactPlayers();
+    renderActivityList(); renderActivityHeading(); renderGMPlayers(); renderGMState(); renderSavedLists(); renderFavoriteButton();
+    renderMonsterFilters(); renderMonsterResults(); renderMonsterSelection(); renderMonsterPlayers();
+  }
+
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    lang = b.dataset.lang; storage.set("astaps-console-lang", lang); applyLanguage();
+  }));
+
+  let token = session.get();
+  let lastSeq = 0;
+  let timers = [];
+  const MAX_LOG_LINES = 2000;
+
+  async function api(path, options = {}) {
+    const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
+    if (token) headers["X-Console-Token"] = token;
+    const response = await fetch(path, Object.assign({ cache: "no-store" }, options, { headers }));
+    if (response.status === 401) { showLogin(t("expired")); throw new Error("unauthorized"); }
+    return response;
+  }
+
+  function stopPolling() { timers.forEach(clearInterval); timers = []; }
+  function startPolling() {
+    stopPolling();
+    refreshStatus(); refreshPlayers(); refreshLogs();
+    timers.push(setInterval(refreshStatus, 5000));
+    timers.push(setInterval(refreshPlayers, 5000));
+    timers.push(setInterval(refreshLogs, 2000));
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (!token || $("app").classList.contains("hidden")) return;
+    document.hidden ? stopPolling() : startPolling();
+  });
+
+  function showLogin(message) {
+    stopPolling();
+    token = null; session.set(null);
+    $("app").classList.add("hidden");
+    $("login").classList.remove("hidden");
+    $("login-error").textContent = message || "";
+    $("password").focus();
+  }
+
+  function showApp() {
+    $("login").classList.add("hidden");
+    $("app").classList.remove("hidden");
+    $("log").replaceChildren(); lastSeq = 0;
+    startPolling();
+    refreshItems();
+    refreshMonsters();
+    refreshGacha();
+    refreshRecharge();
+    refreshArtifacts();
+    refreshActivities();
+    if (location.hash === "#monster-tool") $("monster-tool").scrollIntoView({block: "start"});
+    else if (location.hash === "#artifact-tool") $("artifact-tool").scrollIntoView({block: "start"});
+    else $("item-search").focus();
+  }
+
+  $("login-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    $("login-error").textContent = "";
+    try {
+      const response = await fetch("/console/api/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: $("password").value }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body.token) {
+        token = body.token; session.set(token); $("password").value = ""; showApp();
+      } else {
+        $("login-error").textContent = response.status === 429 ? t("lockedOut") : t("wrongPassword");
+      }
+    } catch (e) {
+      $("login-error").textContent = t("unreachable");
+    }
+  });
+
+  $("logout").addEventListener("click", async () => {
+    try { await api("/console/api/logout", { method: "POST" }); } catch (e) {}
+    showLogin();
+  });
+
+  const pct = (v) => (typeof v === "number" && v >= 0) ? (v * 100).toFixed(1) + "%" : "-";
+  const size = (v) => {
+    if (typeof v !== "number" || v < 0) return "-";
+    return v >= 1073741824 ? (v / 1073741824).toFixed(1) + " GB" : (v / 1048576).toFixed(0) + " MB";
+  };
+  function meter(id, v) {
+    const bar = $(id);
+    const ratio = (typeof v === "number" && v >= 0) ? Math.min(v, 1) : 0;
+    bar.style.width = (ratio * 100).toFixed(1) + "%";
+    bar.className = ratio >= 0.9 ? "high" : ratio >= 0.7 ? "mid" : "";
+  }
+
+  function renderStatus(s) {
+    const g = s.game || {}, j = s.jvm || {}, sys = s.system || {};
+    $("s-players").textContent = g.maxPlayers > 0 ? `${g.players} / ${g.maxPlayers}` : `${g.players ?? "-"}`;
+    $("s-version").textContent = g.gameVersion ? t("version", { v: g.gameVersion }) : "";
+    $("s-uptime").textContent = g.uptime || "-";
+    $("s-started").textContent = g.startedAt ? t("startedAt", { t: g.startedAt }) : "";
+
+    const healthName = s.health ? t("h_" + s.health) : "-";
+    const diagnosis = (s.diagnosisCode && I18N[lang]["d_" + s.diagnosisCode]) || s.diagnosis || "";
+    $("s-health").textContent = healthName;
+    $("s-health").className = "value " + (s.health || "");
+    $("s-diagnosis").textContent = diagnosis;
+    $("s-diagnosis").title = s.suggestion || "";
+    $("h-dot").className = "dot " + (s.health || "");
+    $("h-text").textContent = healthName + (g.uptime ? " · " + g.uptime : "");
+
+    $("s-cpu").textContent = pct(j.processCpuLoad);
+    $("s-syscpu").textContent = t("system", { v: pct(sys.systemCpuLoad) });
+    meter("m-cpu", j.processCpuLoad);
+    $("s-mem").textContent = pct(j.memoryUsage);
+    $("s-memsub").textContent = `${size(j.usedMemoryBytes)} / ${size(j.maxMemoryBytes)}`;
+    meter("m-mem", j.memoryUsage);
+    $("s-sysmem").textContent = pct(sys.memoryUsage);
+    $("s-sysmemsub").textContent = (typeof sys.totalMemoryBytes === "number" && typeof sys.freeMemoryBytes === "number")
+      ? `${size(sys.totalMemoryBytes - sys.freeMemoryBytes)} / ${size(sys.totalMemoryBytes)}` : "";
+    meter("m-sysmem", sys.memoryUsage);
+  }
+
+  async function refreshStatus() {
+    try {
+      const s = await (await fetch("/api/status", { cache: "no-store" })).json();
+      lastStatus = s; renderStatus(s);
+    } catch (e) {}
+  }
+
+  async function refreshPlayers() {
+    try {
+      const body = await (await api("/console/api/players")).json();
+      const rows = body.players || [];
+      onlinePlayers = rows; playersReady = true; renderGivePlayers(); renderArtifactPlayers(); renderGMPlayers(); renderMonsterPlayers();
+      const tbody = $("players");
+      tbody.replaceChildren();
+      for (const p of rows) {
+        const tr = document.createElement("tr");
+        [p.uid, p.nickname, p.level, p.worldLevel, p.sceneId].forEach((v, i) => {
+          const td = document.createElement("td");
+          if (i === 0) td.className = "uid";
+          td.textContent = v ?? "";
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+      $("players-empty").classList.toggle("hidden", rows.length > 0);
+      $("players-updated").textContent = t("updatedAt", { t: new Date().toLocaleTimeString() });
+    } catch (e) { playersReady = false; updateGiveAvailability(); updateArtifactAvailability(); renderGMPlayers(); renderMonsterPlayers(); }
+  }
+
+  // Lines arrive as "HH:mm:ss <LEVEL:Logger> message".
+  const LOG_LINE = /^(\d\d:\d\d:\d\d) <(\w+):([^>]*)> ([\s\S]*)$/;
+  let levelFilter = "ALL";
+
+  function visible(row) {
+    const text = $("log-filter").value.trim().toLowerCase();
+    const levelOk = levelFilter === "ALL" || row.dataset.level === levelFilter;
+    return levelOk && (!text || row.textContent.toLowerCase().includes(text));
+  }
+
+  function logRow(level, raw) {
+    const row = document.createElement("div");
+    const m = LOG_LINE.exec(raw);
+    row.className = "row " + level;
+    row.dataset.level = level;
+    const cells = m ? [m[1], m[2], (m[3] ? m[3] + "  " : "") + m[4]] : ["", level, raw];
+    ["time", "lvl " + level, "msg"].forEach((cls, i) => {
+      const span = document.createElement("span");
+      span.className = cls;
+      if (i === 2 && m && m[3]) {
+        const src = document.createElement("span"); src.className = "src"; src.textContent = m[3] + "  ";
+        span.appendChild(src); span.appendChild(document.createTextNode(m[4]));
+      } else {
+        span.textContent = cells[i];
+      }
+      row.appendChild(span);
+    });
+    if (!visible(row)) row.classList.add("hidden");
+    return row;
+  }
+
+  async function refreshLogs() {
+    try {
+      const body = await (await api("/console/api/logs?after=" + lastSeq)).json();
+      const log = $("log");
+      const lines = body.lines || [];
+      if (!lines.length) return;
+      for (const line of lines) { log.appendChild(logRow(line.level, line.text)); lastSeq = Math.max(lastSeq, line.seq); }
+      while (log.childNodes.length > MAX_LOG_LINES) log.removeChild(log.firstChild);
+      if ($("log-follow").checked) log.scrollTop = log.scrollHeight;
+    } catch (e) {}
+  }
+
+  function refilter() { for (const row of $("log").childNodes) row.classList.toggle("hidden", !visible(row)); }
+  $("log-filter").addEventListener("input", refilter);
+  $("lvl-filter").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-level]");
+    if (!button) return;
+    levelFilter = button.dataset.level;
+    $("lvl-filter").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b === button)));
+    refilter();
+  });
+  $("log-clear").addEventListener("click", () => $("log").replaceChildren());
+  $("cmd-clear").addEventListener("click", () => $("cmd-output").replaceChildren());
+
+  function termLine(cls, text) {
+    const div = document.createElement("div");
+    div.className = "line " + cls; div.textContent = text;
+    $("cmd-output").appendChild(div);
+  }
+
+  const history = [];
+  let historyIndex = 0;
+  $("cmd").addEventListener("keydown", (event) => {
+    if (event.key === "ArrowUp" && historyIndex > 0) {
+      historyIndex--; $("cmd").value = history[historyIndex]; event.preventDefault();
+    } else if (event.key === "ArrowDown" && historyIndex < history.length) {
+      historyIndex++; $("cmd").value = history[historyIndex] ?? ""; event.preventDefault();
+    }
+  });
+
+  $("cmd-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const command = $("cmd").value.trim();
+    if (!command) return;
+    if (history[history.length - 1] !== command) history.push(command);
+    historyIndex = history.length;
+    $("cmd").value = "";
+    termLine("cmd", command);
+    try {
+      const response = await api("/console/api/command", { method: "POST", body: JSON.stringify({ command }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) termLine("ERROR", t("failed", { e: body.error || response.status }));
+      else if (!body.output || body.output.length === 0) termLine("note", t("noOutput"));
+      else for (const text of body.output) termLine("INFO", text);
+    } catch (e) {
+      if (e.message !== "unauthorized") termLine("ERROR", t("unreachable"));
+    }
+    const out = $("cmd-output"); out.scrollTop = out.scrollHeight;
+  });
+
+  const ITEM_CATEGORIES = ["all", "currency", "weapon", "artifact", "material", "food", "furniture"];
+  const COMMON_IDS = [201, 202, 223, 224, 104003, 104013];
+  const ITEM_PAGE_SIZE = 40;
+  let itemCatalog = [], itemMap = new Map(), catalogLoaded = false, itemsLoading = false;
+  let selectedItem = null, itemCategory = "all", itemPage = 0, givingItem = false;
+  let onlinePlayers = [], playersReady = false;
+
+  const itemName = (item) => lang === "en" && item.en ? item.en : item.name;
+  const stars = (item) => "★".repeat(Math.max(0, Math.min(5, item.rank)));
+
+  function renderItemCategories() {
+    $("item-categories").replaceChildren();
+    for (const category of ITEM_CATEGORIES) {
+      const button = document.createElement("button");
+      button.type = "button"; button.textContent = t("cat_" + category);
+      button.setAttribute("aria-pressed", String(category === itemCategory));
+      button.addEventListener("click", () => {
+        itemCategory = category; itemPage = 0; renderItemCategories(); renderItemResults();
+      });
+      $("item-categories").appendChild(button);
+    }
+  }
+
+  function renderCommonItems() {
+    $("item-common").replaceChildren();
+    for (const id of COMMON_IDS) {
+      const item = itemMap.get(id);
+      if (!item) continue;
+      const button = document.createElement("button");
+      button.type = "button"; button.textContent = itemName(item); button.title = "ID " + id;
+      button.setAttribute("aria-pressed", String(selectedItem?.id === id));
+      button.addEventListener("click", () => {
+        $("item-search").value = ""; $("item-rarity").value = "all"; itemCategory = "all"; itemPage = 0;
+        selectItem(item); renderItemCategories();
+      });
+      $("item-common").appendChild(button);
+    }
+  }
+
+  function matchingItems() {
+    const query = $("item-search").value.trim().toLocaleLowerCase();
+    const rank = $("item-rarity").value;
+    return itemCatalog.filter((item) =>
+      (!$('item-favorites-only').checked || itemFavorites.has(item.id)) &&
+      (itemCategory === "all" || item.category === itemCategory) &&
+      (rank === "all" || item.rank === Number(rank)) &&
+      (!query || String(item.id).includes(query) || item.name.toLocaleLowerCase().includes(query) || item.en.toLocaleLowerCase().includes(query))
+    ).sort((a, b) => {
+      const score = (item) => !query ? (item.named ? 0 : 1) : String(item.id) === query ? -2 : item.name.toLocaleLowerCase() === query || item.en.toLocaleLowerCase() === query ? -1 : item.named ? 0 : 1;
+      return score(a) - score(b) || a.id - b.id;
+    });
+  }
+
+  function renderItemResults() {
+    const results = $("item-results"); results.replaceChildren();
+    const matches = matchingItems();
+    const pages = Math.max(1, Math.ceil(matches.length / ITEM_PAGE_SIZE));
+    itemPage = Math.min(itemPage, pages - 1);
+    if (!catalogLoaded || !matches.length) {
+      const empty = document.createElement("div"); empty.className = "empty";
+      empty.textContent = itemsLoading ? t("itemsLoading") : !catalogLoaded ? t("itemsLoadFailed") : t("noItemMatches");
+      results.appendChild(empty);
+    }
+    for (const item of matches.slice(itemPage * ITEM_PAGE_SIZE, (itemPage + 1) * ITEM_PAGE_SIZE)) {
+      const row = document.createElement("button"); row.type = "button"; row.className = "item-row";
+      row.setAttribute("aria-pressed", String(selectedItem?.id === item.id));
+      const mark = document.createElement("span"); mark.className = "item-mark"; mark.dataset.rank = item.rank;
+      mark.textContent = itemName(item).slice(0, 1); mark.setAttribute("aria-hidden", "true");
+      const text = document.createElement("span"); text.className = "item-row-text";
+      const name = document.createElement("span"); name.className = "item-row-name"; name.textContent = itemName(item);
+      const meta = document.createElement("span"); meta.className = "item-row-meta";
+      meta.textContent = "ID " + item.id + (stars(item) ? " · " + stars(item) : "") + (!item.named ? " · " + t("unnamedItem") : "");
+      text.append(name, meta);
+      const category = document.createElement("span"); category.className = "item-row-type"; category.textContent = t("cat_" + item.category);
+      row.append(mark, text, category); row.addEventListener("click", () => selectItem(item)); results.appendChild(row);
+    }
+    $("item-count").textContent = catalogLoaded ? t("itemMatches", { n: matches.length.toLocaleString() }) : "";
+    $("item-page").textContent = `${itemPage + 1} / ${pages}`;
+    $("item-prev").disabled = itemPage === 0;
+    $("item-next").disabled = itemPage + 1 >= pages;
+  }
+
+  function selectItem(item) {
+    if (givingItem) return;
+    selectedItem = item;
+    $("give-amount").value = "1"; $("give-refinement").value = "1";
+    $("give-level").value = item.category === "artifact" ? "0" : "100";
+    renderSelectedItem(); renderCommonItems(); renderItemResults();
+  }
+
+  function renderSelectedItem() {
+    renderFavoriteButton();
+    const item = selectedItem;
+    $("selected-name").textContent = item ? itemName(item) : t("selectItem");
+    $("selected-mark").textContent = item ? itemName(item).slice(0, 1) : "✦";
+    $("selected-mark").dataset.rank = item?.rank ?? 0;
+    $("selected-meta").textContent = item ? `ID ${item.id} · ${t("cat_" + item.category)} ${stars(item)}` : "";
+    const equipment = item && ["weapon", "artifact"].includes(item.category);
+    $("give-equipment").classList.toggle("hidden", !equipment);
+    $("give-refinement-field").classList.toggle("hidden", item?.category !== "weapon");
+    $("give-level").disabled = !equipment; $("give-level").required = !!equipment;
+    $("give-level").min = item?.category === "artifact" ? "0" : "1";
+    $("give-level").max = item?.category === "artifact" ? "20" : "100";
+    $("amount-presets").replaceChildren();
+    const amounts = item?.category === "currency" ? [1, 1000, 10000, 100000] : equipment ? [1, 5, 10] : [1, 10, 100, 1000];
+    for (const amount of amounts) {
+      const button = document.createElement("button"); button.type = "button"; button.textContent = amount.toLocaleString();
+      button.addEventListener("click", () => { $("give-amount").value = amount; }); $("amount-presets").appendChild(button);
+    }
+    updateGiveAvailability();
+  }
+
+  function renderGivePlayers() {
+    const select = $("give-player"), current = select.value;
+    select.replaceChildren();
+    const placeholder = document.createElement("option"); placeholder.value = "";
+    placeholder.textContent = onlinePlayers.length ? t("choosePlayer") : t("noOnlinePlayer");
+    select.appendChild(placeholder);
+    for (const player of onlinePlayers) {
+      const option = document.createElement("option"); option.value = player.uid;
+      option.textContent = `${player.nickname} · UID ${player.uid}`; select.appendChild(option);
+    }
+    if (current && !onlinePlayers.some((p) => String(p.uid) === current)) {
+      const offline = document.createElement("option"); offline.value = current;
+      offline.textContent = `UID ${current} · ${t("offline")}`; offline.disabled = true; select.appendChild(offline);
+    }
+    select.value = current || (onlinePlayers.length === 1 ? String(onlinePlayers[0].uid) : "");
+    updateGiveAvailability();
+  }
+
+  function updateGiveAvailability() {
+    const player = onlinePlayers.find((p) => String(p.uid) === $("give-player").value);
+    $("give-submit").disabled = givingItem || !catalogLoaded || !selectedItem || !playersReady || !player;
+    $("give-submit").textContent = t(givingItem ? "giving" : "giveItem");
+    $("give-hint").textContent = !playersReady ? t("playersFailed") : !onlinePlayers.length ? t("offlineHint") : !player ? t("selectPlayerHint") : t("readyHint", {name: player.nickname, uid: player.uid});
+  }
+
+  async function refreshItems() {
+    if (itemsLoading) return;
+    itemsLoading = true; $("item-reload").disabled = true; renderItemResults();
+    try {
+      const response = await api("/console/api/items"), body = await response.json();
+      if (!response.ok || !Array.isArray(body.items) || !body.items.length) throw new Error("items");
+      itemCatalog = body.items; itemMap = new Map(itemCatalog.map((item) => [item.id, item])); catalogLoaded = true;
+      $("item-version").textContent = t("version", {v: body.version});
+      if (!selectedItem || !itemMap.has(selectedItem.id)) selectItem(itemMap.get(201) || itemCatalog[0]);
+      renderCommonItems();
+    } catch (e) {
+      catalogLoaded = false;
+    } finally {
+      itemsLoading = false; $("item-reload").disabled = false; renderItemResults(); updateGiveAvailability();
+    }
+  }
+
+  $("item-search").addEventListener("input", () => { itemPage = 0; renderItemResults(); });
+  $("item-rarity").addEventListener("change", () => { itemPage = 0; renderItemResults(); });
+  $("item-prev").addEventListener("click", () => { itemPage--; renderItemResults(); });
+  $("item-next").addEventListener("click", () => { itemPage++; renderItemResults(); });
+  $("item-reload").addEventListener("click", refreshItems);
+  $("give-refresh").addEventListener("click", refreshPlayers);
+  $("give-player").addEventListener("change", updateGiveAvailability);
+  $("give-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (givingItem || $("give-submit").disabled || !$("give-form").reportValidity()) return;
+    const amount = Number($("give-amount").value);
+    const feedback = $("give-feedback"); feedback.className = "give-feedback";
+    if (!Number.isInteger(amount) || amount < 1 || amount > 2147483647) { feedback.classList.add("error"); feedback.textContent = t("invalidQuantity"); return; }
+    const item = selectedItem, uid = Number($("give-player").value);
+    const request = {uid, itemId: item.id, amount};
+    if (["weapon", "artifact"].includes(item.category)) request.level = Number($("give-level").value);
+    if (item.category === "weapon") request.refinement = Number($("give-refinement").value);
+    givingItem = true; $("give-fields").disabled = true; updateGiveAvailability();
+    feedback.textContent = t("giving");
+    try {
+      const response = await api("/console/api/items/give", {method: "POST", body: JSON.stringify(request)});
+      const body = await response.json();
+      if (!response.ok) { feedback.classList.add("error"); feedback.textContent = body.error || t("failed", {e: response.status}); }
+      else {
+        feedback.classList.add("processed");
+        feedback.textContent = `${t("grantProcessed")}\n${itemName(item)} × ${amount.toLocaleString()} → UID ${uid}\n${(body.output || []).join("\n")}`;
+      }
+    } catch (e) {
+      if (e.message !== "unauthorized") { feedback.classList.add("error"); feedback.textContent = t("grantUnknown"); }
+    } finally {
+      givingItem = false; $("give-fields").disabled = false; updateGiveAvailability();
+    }
+  });
+
+  let gachaPhases = [], currentGacha = null, selectedGachaKey = "", gachaReady = false, gachaApplying = false;
+
+  function phaseLabel(phase) {
+    return lang === "zh" ? phase.label : phase.key;
+  }
+
+  function gachaNames(items) { return items.map(itemName).join(" / "); }
+
+  function renderGacha() {
+    const select = $("gacha-phase"), query = $("gacha-search").value.trim().toLowerCase();
+    const phases = gachaPhases.filter(p => `${p.key} ${p.label} ${[...p.up5, ...p.up4].map(i => `${i.name} ${i.en}`).join(" ")}`.toLowerCase().includes(query));
+    if (!phases.some(p => p.key === selectedGachaKey)) selectedGachaKey = phases[0]?.key || "";
+    select.replaceChildren(...phases.map(phase => {
+      const option = document.createElement("option"); option.value = phase.key;
+      option.textContent = `${phaseLabel(phase)} · ${gachaNames(phase.up5)}`;
+      if (phase.placeholderDisplay) option.textContent += lang === "zh" ? " · 占位展示" : " · Placeholder artwork";
+      option.selected = phase.key === selectedGachaKey; return option;
+    }));
+    select.disabled = !gachaReady || gachaApplying || !phases.length;
+    $("gacha-count").textContent = t("gachaCount", {n: phases.length, total: gachaPhases.length});
+    $("gacha-current").textContent = currentGacha ? t("gachaCurrent", {phase: phaseLabel(currentGacha), names: gachaNames(currentGacha.up5)})
+      + (currentGacha.placeholderDisplay ? lang === "zh" ? " · 占位展示" : " · Placeholder artwork" : "") : t("gachaLoading");
+    const selected = phases.find(p => p.key === selectedGachaKey);
+    $("gacha-preview-title").textContent = selected ? phaseLabel(selected) : t("gachaEmpty");
+    $("gacha-placeholder").classList.toggle("hidden", !selected?.placeholderDisplay);
+    $("gacha-placeholder-note").classList.toggle("hidden", !selected?.placeholderDisplay);
+    $("gacha-placeholder-note").textContent = lang === "zh"
+      ? "占位展示：此期缺少专属画面，游戏内借用已有原生祈愿模板。实际五星、四星 UP 以以下名单为准；概率、保底、消耗和武器定轨照常。"
+      : "Placeholder artwork: this phase uses existing native wish templates in game. The actual featured items are listed below; rates, pity, costs and weapon Epitomized Path are unchanged.";
+    for (const tier of ["up5", "up4"]) {
+      $("gacha-" + tier).replaceChildren(...(selected?.[tier] || []).map(item => {
+        const row = document.createElement("li"); row.textContent = itemName(item); row.title = `ID ${item.id}`; return row;
+      }));
+    }
+    const active = selected?.key === currentGacha?.key;
+    $("gacha-apply").disabled = !gachaReady || !selected || active || gachaApplying;
+    $("gacha-apply").textContent = t(gachaApplying ? "gachaApplying" : active ? "gachaApplied" : "gachaApply");
+  }
+
+  async function refreshGacha() {
+    gachaReady = false; $("gacha-refresh").disabled = true; renderGacha();
+    try {
+      const response = await api("/console/api/gacha"), body = await response.json();
+      if (!response.ok) throw new Error(body.error || t("gachaLoadFailed"));
+      if (!body.enabled) {
+        currentGacha = null; gachaPhases = []; renderGacha();
+        $("gacha-current").textContent = t("gachaDisabled"); return;
+      }
+      gachaPhases = body.phases; currentGacha = body.current; gachaReady = true;
+      selectedGachaKey = currentGacha.key; renderGacha();
+      $("gacha-feedback").textContent = ""; $("gacha-feedback").className = "";
+    } catch (e) {
+      if (e.message !== "unauthorized") { $("gacha-current").textContent = t("gachaLoadFailed"); $("gacha-feedback").textContent = e.message; $("gacha-feedback").className = "error"; }
+    } finally { $("gacha-refresh").disabled = false; }
+  }
+
+  $("gacha-search").addEventListener("input", renderGacha);
+  $("gacha-phase").addEventListener("change", () => { selectedGachaKey = $("gacha-phase").value; renderGacha(); $("gacha-feedback").textContent = ""; });
+  $("gacha-refresh").addEventListener("click", refreshGacha);
+  $("gacha-apply").addEventListener("click", async () => {
+    if ($("gacha-apply").disabled) return;
+    const phaseKey = selectedGachaKey;
+    gachaApplying = true; $("gacha-refresh").disabled = true; renderGacha();
+    const feedback = $("gacha-feedback"); feedback.className = ""; feedback.textContent = t("gachaApplying");
+    try {
+      const response = await api("/console/api/gacha/select", {method: "POST", body: JSON.stringify({phaseKey})}), body = await response.json();
+      if (!response.ok) { feedback.className = "error"; feedback.textContent = body.error || t("failed", {e: response.status}); }
+      else { currentGacha = body.current; feedback.textContent = t("gachaSuccess"); }
+    } catch (e) {
+      if (e.message !== "unauthorized") { feedback.className = "error"; feedback.textContent = t("gachaUnknown"); gachaReady = false; }
+    } finally { gachaApplying = false; $("gacha-refresh").disabled = false; renderGacha(); }
+  });
+
+  const ARTIFACT_SLOTS = ["EQUIP_BRACER", "EQUIP_NECKLACE", "EQUIP_SHOES", "EQUIP_RING", "EQUIP_DRESS"];
+  let artifactData = null, artifactPiece = null, artifactSetId = 15020, artifactRank = 5, artifactSlot = "EQUIP_BRACER", artifactMainProp = 2;
+  let artifactLines = [{prop:20, affixId:0, rolls:1}, {prop:22, affixId:0, rolls:6}, {prop:6, affixId:0, rolls:1}, {prop:23, affixId:0, rolls:1}];
+  let artifactPreview = null, artifactError = "", artifactRevision = 0, artifactPreviewTimer = null, artifactGiving = false;
+
+  const artifactName = item => lang === "en" && item.en ? item.en : item.name;
+  const statValue = stat => stat.percent ? `${(stat.value * 100).toFixed(1)}%` : Math.round(stat.value).toLocaleString();
+  const artifactMains = () => artifactPiece ? artifactData.mainProps[artifactPiece.mainDepot] || [] : [];
+  const artifactSubs = () => artifactPiece ? artifactData.subProps[artifactPiece.subDepot] || [] : [];
+
+  function fillArtifactSelect(id, rows, value) {
+    $(id).replaceChildren(...rows.map(row => {
+      const option = document.createElement("option"); option.value = row.value; option.textContent = row.label;
+      option.selected = String(row.value) === String(value); return option;
+    }));
+  }
+
+  function renderArtifactControls() {
+    if (!artifactData) { artifactPiece = null; $("artifact-fields").disabled = true; return; }
+    const items = artifactData?.items || [], query = $("artifact-set-search").value.trim().toLowerCase();
+    const sets = [...new Map(items.map(item => [item.setId, item])).values()]
+      .filter(item => `${item.setId} ${item.name} ${item.en}`.toLowerCase().includes(query))
+      .sort((a,b) => artifactName(a).localeCompare(artifactName(b), lang === "zh" ? "zh-CN" : "en"));
+    if (!sets.some(item => item.setId === artifactSetId)) artifactSetId = sets[0]?.setId || 0;
+    fillArtifactSelect("artifact-set", sets.map(item => ({value:item.setId, label:artifactName(item)})), artifactSetId);
+    const setPieces = items.filter(item => item.setId === artifactSetId), ranks = [...new Set(setPieces.map(item => item.rank))].sort((a,b) => b-a);
+    if (!ranks.includes(artifactRank)) artifactRank = ranks[0] || 5;
+    fillArtifactSelect("artifact-rank", ranks.map(rank => ({value:rank, label:"★".repeat(rank)})), artifactRank);
+    const slots = ARTIFACT_SLOTS.filter(slot => setPieces.some(item => item.rank === artifactRank && item.slot === slot));
+    if (!slots.includes(artifactSlot)) artifactSlot = slots[0] || "EQUIP_BRACER";
+    fillArtifactSelect("artifact-slot", slots.map(slot => ({value:slot, label:t("slot_" + slot)})), artifactSlot);
+    artifactPiece = setPieces.find(item => item.rank === artifactRank && item.slot === artifactSlot) || null;
+    $("artifact-level").max = artifactPiece?.maxLevel ?? 20;
+    if (artifactPiece && Number($("artifact-level").value) > artifactPiece.maxLevel) $("artifact-level").value = artifactPiece.maxLevel;
+    const mains = artifactMains();
+    if (!mains.some(stat => stat.prop === artifactMainProp)) artifactMainProp = mains[0]?.prop || 0;
+    fillArtifactSelect("artifact-main", mains.map(stat => ({value:stat.prop, label:artifactName(stat)})), artifactMainProp);
+    $("artifact-fields").disabled = !artifactData || artifactGiving;
+  }
+
+  function renderArtifactLines() {
+    if (!artifactPiece) return;
+    const stats = artifactSubs(), types = [...new Map(stats.map(stat => [stat.prop, stat])).values()], used = new Set([artifactMainProp]);
+    for (const line of artifactLines) {
+      if (!types.some(stat => stat.prop === line.prop) || used.has(line.prop)) { line.prop = 0; line.affixId = 0; }
+      if (line.prop) used.add(line.prop);
+    }
+    $("artifact-subs").replaceChildren(...artifactLines.map((line, index) => {
+      const row = document.createElement("div"); row.className = "artifact-sub-row";
+      const type = document.createElement("select"), tier = document.createElement("select"), rolls = document.createElement("input");
+      type.setAttribute("aria-label", `${t("artifactSub")} ${index + 1}`);
+      tier.setAttribute("aria-label", `${t("artifactTier")} ${index + 1}`);
+      rolls.setAttribute("aria-label", `${t("artifactRolls")} ${index + 1}`);
+      for (const stat of [{prop:0, name:t("artifactNone"), en:t("artifactNone")}, ...types]) {
+        const option = document.createElement("option"); option.value = stat.prop; option.textContent = artifactName(stat);
+        option.disabled = !!stat.prop && (stat.prop === artifactMainProp || artifactLines.some((other, i) => i !== index && other.prop === stat.prop));
+        option.selected = stat.prop === line.prop; type.appendChild(option);
+      }
+      const tiers = stats.filter(stat => stat.prop === line.prop).sort((a,b) => a.value - b.value);
+      if (!tiers.some(stat => stat.id === line.affixId)) line.affixId = tiers.at(-1)?.id || 0;
+      for (const stat of tiers) {
+        const option = document.createElement("option"); option.value = stat.id; option.textContent = statValue(stat);
+        option.selected = stat.id === line.affixId; tier.appendChild(option);
+      }
+      rolls.type = "number"; rolls.min = "1"; rolls.max = "200"; rolls.step = "1"; rolls.value = line.rolls;
+      tier.disabled = rolls.disabled = !line.prop; rolls.required = !!line.prop;
+      type.addEventListener("change", () => { line.prop = Number(type.value); line.affixId = 0; renderArtifactLines(); queueArtifactPreview(); });
+      tier.addEventListener("change", () => { line.affixId = Number(tier.value); queueArtifactPreview(); });
+      rolls.addEventListener("input", () => { line.rolls = Number(rolls.value); queueArtifactPreview(); });
+      row.append(type, tier, rolls); return row;
+    }));
+  }
+
+  function artifactPayload() {
+    return {uid:Number($("artifact-player").value) || 0, itemId:artifactPiece?.id,
+      level:Number($("artifact-level").value), mainPropId:artifactMains().find(stat => stat.prop === artifactMainProp)?.id,
+      substats:artifactLines.filter(line => line.prop).map(line => ({affixId:line.affixId, rolls:line.rolls})), locked:$("artifact-lock").checked};
+  }
+
+  function renderArtifactPreview() {
+    const preview = artifactPreview;
+    $("artifact-preview-name").textContent = preview ? artifactName(preview.artifact) : t("artifactPreview");
+    $("artifact-preview-meta").textContent = preview ? `${"★".repeat(preview.artifact.rank)} · ${t("slot_" + preview.artifact.slot)} · +${preview.level}` : "";
+    $("artifact-preview-main").textContent = preview ? artifactName(preview.main).replace(/%$/, "") : "";
+    $("artifact-preview-value").textContent = preview ? statValue(preview.main) : "—";
+    $("artifact-preview-subs").replaceChildren(...(preview?.substats || []).map(stat => {
+      const row = document.createElement("li"), label = document.createElement("span"), value = document.createElement("strong");
+      label.textContent = artifactName(stat).replace(/%$/, ""); value.textContent = "+" + statValue(stat); row.append(label, value); return row;
+    }));
+    $("artifact-preview-status").className = artifactError ? "error" : "";
+    $("artifact-preview-status").textContent = artifactError || (preview ? t("artifactSummary", {n:preview.rolls, id:preview.artifact.id}) : t(artifactData ? "artifactPreviewing" : "artifactLoading"));
+    updateArtifactAvailability();
+  }
+
+  function queueArtifactPreview() {
+    clearTimeout(artifactPreviewTimer); const revision = ++artifactRevision;
+    artifactPreview = null; artifactError = "";
+    if (!artifactPiece) { artifactError = t("artifactNoMatches"); renderArtifactPreview(); return; }
+    if (!$("artifact-level").checkValidity() || !$("artifact-level").value
+        || artifactLines.some(line => line.prop && (!Number.isInteger(line.rolls) || line.rolls < 1 || line.rolls > 200))) {
+      artifactError = t("artifactInvalid"); renderArtifactPreview(); return;
+    }
+    renderArtifactPreview(); const request = artifactPayload(); request.uid = 0;
+    artifactPreviewTimer = setTimeout(async () => {
+      try {
+        const response = await api("/console/api/artifacts/preview", {method:"POST", body:JSON.stringify(request)}), body = await response.json();
+        if (revision !== artifactRevision) return;
+        if (!response.ok) artifactError = body.error || t("failed", {e:response.status});
+        else artifactPreview = body;
+      } catch (e) { if (revision === artifactRevision && e.message !== "unauthorized") artifactError = t("unreachable"); }
+      if (revision === artifactRevision) renderArtifactPreview();
+    }, 200);
+  }
+
+  function renderArtifactPlayers() {
+    const select = $("artifact-player"), previous = select.value;
+    fillArtifactSelect("artifact-player", [{value:"", label:t(onlinePlayers.length ? "choosePlayer" : "noOnlinePlayer")},
+      ...onlinePlayers.map(player => ({value:player.uid, label:`${player.nickname} · UID ${player.uid}`}))], previous);
+    select.value = onlinePlayers.some(player => String(player.uid) === previous) ? previous : onlinePlayers.length === 1 ? String(onlinePlayers[0].uid) : "";
+    updateArtifactAvailability();
+  }
+
+  function updateArtifactAvailability() {
+    const player = onlinePlayers.find(player => String(player.uid) === $("artifact-player").value);
+    $("artifact-give").disabled = artifactGiving || !artifactPreview || !playersReady || !player;
+    $("artifact-give").textContent = t(artifactGiving ? "giving" : "artifactGive");
+    $("artifact-give-hint").textContent = !playersReady ? t("playersFailed") : !onlinePlayers.length ? t("offlineHint") : !player ? t("selectPlayerHint") : t("readyHint", {name:player.nickname, uid:player.uid});
+  }
+
+  async function refreshArtifacts() {
+    if (artifactGiving) return;
+    clearTimeout(artifactPreviewTimer); ++artifactRevision;
+    artifactData = null; artifactPreview = null; artifactError = ""; $("artifact-reload").disabled = true;
+    renderArtifactControls(); renderArtifactPreview();
+    try {
+      const response = await api("/console/api/artifacts"), body = await response.json();
+      if (!response.ok || !body.items?.length || !body.mainProps || !body.subProps) throw new Error(t("artifactLoadFailed"));
+      artifactData = body; renderArtifactControls(); renderArtifactLines(); queueArtifactPreview();
+    } catch (e) { if (e.message !== "unauthorized") { artifactError = e.message; renderArtifactPreview(); } }
+    finally { $("artifact-reload").disabled = false; }
+  }
+
+  function artifactBaseChanged() { renderArtifactControls(); renderArtifactLines(); queueArtifactPreview(); }
+  $("artifact-set-search").addEventListener("input", artifactBaseChanged);
+  $("artifact-set").addEventListener("change", () => { artifactSetId = Number($("artifact-set").value); artifactBaseChanged(); });
+  $("artifact-rank").addEventListener("change", () => { artifactRank = Number($("artifact-rank").value); artifactBaseChanged(); });
+  $("artifact-slot").addEventListener("change", () => { artifactSlot = $("artifact-slot").value; artifactBaseChanged(); });
+  $("artifact-main").addEventListener("change", () => { artifactMainProp = Number($("artifact-main").value); renderArtifactLines(); queueArtifactPreview(); });
+  $("artifact-level").addEventListener("input", queueArtifactPreview);
+  $("artifact-lock").addEventListener("change", queueArtifactPreview);
+  $("artifact-player").addEventListener("change", updateArtifactAvailability);
+  $("artifact-player-refresh").addEventListener("click", refreshPlayers);
+  $("artifact-reload").addEventListener("click", refreshArtifacts);
+  $("artifact-form").addEventListener("submit", async event => {
+    event.preventDefault(); if ($("artifact-give").disabled || !$("artifact-form").reportValidity()) return;
+    const request = artifactPayload(), feedback = $("artifact-feedback");
+    artifactGiving = true; $("artifact-fields").disabled = true; $("artifact-reload").disabled = true; updateArtifactAvailability();
+    feedback.className = "give-feedback"; feedback.textContent = t("giving");
+    try {
+      const response = await api("/console/api/artifacts/give", {method:"POST", body:JSON.stringify(request)}), body = await response.json();
+      if (!response.ok) { feedback.classList.add("error"); feedback.textContent = body.error || t("failed", {e:response.status}); }
+      else { feedback.classList.add("processed"); feedback.textContent = t("artifactGranted", {uid:body.uid, guid:body.guid}); }
+    } catch (e) { if (e.message !== "unauthorized") { feedback.classList.add("error"); feedback.textContent = t("grantUnknown"); } }
+    finally { artifactGiving = false; $("artifact-fields").disabled = false; $("artifact-reload").disabled = false; updateArtifactAvailability(); }
+  });
+
+  // Additional GM tools share authentication and the online-player list above.
+  const text2 = (zh, en) => lang === "en" ? en : zh;
+  const itemFavorites = new Set(readLocalArray("favorites").filter(Number.isInteger));
+  let activityRows = [], activitySelected = 0, activitiesReady = false, activityBusy = false, activityRevision = 0, activityAssets = null, assetBusy = false;
+  let gmState = null, gmBusy = false, gmRevision = 0, gmLoading = false, gmRequestedUid = 0;
+  function readLocalArray(key) {
+    try { const value = JSON.parse(storage.get("astaps-" + key) || "[]"); return Array.isArray(value) ? value : []; }
+    catch (e) { return []; }
+  }
+  function writeLocalArray(key, value) {
+    const encoded = JSON.stringify(value); storage.set("astaps-" + key, encoded);
+    if (storage.get("astaps-" + key) !== encoded) throw new Error(text2("浏览器未允许保存本地配置。", "Browser storage is unavailable."));
+  }
+  function message(id, value, error = false) { $(id).textContent = value; $(id).className = "gm-feedback" + (error ? " error" : ""); }
+  async function getJSON(url, options) {
+    const response = await api(url, options), body = await response.json();
+    if (!response.ok) throw new Error(body.error || t("failed", {e:response.status}));
+    return body;
+  }
+  function renderFavoriteButton() {
+    $("item-favorite").disabled = !selectedItem;
+    $("item-favorite").textContent = itemFavorites.has(selectedItem?.id) ? text2("取消当前收藏", "Unfavorite selected item") : text2("收藏当前物品", "Favorite selected item");
+  }
+  $("item-favorite").addEventListener("click", () => {
+    if (!selectedItem) return;
+    itemFavorites.has(selectedItem.id) ? itemFavorites.delete(selectedItem.id) : itemFavorites.add(selectedItem.id);
+    try { writeLocalArray("favorites", [...itemFavorites]); renderFavoriteButton(); renderItemResults(); }
+    catch (e) { message("gm-feedback", e.message, true); }
+  });
+  $("item-favorites-only").addEventListener("change", () => { itemPage = 0; renderItemResults(); });
+
+  function playerOptions(id) {
+    const current = $(id).value;
+    fillArtifactSelect(id, [{value:"", label:onlinePlayers.length ? t("choosePlayer") : t("noOnlinePlayer")},
+      ...onlinePlayers.map(p => ({value:p.uid,label:`${p.nickname} · UID ${p.uid}`}))], current || (onlinePlayers.length === 1 ? onlinePlayers[0].uid : ""));
+  }
+  function renderGMPlayers() {
+    playerOptions("recharge-player"); updateRechargeButton();
+    playerOptions("activity-player"); playerOptions("gm-player");
+    const uid = Number($("gm-player").value), online = playersReady && onlinePlayers.some(p => p.uid === uid);
+    $("gm-fields").disabled = gmBusy || !online || !gmState || gmState.uid !== uid;
+    if (!online) { gmState = null; gmRequestedUid = 0; $("gm-position").textContent = t("offlineHint"); }
+    else if ((!gmState || gmState.uid !== uid) && !gmLoading && gmRequestedUid !== uid) refreshGM();
+    $("activity-reset").disabled = $("activity-progress").disabled = activityBusy || !playersReady || !$("activity-player").value;
+  }
+  async function refreshGM(avatarId = 0) {
+    const uid = Number($("gm-player").value), revision = ++gmRevision;
+    if (!uid) { gmState = null; renderGMState(); return; }
+    gmLoading = true; gmRequestedUid = uid; $("gm-fields").disabled = true;
+    try {
+      const body = await getJSON(`/console/api/player-tools?uid=${uid}&avatarId=${avatarId}`);
+      if (revision !== gmRevision || uid !== Number($("gm-player").value)) return;
+      gmState = body; renderGMState();
+    } catch (e) { if (revision === gmRevision) { gmState = null; message("gm-feedback", e.message, true); } }
+    finally { if (revision === gmRevision) { gmLoading = false; renderGMPlayers(); } }
+  }
+  function renderGMState() {
+    if (!gmState) { $("gm-stats").replaceChildren(); $("gm-fields").disabled = true; return; }
+    const s = gmState;
+    const oculi = s.oculi;
+    $("gm-oculi-summary").textContent = oculi?.available
+      ? `${oculi.country} · ${oculi.oculus} · ${text2("已收集", "Collected")} ${oculi.collected}/${oculi.total} · ${text2("剩余", "Remaining")} ${oculi.remaining}`
+      : (oculi?.reason || text2("请刷新地区状态", "Refresh region state"));
+    $("gm-collect-oculi").disabled = !oculi?.available || !oculi.remaining;
+    fillArtifactSelect("gm-avatar", s.avatars.map(a => ({value:a.id,label:`${lang === "en" ? a.en : a.name} · Lv.${a.level} · ${a.id}`})), s.avatarId);
+    $("gm-position").textContent = `Scene ${s.sceneId} · X ${s.position.x.toFixed(1)} / Y ${s.position.y.toFixed(1)} / Z ${s.position.z.toFixed(1)}`;
+    document.querySelectorAll("[data-gm-flag]").forEach(el => { el.checked = s[el.dataset.gmFlag]; });
+    $("gm-world-level").value = s.worldLevel; $("gm-resin").value = s.resin;
+    $("gm-time").value = `${String(Math.floor(s.gameTime / 60)).padStart(2,"0")}:${String(s.gameTime % 60).padStart(2,"0")}`;
+    $("gm-stats").replaceChildren(...s.stats.map(row => {
+      const tr = document.createElement("tr"), td = document.createElement("td"), label = document.createElement("label"), checked = document.createElement("input");
+      checked.type = "checkbox"; checked.dataset.statId = row.stat.id; checked.checked = row.locked;
+      label.append(checked, document.createTextNode(" " + (lang === "en" ? row.stat.en : row.stat.name))); td.append(label);
+      const current = document.createElement("td"); current.textContent = Number(row.value.toFixed(2)).toLocaleString() + (row.stat.percent ? "%" : "");
+      const edit = document.createElement("td"), input = document.createElement("input"); input.type = "number"; input.min = row.stat.min; input.max = row.stat.max; input.step = "any";
+      input.value = Number(row.value.toFixed(4)); input.dataset.statValue = row.stat.id; input.setAttribute("aria-label", lang === "en" ? row.stat.en : row.stat.name);
+      input.addEventListener("input", () => { checked.checked = true; }); edit.append(input);
+      const actions = document.createElement("td"), reset = document.createElement("button"); reset.type = "button"; reset.textContent = text2("恢复", "Restore");
+      reset.addEventListener("click", () => gmAction("statReset", {statId:row.stat.id})); actions.append(reset); tr.append(td,current,edit,actions); return tr;
+    }));
+    $("gm-fields").disabled = gmBusy || !playersReady;
+  }
+  async function gmAction(action, extra = {}) {
+    if (gmBusy || $("gm-fields").disabled) return;
+    const uid = Number($("gm-player").value), avatarId = Number($("gm-avatar").value);
+    gmBusy = true; $("gm-fields").disabled = true; $("gm-player").disabled = true; $("gm-refresh").disabled = true;
+    message("gm-feedback", text2("执行中…", "Applying…"));
+    try {
+      const body = await getJSON("/console/api/player-tools/action", {method:"POST",body:JSON.stringify({uid,avatarId,action,...extra})});
+      gmState = body.state; renderGMState(); message("gm-feedback", (body.output || []).join("\n"));
+    } catch (e) { message("gm-feedback", e.message + text2("\n若请求中断，请刷新实际状态后再操作。", "\nRefresh actual state before trying again after an interrupted request."), true); }
+    finally { gmBusy = false; $("gm-player").disabled = false; $("gm-refresh").disabled = false; renderGMPlayers(); }
+  }
+  $("gm-player").addEventListener("change", () => { gmLoading = false; gmState = null; refreshGM(); });
+  $("gm-avatar").addEventListener("change", () => refreshGM(Number($("gm-avatar").value)));
+  $("gm-refresh").addEventListener("click", () => refreshGM(Number($("gm-avatar").value)));
+  $("gm-collect-oculi").addEventListener("click", () => gmAction("collectOculi", {cityId:gmState.oculi.cityId}));
+  document.querySelectorAll("[data-gm-action]").forEach(el => el.addEventListener("click", () => gmAction(el.dataset.gmAction)));
+  document.querySelectorAll("[data-gm-flag]").forEach(el => el.addEventListener("change", () => gmAction(el.dataset.gmFlag, {enabled:el.checked})));
+  for (const [button, field, action] of [["gm-set-constellation","gm-constellation","constellation"],["gm-set-talent","gm-talent","talent"],["gm-set-friendship","gm-friendship","friendship"],["gm-set-world-level","gm-world-level","worldLevel"],["gm-set-resin","gm-resin","resin"]]) {
+    $(button).addEventListener("click", () => { if ($(field).reportValidity() && $(field).value) gmAction(action,{value:Number($(field).value)}); });
+  }
+  $("gm-max-avatar").addEventListener("click", () => { if (confirm(text2("确认拉满所选角色的等级、命座、天赋、好感及已装备武器？", "Max the selected character's level, constellation, talents, friendship and equipped weapon?"))) gmAction("maxAvatar"); });
+  $("gm-reset-stats").addEventListener("click", () => { if (confirm(text2("清除所选角色全部 GM 属性覆盖，重新按装备计算？", "Remove all GM stat overrides from the selected character?"))) gmAction("statResetAll"); });
+  function checkedStats() {
+    const rows = [...$("gm-stats").querySelectorAll("input[data-stat-id]:checked")];
+    if (!rows.length) throw new Error(text2("请勾选要覆盖的属性。", "Check at least one stat."));
+    return rows.map(el => { const input = $("gm-stats").querySelector(`[data-stat-value="${el.dataset.statId}"]`); if (!input.value || !input.reportValidity()) throw new Error(text2("请填写有效数值。", "Enter valid values.")); return {statId:Number(el.dataset.statId),value:Number(input.value)}; });
+  }
+  $("gm-apply-stats").addEventListener("click", () => { try { gmAction("statBatch",{stats:checkedStats()}); } catch(e) { message("gm-feedback",e.message,true); } });
+  $("gm-set-time").addEventListener("click", () => { const value = $("gm-time").value; if (value) { const [h,m] = value.split(":").map(Number); gmAction("time",{value:h*60+m}); } });
+  document.querySelectorAll("[data-gm-time]").forEach(el => el.addEventListener("click", () => gmAction("time",{value:Number(el.dataset.gmTime)})));
+  function usePosition(data) { $("gm-scene").value=data.sceneId; for (const axis of ["x","y","z"]) $("gm-"+axis).value=data[axis]; }
+  function formPosition() { const result={sceneId:Number($("gm-scene").value)}; for (const axis of ["x","y","z"]) result[axis]=Number($("gm-"+axis).value); if (!["gm-scene","gm-x","gm-y","gm-z"].every(id=>$(id).value && $(id).reportValidity())) throw new Error(text2("请填写完整坐标。", "Enter a scene and coordinates.")); return result; }
+  $("gm-use-position").addEventListener("click", () => { if(gmState) usePosition({sceneId:gmState.sceneId,...gmState.position}); });
+  $("gm-teleport").addEventListener("click", () => { try { gmAction("teleport",formPosition()); } catch(e){message("gm-feedback",e.message,true);} });
+
+  const savedKinds = [{key:"builds",select:"gm-build-list"},{key:"locations",select:"gm-location-list"},{key:"artifact-templates",select:"artifact-template-list"}];
+  function renderSavedLists() { for (const kind of savedKinds) fillArtifactSelect(kind.select, [{value:"",label:text2("选择本浏览器保存的配置", "Choose a browser-saved preset")},...readLocalArray(kind.key).map(row=>({value:row.name,label:row.name}))],$(kind.select).value); }
+  function saveNamed(key, nameId, data) {
+    const name=$(nameId).value.trim(); if(!name) throw new Error(text2("请先填写名称。", "Enter a name first."));
+    const rows=readLocalArray(key), index=rows.findIndex(row=>row.name===name);
+    if(index>=0 && !confirm(text2("覆盖同名配置？", "Replace this preset?"))) return;
+    const saved={name,data}; if(index>=0)rows[index]=saved;else rows.push(saved); writeLocalArray(key,rows); renderSavedLists();
+    $(savedKinds.find(kind=>kind.key===key).select).value=name;
+  }
+  function selectedSaved(key) { const kind=savedKinds.find(kind=>kind.key===key); const saved=readLocalArray(key).find(row=>row.name===$(kind.select).value); if(!saved)throw new Error(text2("请先选择配置。", "Choose a preset.")); return saved; }
+  function deleteNamed(key) { const saved=selectedSaved(key); if(confirm(text2(`删除配置“${saved.name}”？`, `Delete preset "${saved.name}"?`))){writeLocalArray(key,readLocalArray(key).filter(row=>row.name!==saved.name));renderSavedLists();} }
+  function localAction(action, feedback="gm-feedback") { try { action(); } catch(e){message(feedback,e.message,true);} }
+  $("gm-save-build").addEventListener("click",()=>localAction(()=>saveNamed("builds","gm-build-name",checkedStats())));
+  $("gm-load-build").addEventListener("click",()=>localAction(()=>{
+    const saved=selectedSaved("builds"); if(!gmState)throw new Error(t("offlineHint"));
+    if(!Array.isArray(saved.data)||saved.data.some(row=>!gmState.stats.some(s=>s.stat.id===row.statId)))throw new Error(text2("模板包含不支持的属性。", "Preset contains unsupported stats."));
+    $("gm-stats").querySelectorAll("[data-stat-id]").forEach(el=>{el.checked=saved.data.some(s=>s.statId===Number(el.dataset.statId));});
+    for(const row of saved.data) $("gm-stats").querySelector(`[data-stat-value="${row.statId}"]`).value=row.value;
+    message("gm-feedback",text2("已载入表单，点击应用后才会修改角色。", "Loaded into the form. Apply to change the character."));
+  }));
+  $("gm-delete-build").addEventListener("click",()=>localAction(()=>deleteNamed("builds")));
+  $("gm-save-location").addEventListener("click",()=>localAction(()=>saveNamed("locations","gm-location-name",formPosition())));
+  $("gm-load-location").addEventListener("click",()=>localAction(()=>usePosition(selectedSaved("locations").data)));
+  $("gm-delete-location").addEventListener("click",()=>localAction(()=>deleteNamed("locations")));
+  $("artifact-template-save").addEventListener("click",()=>localAction(()=>{
+    if(!artifactPiece||!artifactPreview)throw new Error(text2("请等待有效预览后保存。", "Wait for a valid preview."));
+    saveNamed("artifact-templates","artifact-template-name",{itemId:artifactPiece.id,level:Number($("artifact-level").value),mainProp:artifactMainProp,lines:artifactLines.map(line=>({...line})),locked:$("artifact-lock").checked});
+  },"artifact-template-feedback"));
+  $("artifact-template-load").addEventListener("click",()=>localAction(()=>{
+    const saved=selectedSaved("artifact-templates").data, piece=artifactData?.items.find(row=>row.id===saved.itemId);
+    if(!piece||!Array.isArray(saved.lines)||saved.lines.length!==4)throw new Error(text2("当前资源不兼容此模板。", "Preset is incompatible with current resources."));
+    const subs=artifactData.subProps[piece.subDepot]||[];
+    const mains=artifactData.mainProps[piece.mainDepot]||[],used=new Set([saved.mainProp]);
+    if(!mains.some(s=>s.prop===saved.mainProp)||!Number.isInteger(saved.level)||saved.level<0||saved.level>piece.maxLevel||typeof saved.locked!=="boolean")throw new Error(text2("模板主词条、等级或锁定设置与当前资源不兼容。", "Preset main stat, level or lock setting is incompatible."));
+    if(saved.lines.some(line=>line.prop&&!subs.some(s=>s.id===line.affixId&&s.prop===line.prop)))throw new Error(text2("模板包含不兼容的词条 ID。", "Preset contains incompatible affix IDs."));
+    for(const line of saved.lines)if(line.prop){if(used.has(line.prop)||!Number.isInteger(line.rolls)||line.rolls<1||line.rolls>200)throw new Error(text2("模板词条重复或次数不正确。", "Preset has duplicate stats or invalid roll counts."));used.add(line.prop);}
+    $("artifact-set-search").value=""; artifactSetId=piece.setId;artifactRank=piece.rank;artifactSlot=piece.slot;artifactMainProp=saved.mainProp;artifactLines=saved.lines.map(line=>({...line}));
+    $("artifact-level").value=saved.level;$("artifact-lock").checked=!!saved.locked;renderArtifactControls();renderArtifactLines();queueArtifactPreview();
+  },"artifact-template-feedback"));
+  $("artifact-template-delete").addEventListener("click",()=>localAction(()=>deleteNamed("artifact-templates"),"artifact-template-feedback"));
+
+  function activityState(row) { const c=row.config; return !c?"archived":c.disabled?"closed":Date.now()<Date.parse(c.beginTime)?"scheduled":Date.now()>=Date.parse(c.endTime)?"ended":"open"; }
+  function stateLabel(state) { return ({archived:text2("资料已归档", "Archived"),closed:text2("已关闭", "Closed"),scheduled:text2("待开放", "Scheduled"),ended:text2("已结束", "Ended"),open:text2("已开启", "Open")})[state]; }
+  function renderActivityList() {
+    const query=$("activity-search").value.trim().toLowerCase(),filter=$("activity-filter").value;
+    const rows=activityRows.filter(row=>(filter==="all"||filter==="configured"&&row.config||filter==="open"&&activityState(row)==="open"||filter===row.support)
+      &&`${row.id} ${row.name} ${row.en} ${row.type}`.toLowerCase().includes(query));
+    fillArtifactSelect("activity-list",rows.map(row=>({value:row.id,label:`${row.id} · ${lang==="en"?row.en:row.name} · ${stateLabel(activityState(row))}`})),activitySelected);
+    $("activity-count").textContent=`${rows.length} / ${activityRows.length}`;
+    $("activity-list").disabled=activityBusy||!activitiesReady;
+    if(!rows.some(row=>row.id===activitySelected)){activitySelected=rows[0]?.id||0;$("activity-list").value=activitySelected||"";selectActivity();}
+  }
+  function renderActivityHeading() {
+    const row=activityRows.find(row=>row.id===activitySelected);
+    $("activity-fields").disabled=activityBusy||!activitiesReady||!row;
+    if(!row){$("activity-title-detail").textContent="—";return;}
+    $("activity-title-detail").textContent=lang==="en"?row.en:row.name;
+    $("activity-badges").replaceChildren(...[stateLabel(activityState(row)),`ID ${row.id}`,`${row.watcherCount} ${text2("奖励监听", "watchers")}`,`${row.conditionCount} ${text2("条件", "conditions")}`].map(label=>{const el=document.createElement("span");el.className="gm-badge";el.textContent=label;return el;}));
+    $("activity-support").textContent=row.support==="music"?text2("音游：已有记录与结算处理器；旧曲目、场景是否齐全仍需游戏内验证。", "Music: records and settlement handler available; old songs and scenes still need in-game verification.")
+      :row.support==="partial"?text2("角色试用：专用处理器未完成，不能保证可玩。", "Character trials: handler is incomplete; playability is not guaranteed.")
+      :text2("缺少此活动的专用玩法处理器；只能尝试显示入口和通用活动条件，不能据此认为玩法已实现。", "No dedicated gameplay handler. Entry and generic conditions can be attempted; this does not implement gameplay.");
+    $("activity-entry-row").classList.toggle("hidden",row.support==="music");
+  }
+  const localDateInput=value=>{if(!value)return"";const d=new Date(value);if(!Number.isFinite(d.getTime()))return"";return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);};
+  async function selectActivity() {
+    const revision=++activityRevision,row=activityRows.find(row=>row.id===activitySelected);renderActivityHeading();
+    $("activity-raw").textContent=$("activity-progress-detail").textContent="—";
+    if(!row)return;
+    activityAssets=null;renderActivityAssets();refreshActivityAssets();
+    $("activity-unlock").checked=!!row.config?.unlockConditions;$("activity-entry").checked=false;$("activity-note").value=row.note||"";
+    $("activity-begin").value=localDateInput(row.config?.beginTime);$("activity-end").value=localDateInput(row.config?.endTime);
+    try{const body=await getJSON(`/console/api/activities/detail?id=${row.id}`);if(revision===activityRevision)$("activity-raw").textContent=JSON.stringify(body,null,2);}
+    catch(e){if(revision===activityRevision)message("activity-feedback",e.message,true);}
+  }
+  async function refreshActivities() {
+    if(activityBusy)return;
+    try{const body=await getJSON("/console/api/activities");activityRows=body.activities;activitiesReady=true;renderActivityList();renderActivityHeading();selectActivity();}
+    catch(e){activitiesReady=false;renderActivityHeading();message("activity-feedback",e.message,true);}
+  }
+  async function activityAction(action, extra={}) {
+    if(activityBusy||!activitiesReady||!activitySelected)return;
+    const request={activityId:activitySelected,action,days:Number($("activity-days").value),unlockConditions:$("activity-unlock").checked,entryOnly:$("activity-entry").checked,note:$("activity-note").value,...extra};
+    activityBusy=true;renderActivityList();renderActivityHeading();message("activity-feedback",text2("执行中…", "Applying…"));
+    try{const body=await getJSON("/console/api/activities/action",{method:"POST",body:JSON.stringify(request)});activityRows=body.activities;message("activity-feedback",text2("已保存并更新服务器活动状态；请在游戏中重新打开活动界面。", "Saved and applied. Reopen the event screen in game."));}
+    catch(e){message("activity-feedback",e.message+text2("\n若请求中断，请刷新状态。", "\nRefresh after an interrupted request."),true);}
+    finally{activityBusy=false;renderActivityList();renderActivityHeading();renderGMPlayers();selectActivity();}
+  }
+  $("activity-list").addEventListener("change",()=>{activitySelected=Number($("activity-list").value);selectActivity();});
+  $("activity-search").addEventListener("input",renderActivityList);$("activity-filter").addEventListener("change",renderActivityList);$("activity-refresh").addEventListener("click",refreshActivities);
+  for(const action of ["open","close","save"])$("activity-"+action).addEventListener("click",()=>activityAction(action));
+  $("activity-schedule").addEventListener("click",()=>{const begin=new Date($("activity-begin").value).getTime(),end=new Date($("activity-end").value).getTime();if(!Number.isFinite(begin)||!Number.isFinite(end)||begin>=end){message("activity-feedback",text2("请输入正确的开始和结束时间。", "Enter valid start and end times."),true);return;}activityAction("schedule",{begin,end});});
+  $("activity-progress").addEventListener("click",async()=>{try{const body=await getJSON(`/console/api/activities/detail?id=${activitySelected}&uid=${Number($("activity-player").value)}`);$("activity-progress-detail").textContent=body.progress?JSON.stringify(body.progress,null,2):text2("此玩家暂无该活动记录。", "This player has no progress for this event.");}catch(e){message("activity-feedback",e.message,true);}});
+  $("activity-reset").addEventListener("click",()=>{const uid=Number($("activity-player").value);if(uid&&confirm(text2(`清空 UID ${uid} 的活动 ${activitySelected} 进度及领奖记录？已领物品不会被收回，可再次领奖。`, `Reset event ${activitySelected} for UID ${uid}? Claimed items remain and rewards can be claimed again.`)))activityAction("resetProgress",{uid,confirmed:true});});
+  function downloadJSON(name,body){const url=URL.createObjectURL(new Blob([JSON.stringify(body,null,2)],{type:"application/json"})),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  $("activity-export").addEventListener("click",async()=>{try{downloadJSON("astaps-activities-7.1.json",await getJSON("/console/api/activities/export"));message("activity-feedback",text2("已导出配置与原始定义；客户端资源包不在 JSON 内。", "Exported schedules and native definitions. Client asset files are separate."));}catch(e){message("activity-feedback",e.message,true);}});
+  $("activity-import").addEventListener("click",()=>$("activity-file").click());
+  $("activity-file").addEventListener("change",async()=>{
+    const file=$("activity-file").files[0];$("activity-file").value="";if(!file||activityBusy)return;
+    try{
+      if(file.size>10*1024*1024)throw new Error(text2("档案不能超过 10 MiB。", "Archive exceeds 10 MiB."));
+      const pack=JSON.parse(await file.text());if(!confirm(text2("导入将替换档案内相应活动的排期和开关，不清空玩家进度。确认应用？", "Import replaces schedules and switches for the included events, preserving player progress. Apply?")))return;
+      activityBusy=true;renderActivityHeading();
+      // Native definitions are reference material. The server accepts only operator schedules.
+      const body=await getJSON("/console/api/activities/import",{method:"POST",body:JSON.stringify({formatVersion:pack.formatVersion,resourceVersion:pack.resourceVersion,activities:pack.activities})});
+      activityRows=body.activities;activitiesReady=true;message("activity-feedback",text2("导入已保存并应用。", "Imported, saved and applied."));
+    }catch(e){message("activity-feedback",e.message,true);}finally{activityBusy=false;renderActivityList();renderActivityHeading();selectActivity();}
+  });
+
+  function renderActivityAssets() {
+    const a=activityAssets,pending=a?.restore?.status==="pending";
+    $("activity-assets-save").disabled=assetBusy||activityBusy||!activitySelected||pending;
+    $("activity-assets-load").disabled=assetBusy||activityBusy||!a?.available||pending;
+    $("activity-assets-restore").disabled=assetBusy||activityBusy||!a?.available||!a.fileCount||a.missingFiles>0||pending;
+    $("activity-assets-path").textContent=a?.directory||"";
+    $("activity-assets-status").textContent=!a?text2("读取资源包状态…", "Loading package status…"):!a.available?text2("尚无资源包；保存将先建立配置档案。未索引到的客户端资源不会被假定已保存。", "No package. Saving creates a settings archive first; unindexed client assets are not assumed saved.")
+      :`${a.fileCount} ${text2("原始文件", "original files")} · ${(a.logicalBytes/1073741824).toFixed(2)} GiB · ${a.missingFiles} ${text2("存档文件缺失", "missing stored files")} · ${a.unresolvedDependencies} ${text2("未解析引用", "unresolved references")}\n`
+        +(a.coverage==="metadata-only"?text2("当前只保存了配置资料。", "Metadata only."):text2("已按命名活动资产及 CAB 引用保存；业务完整性仍需游戏内验证。", "Named event assets and CAB dependencies archived; gameplay completeness still needs in-game verification."))
+        +(a.restore?`\n${a.restore.status}: ${a.restore.message}`:"");
+  }
+  async function refreshActivityAssets() {
+    const id=activitySelected;if(!id)return;
+    try{const body=await getJSON(`/console/api/activities/assets?id=${id}`);if(id===activitySelected){activityAssets=body;renderActivityAssets();}}
+    catch(e){if(id===activitySelected){$("activity-assets-status").textContent=e.message;$("activity-assets-restore").disabled=$("activity-assets-load").disabled=true;}}
+  }
+  async function assetAction(action) {
+    if(assetBusy||!activitySelected)return;
+    if(action==="restore"&&!confirm(text2("请先退出游戏。确认使用此活动包覆盖相同 7.1.0 安装中的对应原始资源？Windows 将请求管理员确认。", "Exit the game first. Restore this package over the corresponding files in the same 7.1.0 installation? Windows will request admin approval.")))return;
+    if(action==="load"&&!confirm(text2("用已存活动包中的设置替换此活动当前排期与开关？玩家进度保留。", "Replace this event's current schedule and switches with saved settings? Player progress is preserved.")))return;
+    const id=activitySelected;assetBusy=true;renderActivityAssets();message("activity-feedback",text2("处理活动包中，请勿关机…", "Processing event package; keep the computer on…"));
+    try{
+      const body=await getJSON("/console/api/activities/assets/action",{method:"POST",body:JSON.stringify({activityId:id,action})});
+      if(id===activitySelected)activityAssets=body.assets;
+      if(body.activities){activityRows=body.activities;renderActivityList();selectActivity();}
+      message("activity-feedback",action==="restore"?text2("已启动资源恢复脚本。处理 Windows 管理员窗口后，点击“刷新恢复结果”；只有显示 complete 才表示资源恢复完成。", "Restore script started. Approve the Windows prompt, then refresh the result. Only complete confirms restoration."):text2("活动包操作已完成。", "Event package operation completed."));
+    }catch(e){message("activity-feedback",e.message,true);}finally{assetBusy=false;renderActivityAssets();}
+  }
+  for(const action of ["save","restore","load"])$("activity-assets-"+action).addEventListener("click",()=>assetAction(action));
+  $("activity-assets-refresh").addEventListener("click",refreshActivityAssets);
+
+  let rechargeProducts = [], rechargeEnabled = false, rechargeBusy = false, rechargePending = null;
+  function updateRechargeButton() {
+    $("recharge-buy").disabled = rechargeBusy || !rechargeEnabled || !$("recharge-product").value || !onlinePlayers.some(p => p.uid === Number($("recharge-player").value));
+  }
+  function previewRecharge() {
+    const product = rechargeProducts.find(p => p.id === $("recharge-product").value);
+    $("recharge-preview").textContent = !product ? "" : product.configId < 100
+      ? `${product.crystals} 创世结晶；首次赠送 ${product.firstBonus}，后续赠送 ${product.repeatBonus}。同一订单只发放一次。`
+      : product.configId === 101 ? "立即获得 300 创世结晶，增加 30 天月卡；每日 90 原石沿用游戏领取逻辑，累计最多 180 天。"
+      : "按当前纪行配置解锁付费奖励；珍珠之歌及升级包增加等级并发放本期额外奖励。";
+    updateRechargeButton();
+  }
+  async function refreshRecharge() {
+    try {
+      const body = await getJSON("/console/api/recharge"); rechargeEnabled = body.enabled; rechargeProducts = body.products;
+      const current = $("recharge-product").value;
+      fillArtifactSelect("recharge-product",rechargeProducts.map(p => ({value:p.id,label:p.name})),current || rechargeProducts[0]?.id);
+      playerOptions("recharge-player"); previewRecharge();
+    } catch (e) { message("recharge-feedback",e.message,true); }
+  }
+  $("recharge-refresh").addEventListener("click",refreshRecharge);
+  $("recharge-product").addEventListener("change",previewRecharge);
+  $("recharge-player").addEventListener("change",updateRechargeButton);
+  $("recharge-buy").addEventListener("click",async () => {
+    const uid = Number($("recharge-player").value), productId = $("recharge-product").value;
+    if (rechargeBusy || !uid || !productId) return;
+    if (!rechargePending || rechargePending.uid !== uid || rechargePending.productId !== productId)
+      rechargePending = {uid,productId,orderId:crypto.randomUUID()};
+    rechargeBusy = true; updateRechargeButton();
+    try {
+      const result = await getJSON("/console/api/recharge",{method:"POST",body:JSON.stringify(rechargePending)});
+      message("recharge-feedback",`${result.duplicate ? "该订单已经到账" : "充值成功"}：${result.product}；当前创世结晶 ${result.crystals}，月卡剩余 ${result.moonCardDays} 天。`);
+      rechargePending = null;
+    } catch (e) { message("recharge-feedback",`${e.message}（未确认的同一订单再次点击会查询原结果，避免重复发放。）`,true); }
+    finally { rechargeBusy = false; updateRechargeButton(); }
+  });
+
+  let monsterCatalog = [], monsterLoaded = false, monsterLoading = false, monsterBusy = false;
+  let monsterSelected = null, monsterPage = 0, monsterLevels = new Set(), monsterEntityLimit = 0;
+  const MONSTER_PAGE_SIZE = 30;
+  const monsterName = monster => lang === "en" && monster.en ? monster.en : monster.name;
+  function monsterType(type) {
+    const names = {
+      MONSTER_ORDINARY: ["普通怪物", "Enemies"], MONSTER_BOSS: ["首领", "Bosses"],
+      MONSTER_ENV_ANIMAL: ["动物", "Animals"], MONSTER_LITTLE_MONSTER: ["小型怪物", "Small monsters"],
+      MONSTER_FISH: ["鱼类", "Fish"], MONSTER_NONE: ["其他", "Other"], "": ["未分类", "Unclassified"]
+    };
+    return names[type] ? names[type][lang === "en" ? 1 : 0] : type;
+  }
+  function renderMonsterFilters() {
+    const current = $("monster-type").value;
+    fillArtifactSelect("monster-type", [{value:"", label:text2("全部类型", "All types")},
+      ...[...new Set(monsterCatalog.map(monster => monster.type))].filter(Boolean).sort().map(type => ({value:type, label:monsterType(type)}))], current);
+    $("monster-search").placeholder = text2("搜索中文名称、英文名称或怪物 ID…", "Search by Chinese / English name or monster ID…");
+    $("monster-common").replaceChildren();
+    for (const [zh, en] of [["史莱姆", "Slime"], ["丘丘人", "Hilichurl"], ["愚人众", "Fatui"], ["遗迹", "Ruin"], ["深渊", "Abyss"]]) {
+      const button = document.createElement("button"); button.type = "button"; button.textContent = text2(zh, en);
+      button.addEventListener("click", () => { $("monster-search").value = text2(zh, en); monsterPage = 0; renderMonsterResults(); });
+      $("monster-common").appendChild(button);
+    }
+  }
+  function matchingMonsters() {
+    const query = $("monster-search").value.trim().toLocaleLowerCase(), type = $("monster-type").value;
+    const score = monster => !query ? monster.named ? 0 : 1 : String(monster.id) === query ? -2
+      : monster.name.toLocaleLowerCase() === query || monster.en.toLocaleLowerCase() === query ? -1 : monster.named ? 0 : 1;
+    return monsterCatalog.filter(monster => (!type || type === monster.type) && (!query
+      || String(monster.id).includes(query) || monster.name.toLocaleLowerCase().includes(query)
+      || monster.en.toLocaleLowerCase().includes(query) || monster.internalName.toLocaleLowerCase().includes(query)))
+      .sort((a, b) => score(a) - score(b) || a.id - b.id);
+  }
+  function renderMonsterResults() {
+    const results = $("monster-results"); results.replaceChildren();
+    const matches = matchingMonsters(), pages = Math.max(1, Math.ceil(matches.length / MONSTER_PAGE_SIZE));
+    monsterPage = Math.max(0, Math.min(monsterPage, pages - 1));
+    if (!monsterLoaded || !matches.length) {
+      const empty = document.createElement("div"); empty.className = "empty";
+      empty.textContent = monsterLoading ? text2("正在读取怪物表…", "Loading monsters…")
+        : !monsterLoaded ? text2("怪物表尚未载入，请点击刷新怪物。", "Reload the monster catalog to continue.")
+        : text2("没有匹配的怪物。", "No monsters match your search.");
+      results.appendChild(empty);
+    }
+    for (const monster of matches.slice(monsterPage * MONSTER_PAGE_SIZE, (monsterPage + 1) * MONSTER_PAGE_SIZE)) {
+      const row = document.createElement("button"); row.type = "button"; row.className = "item-row";
+      row.setAttribute("aria-pressed", String(monsterSelected?.id === monster.id));
+      const text = document.createElement("span"); text.className = "item-row-text";
+      const name = document.createElement("span"); name.className = "item-row-name"; name.textContent = monsterName(monster);
+      const meta = document.createElement("span"); meta.className = "item-row-meta"; meta.textContent = `ID ${monster.id} · ${monsterType(monster.type)}`;
+      text.append(name, meta); row.appendChild(text);
+      row.addEventListener("click", () => { if (monsterBusy) return; monsterSelected = monster; renderMonsterSelection(); renderMonsterResults(); });
+      results.appendChild(row);
+    }
+    $("monster-count").textContent = monsterLoaded ? `${matches.length.toLocaleString()} ${text2("条匹配", "matches")}` : "";
+    $("monster-page").textContent = `${monsterPage + 1} / ${pages}`;
+    $("monster-prev").disabled = !monsterLoaded || monsterPage === 0;
+    $("monster-next").disabled = !monsterLoaded || monsterPage + 1 >= pages;
+  }
+  function renderMonsterSelection() {
+    $("monster-selected-name").textContent = monsterSelected ? monsterName(monsterSelected) : text2("先选择一个怪物", "Select a monster");
+    $("monster-selected-meta").textContent = !monsterSelected ? "" : `ID ${monsterSelected.id} · ${monsterType(monsterSelected.type)}`
+      + (monsterSelected.internalName ? ` · ${monsterSelected.internalName}` : "");
+    updateMonsterAvailability();
+  }
+  function renderMonsterPlayers() { playerOptions("monster-player"); updateMonsterAvailability(); }
+  function updateMonsterAvailability() {
+    const online = playersReady && onlinePlayers.some(player => player.uid === Number($("monster-player").value));
+    $("monster-fields").disabled = monsterBusy || !monsterLoaded;
+    $("monster-reload").disabled = monsterBusy || monsterLoading;
+    $("monster-spawn").disabled = monsterBusy || !monsterLoaded || !monsterSelected || !online;
+    $("monster-hint").textContent = !monsterSelected ? text2("选择怪物、数量和等级后生成。", "Choose a monster, quantity and level.")
+      : !online ? text2("需要选择在线且已进入世界的玩家。", "Select an online player who has entered the world.")
+      : text2(`在所选玩家前方生成；沿用场景实体上限 ${monsterEntityLimit}，结果会显示实际生成数。`,
+        `Spawns in front of the selected player. Scene entity limit: ${monsterEntityLimit}. The result reports the actual count.`);
+  }
+  async function refreshMonsters() {
+    if (monsterLoading || monsterBusy) return;
+    monsterLoading = true; updateMonsterAvailability(); renderMonsterResults();
+    try {
+      const body = await getJSON("/console/api/monsters");
+      monsterCatalog = body.monsters; monsterLevels = new Set(body.levels); monsterEntityLimit = body.entityLimit;
+      monsterLoaded = true;
+      if (monsterSelected) monsterSelected = monsterCatalog.find(monster => monster.id === monsterSelected.id) || null;
+      $("monster-version").textContent = `${body.version} · ${monsterCatalog.length.toLocaleString()} ${text2("个 ID", "IDs")}`;
+      $("monster-levels").replaceChildren(...body.levels.map(level => { const option = document.createElement("option"); option.value = level; return option; }));
+      $("monster-level").min = body.levels[0] || 1;
+      $("monster-level").max = body.levels.at(-1) || 1;
+      if (!monsterLevels.has(Number($("monster-level").value))) $("monster-level").value = monsterLevels.has(90) ? 90 : body.levels[0] || 1;
+      renderMonsterFilters(); renderMonsterSelection();
+    } catch (e) { monsterLoaded = false; message("monster-feedback", e.message, true); }
+    finally { monsterLoading = false; renderMonsterResults(); updateMonsterAvailability(); }
+  }
+  $("monster-search").addEventListener("input", () => { monsterPage = 0; renderMonsterResults(); });
+  $("monster-type").addEventListener("change", () => { monsterPage = 0; renderMonsterResults(); });
+  $("monster-prev").addEventListener("click", () => { monsterPage--; renderMonsterResults(); });
+  $("monster-next").addEventListener("click", () => { monsterPage++; renderMonsterResults(); });
+  $("monster-reload").addEventListener("click", refreshMonsters);
+  $("monster-player-refresh").addEventListener("click", refreshPlayers);
+  $("monster-player").addEventListener("change", updateMonsterAvailability);
+  document.querySelectorAll("[data-monster-amount]").forEach(button => button.addEventListener("click", () => { $("monster-amount").value = button.dataset.monsterAmount; }));
+  $("monster-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const uid = Number($("monster-player").value), amount = Number($("monster-amount").value),
+      level = Number($("monster-level").value), distance = Number($("monster-distance").value), monster = monsterSelected;
+    if (monsterBusy || !monster || !playersReady || !onlinePlayers.some(player => player.uid === uid)) return;
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 2147483647 || !monsterLevels.has(level)
+      || !Number.isFinite(distance) || distance < 0 || distance > 100) {
+      message("monster-feedback", text2("请填写正整数数量、资源支持的等级及 0–100 米距离。", "Enter a positive integer quantity, a supported level and a distance from 0 to 100 meters."), true); return;
+    }
+    monsterBusy = true; updateMonsterAvailability(); message("monster-feedback", text2("正在生成…", "Spawning…"));
+    try {
+      const result = await getJSON("/console/api/monsters/spawn", {method:"POST", body:JSON.stringify({uid, monsterId:monster.id, amount, level, distance})});
+      const heading = result.spawned === 0
+        ? text2(`未生成怪物（请求 ${result.requested} 个 ${monsterName(monster)}，场景 ${result.sceneId}）。`,
+          `No monsters spawned (requested ${result.requested} ${monsterName(monster)}, scene ${result.sceneId}).`)
+        : text2(`已实际生成 ${result.spawned} / ${result.requested} 个 ${monsterName(monster)}（等级 ${level}，场景 ${result.sceneId}）。`,
+          `Spawned ${result.spawned} / ${result.requested} ${monsterName(monster)} (level ${level}, scene ${result.sceneId}).`);
+      message("monster-feedback", heading + (result.output?.length ? "\n" + result.output.join("\n") : ""), result.spawned !== result.requested);
+    } catch (e) { message("monster-feedback", `${e.message}\n${text2("请求没有自动重发；请先在游戏中确认实际怪物数量。", "The request was not retried. Check the actual monsters in game before spawning again.")}`, true); }
+    finally { monsterBusy = false; updateMonsterAvailability(); }
+  });
+
+  applyLanguage();
+  if (token) showApp(); else showLogin();
+})();
+</script>
+</body>
+</html>

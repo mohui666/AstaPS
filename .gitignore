@@ -1,0 +1,160 @@
+# Compiled class file
+*.class
+
+#idea
+*.idea
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.war
+*.nar
+*.ear
+*.zip
+*.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build/
+out/
+
+# Repository-level Gradle properties are tracked; put machine-specific settings in ~/.gradle/gradle.properties.
+
+# Eclipse
+.project
+.classpath
+.settings
+.metadata
+.properties
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+.loadpath
+.recommenders
+
+# VSCode
+.vscode
+
+# Grasscutter
+/cache
+/resources
+/logs
+/plugins
+/keys
+/language
+/languages
+/proto
+
+# Build product JARs at repo root (keep lib/ and gradle/wrapper tracked)
+/*.jar
+/*.jar.*
+LunaGC*.jar*
+_build_jar.log
+_transmuter_classes/
+
+/*.sh
+!entrypoint.sh
+
+GM Handbook*.txt
+handbook.html
+
+# docker
+.env
+docker_volumes/
+
+config.json
+# Local game rules (all subdirectories) are owned by the server operator.
+/config/
+mitmdump.exe
+mongod.exe
+
+gacha-mapping.js
+mappings.js
+BuildConfig.java
+data/hk4e/announcement/
+
+# Live server state. Never track per-server/player progress in the source repository.
+/data/artifact_transmuter_state.json
+/data/investigation_elite_respawn.json
+/data/nodkrai_explore_claimed.json
+/data/nodkrai_guard_respawn.json
+/data/snezhnaya_explore_claimed.json
+/data/snezhnaya_guard_respawn.json
+
+# lombok
+/.apt_generated/
+
+# macOS
+.DS_Store
+.directory
+
+# Hotswap Agent
+hotswap-agent.properties
+
+# Debug patches
+patches/*.patch
+
+# Artifact Signatures
+*.asc
+
+# Upstream resource dumps. Kept locally only as a source when updating
+# LunaGC-Resources; they are not part of the server.
+animegamedata2/
+YuanShenResources/
+
+# Everything local-only lives here and nothing in it is ever committed: the
+# client proto dumps and nameTranslation.txt, the scratch tooling that turns
+# them into src/main/proto, and dev-only launch scripts. Keeping it to one
+# ignored directory means `git add -A` cannot pick any of it up by accident.
+/local/
+
+/LunaGC/
+/LunaGC-Resources/
+_compile_en.txt
+_errs_only.txt
+_errors_clean.txt
+_compile_errors.txt
+.gitignore
+_errs_detail.txt
+_errors_filtered.txt
+
+__pycache__/
+
+# Local files beside the server; the jar bundles its own lua and webstatic
+/lua/
+/webstatic/
+/keystore.p12
+
+# Editable reward configuration, populated beside the server JAR on first launch.
+/rewards/
+
+# Operator-selected historical wish lineup.
+/data/gacha/history-selection.json
+
+# Operator event archive; player progress remains in MongoDB.
+/data/activities/
+
+# Derived from the installed client/server exploration resources.
+/data/oculus-points.json
+
+# Per-player locations and machine-specific launch instructions.
+/data/assistant-teleports/
+/.env.local
+/Start-AstaPS.cmd
+/Start-AstaPS-Game.cmd
+/本地使用说明.md

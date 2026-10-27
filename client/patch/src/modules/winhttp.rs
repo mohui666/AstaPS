@@ -1,0 +1,86 @@
+//! winhttp redirect, for the native account sdk
+
+use super::{MhyContext, MhyModule, ModuleType};
+use anyhow::Result;
+use ilhook::x64::Registers;
+use windows::{
+    core::{s, PCSTR},
+    Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA},
+};
+
+/// the https bit
+const WINHTTP_FLAG_SECURE: u32 = 0x0080_0000;
+
+pub struct WinHttp;
+
+impl MhyModule for MhyContext<WinHttp> {
+    unsafe fn init(&mut self) -> Result<()> {
+        // load it ourselves, HYPass pulls it in much later
+        let winhttp = match LoadLibraryA(s!("winhttp.dll")) {
+            Ok(handle) if !handle.is_invalid() => handle,
+            _ => {
+                crate::plog!("Failed to load winhttp.dll - the native SDK will NOT be redirected");
+                return Ok(());
+            }
+        };
+
+        for (name, routine) in [
+            (
+                s!("WinHttpConnect"),
+                on_winhttp_connect as unsafe extern "win64" fn(*mut Registers, usize),
+            ),
+            (s!("WinHttpOpenRequest"), on_winhttp_open_request),
+        ] {
+            match GetProcAddress(winhttp, name) {
+                Some(addr) => {
+                    crate::plog!("{}: {:x}", pcstr_name(name), addr as usize);
+                    self.interceptor.attach(addr as usize, routine)?;
+                }
+                None => crate::plog!("Failed to find {}", pcstr_name(name)),
+            }
+        }
+
+        Ok(())
+    }
+
+    unsafe fn de_init(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn get_module_type(&self) -> ModuleType {
+        ModuleType::WinHttp
+    }
+}
+
+/// reads a utf-16 arg
+unsafe fn wide_ptr_to_string(ptr: *const u16) -> String {
+    if ptr.is_null() {
+        return "<null>".into();
+    }
+    let mut len = 0usize;
+    while len < 2048 && *ptr.add(len) != 0 {
+        len += 1;
+    }
+    String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len))
+}
+
+/// export name, for logs
+unsafe fn pcstr_name(name: PCSTR) -> String {
+    name.to_string().unwrap_or_else(|_| "<winhttp export>".into())
+}
+
+/// rdx = host, r8 = port
+unsafe extern "win64" fn on_winhttp_connect(reg: *mut Registers, _: usize) {
+    let host = wide_ptr_to_string((*reg).rdx as *const u16);
+    let server = super::endpoint::server();
+    crate::plog!("Redirect: {host}:{} -> {}", (*reg).r8 as u16, server.base);
+
+    (*reg).rdx = server.host_w.as_ptr() as u64;
+    (*reg).r8 = server.port as u64;
+}
+
+/// drops https, dwFlags is arg 7 at [rsp+0x38]
+unsafe extern "win64" fn on_winhttp_open_request(reg: *mut Registers, _: usize) {
+    let flags_slot = ((*reg).rsp as usize + 0x38) as *mut u32;
+    *flags_slot &= !WINHTTP_FLAG_SECURE;
+}
