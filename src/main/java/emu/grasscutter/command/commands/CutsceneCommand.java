@@ -77,7 +77,7 @@ public final class CutsceneCommand implements CommandHandler {
 
             var scene = targetPlayer.getScene();
             if ((scene != null && scene.getScriptManager().hasPendingCutscene(cutsceneId))
-                    || targetPlayer.getTowerManager().isAwaitingCutsceneFinish(cutsceneId)) {
+                    || targetPlayer.getTowerManager().isMidHalfCutscenePending()) {
                 CommandOutput.sendMessage(sender,
                         "Cutscene " + cutsceneId
                                 + " is awaited by gameplay; manual playback was not started.");

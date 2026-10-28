@@ -4,21 +4,21 @@ import static emu.grasscutter.config.Configuration.GAME_OPTIONS;
 
 import emu.grasscutter.Grasscutter;
 import emu.grasscutter.data.*;
+import emu.grasscutter.data.binout.MonsterPreviewData;
 import emu.grasscutter.data.excels.tower.TowerScheduleData;
 import emu.grasscutter.server.game.*;
 import emu.grasscutter.utils.FileUtils;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 /**
  * Serves one Spiral Abyss rotation at a time.
  *
- * <p>By default the server advances one schedule per day (at {@link #ROTATION_HOUR}) and loops
- * through every schedule in the excel. A schedule names twelve floors, each floor three chambers,
- * each chamber a dungeon, and each dungeon a scene; if that scene has no group scripts the chamber
- * opens onto an empty room. {@link #getPlayableSchedules()} still reports which ones can actually
- * be fought, for boot logs and for the non-rotating "newest playable" fallback.
+ * <p>The default schedule follows the official openTime/closeTime in the loaded client resources.
+ * Operator-selected schedules and daily historical rotation remain explicit options. Missing
+ * battle scripts never change the advertised season to an older one.
  */
 public class TowerSystem extends BaseGameSystem {
     /** Schedule ids already reported as missing, so each is named once rather than per lookup. */
@@ -47,6 +47,8 @@ public class TowerSystem extends BaseGameSystem {
     }
 
     public synchronized void load() {
+        playableSchedules = null;
+        scriptedScenes.clear();
         try {
             towerScheduleConfig = DataLoader.loadClass("TowerSchedule.json", TowerScheduleConfig.class);
         } catch (Exception e) {
@@ -64,15 +66,39 @@ public class TowerSystem extends BaseGameSystem {
     private boolean isScripted(int sceneId) {
         return scriptedScenes.computeIfAbsent(
                 sceneId,
-                id -> {
-                    var dir = FileUtils.getScriptPath("Scene/" + id);
-                    if (!Files.isDirectory(dir)) return false;
-                    try (var stream = Files.newDirectoryStream(dir, "scene" + id + "_group*.lua")) {
-                        return stream.iterator().hasNext();
-                    } catch (IOException e) {
-                        return false;
-                    }
-                });
+                id -> hasBattleScripts(FileUtils.getScriptPath("Scene/" + id), id));
+    }
+
+    static boolean hasBattleScripts(Path dir, int sceneId) {
+        if (!Files.isRegularFile(dir.resolve("scene" + sceneId + ".lua"))) return false;
+        try (var blocks = Files.newDirectoryStream(dir, "scene" + sceneId + "_block*.lua");
+                var groups = Files.newDirectoryStream(dir, "scene" + sceneId + "_group*.lua")) {
+            return blocks.iterator().hasNext() && groups.iterator().hasNext();
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** A scene stub alone has no start mechanism, waves or challenge settlement. */
+    public boolean isDungeonPlayable(int dungeonId) {
+        var dungeon = GameData.getDungeonDataMap().get(dungeonId);
+        return dungeon != null && isScripted(dungeon.getSceneId());
+    }
+
+    public List<Integer> getMissingBattleScenes(TowerScheduleData schedule) {
+        if (schedule == null) return List.of();
+        return floorsOf(schedule).stream()
+                .map(GameData.getTowerFloorDataMap()::get)
+                .filter(Objects::nonNull)
+                .flatMap(floor -> GameData.getTowerLevelDataMap().values().stream()
+                        .filter(level -> level.getLevelGroupId() == floor.getLevelGroupId()))
+                .map(level -> GameData.getDungeonDataMap().get(level.getDungeonId()))
+                .filter(Objects::nonNull)
+                .map(dungeon -> dungeon.getSceneId())
+                .filter(sceneId -> !isScripted(sceneId))
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     /** Every floor a rotation can put a player on, corridor and schedule floors alike. */
@@ -94,23 +120,18 @@ public class TowerSystem extends BaseGameSystem {
         if (schedule.getSchedules() == null || schedule.getSchedules().isEmpty()) return false;
         var floors = floorsOf(schedule);
         if (floors.isEmpty()) return false;
+        return floors.stream().allMatch(this::isFloorPlayable);
+    }
 
-        for (int floorId : floors) {
-            var floorData = GameData.getTowerFloorDataMap().get(floorId);
-            if (floorData == null) return false;
-
-            var levels =
-                    GameData.getTowerLevelDataMap().values().stream()
-                            .filter(level -> level.getLevelGroupId() == floorData.getLevelGroupId())
-                            .toList();
-            if (levels.isEmpty()) return false;
-
-            for (var level : levels) {
-                var dungeon = GameData.getDungeonDataMap().get(level.getDungeonId());
-                if (dungeon == null || !isScripted(dungeon.getSceneId())) return false;
-            }
-        }
-        return true;
+    public boolean isFloorPlayable(int floorId) {
+        var floor = GameData.getTowerFloorDataMap().get(floorId);
+        if (floor == null) return false;
+        var levels = GameData.getTowerLevelDataMap().values().stream()
+                .filter(level -> level.getLevelGroupId() == floor.getLevelGroupId())
+                .toList();
+        if (!levels.stream().map(level -> level.getLevelIndex()).sorted().toList()
+                .equals(List.of(1, 2, 3))) return false;
+        return levels.stream().allMatch(level -> isDungeonPlayable(level.getDungeonId()));
     }
 
     /** Playable rotations, ascending. Worked out once, after the resources are in. */
@@ -193,10 +214,10 @@ public class TowerSystem extends BaseGameSystem {
 
     /** Days since a fixed epoch, so consecutive days pick consecutive rotations. */
     private static long periodOrdinal(Calendar start) {
-        return start.get(Calendar.YEAR) * 366L + start.get(Calendar.DAY_OF_YEAR);
+        return start.toInstant().atZone(start.getTimeZone().toZoneId()).toLocalDate().toEpochDay();
     }
 
-    /** Whether the rotation moves on its own, rather than staying on the newest playable one. */
+    /** Whether the operator enabled daily historical rotation instead of official season dates. */
     private static boolean isRotating() {
         return GAME_OPTIONS.tower.scheduleId <= 0 && GAME_OPTIONS.tower.rotate;
     }
@@ -208,6 +229,12 @@ public class TowerSystem extends BaseGameSystem {
     }
 
     ScheduleWindow getScheduleWindow(Date now) {
+        if (!isRotating() && GAME_OPTIONS.tower.scheduleId <= 0) {
+            var schedule = getCurrentOfficialSchedule(now);
+            if (schedule != null) {
+                return new ScheduleWindow(schedule.getScheduleStartTime(), schedule.getScheduleEndTime());
+            }
+        }
         if (!isRotating() && towerScheduleConfig != null) {
             var start = towerScheduleConfig.getScheduleStartTime();
             var end = towerScheduleConfig.getNextScheduleChangeTime();
@@ -234,25 +261,36 @@ public class TowerSystem extends BaseGameSystem {
     // endregion
 
     public TowerScheduleData getCurrentTowerScheduleData() {
+        return getCurrentTowerScheduleData(new Date());
+    }
+
+    TowerScheduleData getCurrentTowerScheduleData(Date now) {
         // A pinned id is served as asked, playable or not - that is what pinning is for.
         int pinned = GAME_OPTIONS.tower.scheduleId;
         if (pinned > 0) {
             var data = GameData.getTowerScheduleDataMap().get(pinned);
             if (data != null) return data;
             Grasscutter.getLogger()
-                    .error("Spiral Abyss rotation {} does not exist; rotating instead.", pinned);
+                    .error("Spiral Abyss rotation {} does not exist.", pinned);
+            return null;
         }
 
         if (isRotating()) {
             var pool = getRotationPool();
             if (!pool.isEmpty()) {
-                int index = (int) Math.floorMod(periodOrdinal(periodStart(new Date())), pool.size());
+                int index = (int) Math.floorMod(periodOrdinal(periodStart(now)), pool.size());
                 var data = GameData.getTowerScheduleDataMap().get(pool.get(index).intValue());
                 if (data != null) return data;
             }
         } else {
-            // The newest rotation the resources can build is as close to the live game as this
-            // server gets; anything older is a step backwards from it.
+            var official = getCurrentOfficialSchedule(now);
+            if (official != null) return official;
+            // A dated resource pack must not silently serve a stale season when its current data
+            // is missing. Undated custom resource packs retain their existing selection behavior.
+            if (GameData.getTowerScheduleDataMap().values().stream()
+                    .anyMatch(schedule -> schedule.getScheduleStartTime() != null
+                            && schedule.getScheduleEndTime() != null)) return null;
+            // Retain legacy selection only for custom resource packs without schedule timestamps.
             var newest = getNewestPlayable();
             if (newest > 0) {
                 var data = GameData.getTowerScheduleDataMap().get(newest);
@@ -262,6 +300,7 @@ public class TowerSystem extends BaseGameSystem {
 
         // Nothing validated - fall back to whatever the config file names, so a resource set this
         // check does not understand still opens the abyss rather than closing it entirely.
+        if (towerScheduleConfig == null) return null;
         var fallback = GameData.getTowerScheduleDataMap().get(towerScheduleConfig.getScheduleId());
         if (fallback == null) {
             // The resource pack does not change while the server runs, so this is the same
@@ -276,6 +315,17 @@ public class TowerSystem extends BaseGameSystem {
         return fallback;
     }
 
+    private TowerScheduleData getCurrentOfficialSchedule(Date now) {
+        return GameData.getTowerScheduleDataMap().values().stream()
+                .filter(schedule -> {
+                    var start = schedule.getScheduleStartTime();
+                    var end = schedule.getScheduleEndTime();
+                    return start != null && end != null && !now.before(start) && now.before(end);
+                })
+                .max(Comparator.comparing(TowerScheduleData::getScheduleStartTime))
+                .orElse(null);
+    }
+
     public List<Integer> getAllFloors() {
         var schedule = this.getCurrentTowerScheduleData();
         if (schedule == null) return List.of();
@@ -283,6 +333,25 @@ public class TowerSystem extends BaseGameSystem {
         List<Integer> floors = new ArrayList<>(schedule.getEntranceFloorId());
         floors.addAll(this.getScheduleFloors());
         return floors;
+    }
+
+    /** Missing previews are explicit; enemy kinds are never substituted for battle wave data. */
+    public Optional<MonsterPreviewData> getMonsterPreview(int floorId, int chamber, boolean upperHalf) {
+        if (chamber < 1 || chamber > 3 || !getAllFloors().contains(floorId)) return Optional.empty();
+        var floor = GameData.getTowerFloorDataMap().get(floorId);
+        if (floor == null) return Optional.empty();
+        return GameData.getTowerLevelDataMap().values().stream()
+                .filter(level -> level.getLevelGroupId() == floor.getLevelGroupId()
+                        && level.getLevelIndex() == chamber)
+                .findFirst()
+                .flatMap(level -> {
+                    var rows = GameData.getMonsterPreviewDataMap().get(level.getTowerMonsterPreview());
+                    if (rows == null) return Optional.empty();
+                    int id = upperHalf ? level.getTowerMonsterPreviewId1() : level.getTowerMonsterPreviewId2();
+                    return Optional.ofNullable(rows.get(id));
+                })
+                .filter(preview -> preview.getMonsterPreviewInfo() != null
+                        && !preview.getMonsterPreviewInfo().isEmpty());
     }
 
     public List<Integer> getScheduleFloors() {

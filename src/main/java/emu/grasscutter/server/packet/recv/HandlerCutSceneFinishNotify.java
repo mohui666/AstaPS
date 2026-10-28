@@ -26,8 +26,5 @@ public class HandlerCutSceneFinishNotify extends PacketHandler {
         if (scene != null) {
             scene.getScriptManager().finishCutscene(cutsceneId);
         }
-
-        // Spiral Abyss mid-half waits for its cutscene before swapping teams.
-        player.getTowerManager().onMidHalfCutsceneFinished(cutsceneId);
     }
 }

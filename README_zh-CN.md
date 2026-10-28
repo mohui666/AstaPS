@@ -4,6 +4,8 @@
 
 包含原生 PVP 与多个假玩家测试目标，客户端编译及部署见 [client/](client/README.md)。
 
+提供[本机网页管理面板](tools/server-panel/README.md)，安装后双击 HTML 查看状态及开关服。当前深渊可通过[MGC 自编波次生成器](tools/tower/README.md)加载自有客户端的敌人种类和等级，数量、波次、站位由 MGC 编写。限时活动已停用；幽境目前只接入配置，玩法尚未完整恢复。
+
 [English](README.md) · 简体中文 · [繁體中文](README_zh-TW.md)
 
 一个基于 Grasscutter 的《原神》**7.1.0** 私人服务器。

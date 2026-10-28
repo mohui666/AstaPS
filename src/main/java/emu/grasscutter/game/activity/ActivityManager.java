@@ -30,6 +30,8 @@ public class ActivityManager extends BasePlayerManager {
     }
 
     public static void loadActivityConfigData() {
+        activityConfigItemMap.values().removeIf(item -> !ActivityAvailability.isRetained(item.getActivityId()));
+        scheduleActivityConfigMap.values().removeIf(item -> !ActivityAvailability.isRetained(item.getActivityId()));
         // scan activity type handler and watcher type
         var activityHandlerTypeMap = handlerTypes;
         var activityWatcherTypeMap = watcherTypes;
@@ -50,6 +52,7 @@ public class ActivityManager extends BasePlayerManager {
 
         try {
             ActivityArchive.load(DataLoader.loadBundledList("ActivityConfig.json", ActivityConfigItem.class))
+                    .stream().filter(item -> ActivityAvailability.isRetained(item.getActivityId()))
                     .forEach(
                             item -> {
                                 item.onLoad();
@@ -84,6 +87,7 @@ public class ActivityManager extends BasePlayerManager {
 
     /** Runs on the game logic thread, including when an archive is imported. */
     public static void applyArchiveConfig(int id, ActivityConfigItem config) {
+        ActivityAvailability.requireRetained(id);
         var previous = activityConfigItemMap.get(id);
         if (config == null) {
             if (previous == null) return;
@@ -127,6 +131,7 @@ public class ActivityManager extends BasePlayerManager {
     }
 
     public PlayerActivityData resetArchiveProgress(int id) {
+        ActivityAvailability.requireRetained(id);
         var config = activityConfigItemMap.get(id);
         if (config == null) throw new IllegalArgumentException("请先配置此活动。");
         var previous = playerActivityDataMap.get(id);
@@ -229,6 +234,7 @@ public class ActivityManager extends BasePlayerManager {
     }
 
     public boolean isActivityActive(int activityId) {
+        if (!ActivityAvailability.isRetained(activityId)) return false;
         var activityConfig = activityConfigItemMap.get(activityId);
         if (activityConfig == null || activityConfig.isDisabled()) {
             return false;
@@ -248,6 +254,7 @@ public class ActivityManager extends BasePlayerManager {
     }
 
     public boolean isActivityOpen(int activityId) {
+        if (!ActivityAvailability.isRetained(activityId)) return false;
         var activityConfig = activityConfigItemMap.get(activityId);
         if (activityConfig == null || activityConfig.isDisabled()) {
             return false;
@@ -290,6 +297,7 @@ public class ActivityManager extends BasePlayerManager {
 
     /** Returns null for an activity this server has not configured. */
     public ActivityInfoOuterClass.ActivityInfo getInfoProtoByActivityId(int activityId) {
+        if (!ActivityAvailability.isRetained(activityId)) return null;
         var activityConfig = activityConfigItemMap.get(activityId);
         if (activityConfig == null) {
             return null;

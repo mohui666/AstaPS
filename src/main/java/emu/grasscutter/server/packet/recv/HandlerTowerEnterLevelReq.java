@@ -7,6 +7,7 @@ import emu.grasscutter.game.tower.TowerAbyssFix;
 import emu.grasscutter.net.packet.*;
 import emu.grasscutter.net.proto.TowerEnterLevelReqOuterClass.TowerEnterLevelReq;
 import emu.grasscutter.server.game.GameSession;
+import emu.grasscutter.server.packet.send.PacketTowerEnterLevelRsp;
 import java.lang.reflect.Field;
 import java.util.List;
 
@@ -33,6 +34,7 @@ public class HandlerTowerEnterLevelReq extends PacketHandler {
         if (!hasTemporaryTeam(teamManager)) {
             Grasscutter.getLogger().warn(
                     "TowerEnterLevel aborted uid={}: temporaryTeam not ready", player.getUid());
+            session.send(new PacketTowerEnterLevelRsp());
             return;
         }
 

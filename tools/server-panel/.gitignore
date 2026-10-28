@@ -1,0 +1,7 @@
+panel.config.json
+.panel-state.json
+.panel-ui.template
+MGC服务器面板.html
+.panel-state.tmp
+*.log
+__pycache__/

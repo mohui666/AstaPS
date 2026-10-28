@@ -46,6 +46,7 @@ public final class ActivityArchive {
         }
         ORIGINALS.clear();
         for (var config : bundled) {
+            if (!ActivityAvailability.isRetained(config.getActivityId())) continue;
             config.onLoad();
             // The client encodes timestamps as uint32; the old year 2999 wraps around.
             if (config.getEndTime().getTime() > LAST_DATE) config.setEndTime(new Date(LAST_DATE));
@@ -53,9 +54,11 @@ public final class ActivityArchive {
             ORIGINALS.put(config.getActivityId(), copy(config));
         }
         Map<Integer, Saved> initial = new TreeMap<>();
-        for (int id : DEFINITIONS.keySet()) initial.put(id, new Saved(id, ORIGINALS.get(id), ""));
+        for (int id : DEFINITIONS.keySet()) {
+            if (ActivityAvailability.isRetained(id)) initial.put(id, new Saved(id, ORIGINALS.get(id), ""));
+        }
         if (Files.exists(storagePath)) {
-            var pack = parse(Files.readString(storagePath));
+            var pack = parse(Files.readString(storagePath), true);
             for (var saved : pack.activities()) initial.put(saved.activityId(), saved);
         }
         SAVED.clear();
@@ -108,7 +111,9 @@ public final class ActivityArchive {
 
     public static JsonObject exportPack() {
         var root = GSON.toJsonTree(new Pack(1, resourceVersion, List.copyOf(SAVED.values()))).getAsJsonObject();
-        root.add("definitions", JsonUtils.toJson(DEFINITIONS.values()));
+        root.add("definitions", JsonUtils.toJson(DEFINITIONS.entrySet().stream()
+                .filter(entry -> ActivityAvailability.isRetained(entry.getKey()))
+                .map(Map.Entry::getValue).toList()));
         root.add("resourceRequirements", JsonUtils.toJson(List.of(
                 "保留当前 7.1.0 客户端及下载资源；JSON 无法替代已被客户端删除的音频、场景和玩法资源。",
                 "保留 resources（当前 LunaGC-Resources 资源库）及本服务器 JAR；导入不会补出缺失的玩法实现。",
@@ -117,15 +122,21 @@ public final class ActivityArchive {
     }
 
     public static Pack parse(String body) {
+        return parse(body, false);
+    }
+
+    private static Pack parse(String body, boolean loadingStoredArchive) {
         Pack pack;
         try {
             var json = JsonParser.parseString(body).getAsJsonObject();
             var rows = new ArrayList<Saved>();
             for (var element : json.getAsJsonArray("activities")) {
                 var row = element.getAsJsonObject();
+                int id = row.get("activityId").getAsBigDecimal().intValueExact();
+                if (loadingStoredArchive && !ActivityAvailability.isRetained(id)) continue;
                 var config = !row.has("config") || row.get("config").isJsonNull() ? null
                         : GSON.fromJson(row.get("config"), ActivityConfigItem.class);
-                rows.add(new Saved(row.get("activityId").getAsBigDecimal().intValueExact(), config,
+                rows.add(new Saved(id, config,
                         row.has("note") && !row.get("note").isJsonNull() ? row.get("note").getAsString() : ""));
             }
             pack = new Pack(json.get("formatVersion").getAsBigDecimal().intValueExact(),
@@ -133,7 +144,7 @@ public final class ActivityArchive {
         }
         catch (RuntimeException e) { throw new IllegalArgumentException("不是有效的活动档案 JSON。", e); }
         if (pack == null || pack.formatVersion() != 1 || !Objects.equals(pack.resourceVersion(), resourceVersion)
-                || pack.activities() == null || pack.activities().isEmpty() || pack.activities().size() > DEFINITIONS.size()) {
+                || pack.activities() == null || pack.activities().size() > DEFINITIONS.size()) {
             throw new IllegalArgumentException("档案格式或资源版本不匹配；只能导入当前资源版本的档案。");
         }
         var ids = new HashSet<Integer>();
@@ -211,6 +222,7 @@ public final class ActivityArchive {
     private static void requireId(int id) {
         if (!DEFINITIONS.containsKey(id) || !GameData.getActivityDataMap().containsKey(id))
             throw new IllegalArgumentException("当前资源没有这个活动 ID。");
+        ActivityAvailability.requireRetained(id);
     }
 
     private static void validate(Saved saved) {

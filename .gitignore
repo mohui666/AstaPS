@@ -165,3 +165,6 @@ __pycache__/
 /client/package-template/game-path.txt
 /client/package-template/ext.dll
 /client/package-template/passport-public.pem
+
+# Runtime offering progress belongs to local players.
+/data/offering_levels.json

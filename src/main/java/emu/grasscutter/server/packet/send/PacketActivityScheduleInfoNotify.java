@@ -1,6 +1,7 @@
 package emu.grasscutter.server.packet.send;
 
 import emu.grasscutter.game.activity.ActivityConfigItem;
+import emu.grasscutter.game.activity.ActivityAvailability;
 import emu.grasscutter.net.packet.*;
 import emu.grasscutter.net.proto.*;
 import emu.grasscutter.utils.helpers.DateHelper;
@@ -15,6 +16,7 @@ public class PacketActivityScheduleInfoNotify extends BasePacket {
 
         activityConfigItemList.forEach(
                 item -> {
+                    if (!ActivityAvailability.isRetained(item.getActivityId())) return;
                     proto.addActivityScheduleList(
                             ActivityScheduleInfoOuterClass.ActivityScheduleInfo.newBuilder()
                                     .setActivityId(item.getActivityId())

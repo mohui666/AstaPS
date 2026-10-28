@@ -2,6 +2,7 @@ package emu.grasscutter.server.packet.send;
 
 import emu.grasscutter.game.tower.*;
 import emu.grasscutter.net.packet.*;
+import emu.grasscutter.net.proto.RetcodeOuterClass.Retcode;
 import emu.grasscutter.net.proto.TowerAllDataRspOuterClass.TowerAllDataRsp;
 import emu.grasscutter.net.proto.TowerFloorRecordOuterClass.TowerFloorRecord;
 import emu.grasscutter.net.proto.TowerLevelRecordOuterClass;
@@ -13,6 +14,12 @@ public class PacketTowerAllDataRsp extends BasePacket {
 
     public PacketTowerAllDataRsp(TowerSystem towerScheduleManager, TowerManager towerManager) {
         super(PacketOpcodes.TowerAllDataRsp);
+
+        var schedule = towerScheduleManager.getCurrentTowerScheduleData();
+        if (schedule == null) {
+            this.setData(TowerAllDataRsp.newBuilder().setRetcode(Retcode.RET_SVR_ERROR_VALUE).build());
+            return;
+        }
 
         var recordList =
                 towerManager.getRecordMap().values().stream()
@@ -45,8 +52,7 @@ public class PacketTowerAllDataRsp extends BasePacket {
 
         var builder =
                 TowerAllDataRsp.newBuilder()
-                        .setTowerScheduleId(
-                                towerScheduleManager.getCurrentTowerScheduleData().getScheduleId())
+                        .setTowerScheduleId(schedule.getScheduleId())
                         .addAllTowerFloorRecordList(recordList)
                         .setScheduleStartTime(scheduleStart)
                         .setValidTowerRecordNum(Math.max(validRecordCount, recordList.isEmpty() ? 0 : 1))
