@@ -12,7 +12,7 @@
 powershell -NoProfile -File tools/server-panel/install-panel.ps1 -PlanOnly
 ```
 
-确认后运行同一命令，去掉 `-PlanOnly`。PowerShell 仅用于安装：创建桌面文件夹、HTML 快捷方式和当前用户的登录启动项，并修复现有服务端入口。旧 `AstaPS 开服.cmd` 只打开 HTML，不再负责开服。已有同名非本工具目录会拒绝覆盖。
+确认后运行同一命令，去掉 `-PlanOnly`。安装器使用 PowerShell：创建桌面文件夹、HTML 快捷方式和当前用户的登录启动项，并修复现有服务端入口。旧 `AstaPS 开服.cmd` 只打开 HTML，不再负责开服。已有同名非本工具目录会拒绝覆盖。
 
 安装器会启动一次管理后台以生成可用的 HTML 入口；更新时仅在严格核对路径、会话及监听 PID 后替换本工具的 Python 后台，不会起停 Java 或 MongoDB。未被修改的旧工具 PS/VBS 启动器和旧 index.html 会移除，人工变更的文件保留。
 
