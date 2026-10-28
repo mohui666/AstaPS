@@ -2,6 +2,8 @@ See also [the data dump](./data/quests.json).
 
 Current server implementation notes and remaining gaps: [runtime support](../quest/runtime-support.md).
 
+本机全部中文章节、主线及重要剧情的已知缺口见[剧情清单](../quest/story-catalog.md)；资源收录不等于已经完成客户端通关验证。
+
 # Archon quests / Main story quests
 
 Archon Quests tell the main story of the Traveler and Paimon, as they travel the world of Teyvat in search of the Traveler's missing twin sibling by proxy of visiting all of The Seven. They are voiced.

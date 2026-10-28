@@ -62,8 +62,25 @@ public final class RegionHandler implements Router {
         return GAME_INFO.bindAddress;
     }
 
+    /** Keeps direct LAN/localhost clients on the bound port when the public UDP port differs. */
+    private static int getEffectiveGamePort(Context ctx) {
+        var configured = GAME_INFO.accessAddress;
+        if (configured == null || configured.isEmpty() || configured.equals("0.0.0.0")) {
+            var host = ctx.host();
+            if (host != null && !host.isEmpty()) {
+                var h = host.contains(":") ? host.substring(0, host.lastIndexOf(':')) : host;
+                if (h.equals(GAME_INFO.bindAddress)
+                        || h.equals("127.0.0.1")
+                        || h.equalsIgnoreCase("localhost")) {
+                    return GAME_INFO.bindPort;
+                }
+            }
+        }
+        return lr(GAME_INFO.accessPort, GAME_INFO.bindPort);
+    }
+
     /** Determines the effective dispatch domain for a request (config -^ request host -^ bind). */
-    private static String getEffectiveDispatchDomain(Context ctx) {
+    public static String getEffectiveDispatchDomain(Context ctx) {
         var scheme = "http" + (HTTP_ENCRYPTION.useInRouting ? "s" : "");
         var configured = HTTP_INFO.accessAddress;
         if (configured != null && !configured.isEmpty() && !configured.equals("0.0.0.0")) {
@@ -508,18 +525,17 @@ public final class RegionHandler implements Router {
         // A downloaded hotfix contains official gate addresses. The game server must still point
         // to this deployment, while all resource/data version fields remain from the hotfix.
         regionInfo.setGateserverIp(getEffectiveGameAddress(ctx));
-        if (configuredRegion != null) {
-            regionInfo.setGateserverPort(baseQuery.getRegionInfo().getGateserverPort());
-        }
+        regionInfo.setGateserverPort(
+                !DISPATCH_INFO.regions.isEmpty() && configuredRegion != null
+                        ? baseQuery.getRegionInfo().getGateserverPort()
+                        : getEffectiveGamePort(ctx));
 
         return baseQuery.toBuilder().setRegionInfo(regionInfo).build();
     }
 
     public static void queryServerAddress(Context ctx) {
-        var addr = Grasscutter.getConfig().server.game.accessAddress;
-        var port = Grasscutter.getConfig().server.game.accessPort == 0 ?
-            Grasscutter.getConfig().server.game.bindPort :
-            Grasscutter.getConfig().server.game.accessPort;
+        var addr = getEffectiveGameAddress(ctx);
+        var port = getEffectiveGamePort(ctx);
         ctx.result(addr + ":" + port);
     }
 

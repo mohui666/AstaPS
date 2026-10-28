@@ -8,6 +8,9 @@ import emu.grasscutter.Grasscutter;
 import emu.grasscutter.config.Configuration;
 import emu.grasscutter.game.entity.EntityGadget;
 import emu.grasscutter.game.player.Player;
+import emu.grasscutter.game.quest.content.ContentCallPlayerTrainInRange;
+import emu.grasscutter.game.quest.enums.QuestContent;
+import emu.grasscutter.game.quest.enums.QuestState;
 import emu.grasscutter.game.world.Position;
 import emu.grasscutter.game.world.Scene;
 import emu.grasscutter.net.packet.PacketOpcodes;
@@ -20,6 +23,7 @@ import emu.grasscutter.net.proto.SnezhnayaTrainSetRouteReqOuterClass.SnezhnayaTr
 import emu.grasscutter.net.proto.SnezhnayaTrainStateNotifyOuterClass.SnezhnayaTrainState;
 import emu.grasscutter.net.proto.SnezhnayaTrainStateNotifyOuterClass.SnezhnayaTrainStateNotify;
 import emu.grasscutter.server.packet.send.PacketIceCreature;
+import emu.grasscutter.server.packet.send.PacketServerGlobalValueChangeNotify;
 import emu.grasscutter.utils.FileUtils;
 import emu.grasscutter.utils.Utils;
 import java.io.Reader;
@@ -28,6 +32,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -61,13 +67,16 @@ public final class SnezhnayaTrainSystem {
 
     private static final class TrainState {
         int entityId;
+        Scene entityScene;
         int taskId = -1;
+        Scene broadcastScene;
         int curveId;
         int segment;
         int destStation;
         int sourceId;
         List<Integer> stations = List.of();
         List<Integer> reached = List.of();
+        final Set<Integer> pendingCallQuests = new HashSet<>();
         SnezhnayaTrainState state = SnezhnayaTrainState.SNEZHNAYA_TRAIN_STATE_NONE;
     }
 
@@ -98,7 +107,7 @@ public final class SnezhnayaTrainSystem {
 
         var train = TRAINS.computeIfAbsent(player.getUid(), uid -> new TrainState());
         synchronized (train) {
-            if (scene.getEntityById(train.entityId) instanceof EntityGadget existing
+            if (train.entityScene == scene && scene.getEntityById(train.entityId) instanceof EntityGadget existing
                     && existing.getGadgetId() == PLAYER_TRAIN_GADGET) {
                 return;
             }
@@ -109,6 +118,12 @@ public final class SnezhnayaTrainSystem {
                             .setKey(AbilityString.newBuilder().setHash(Utils.abilityHash(name)))
                             .setFloatValue(value)
                             .build()));
+            // Reconstructed quest rewards override the captured all-collections-visible baseline.
+            // Runtime SGVs also survive a later entity refresh and supply the owner's child gadgets.
+            for (var figure : TrainFigureCatalog.installed().figures()) {
+                gadget.getGlobalAbilityValues().put(figure.sgv(),
+                        (float) player.getTrainFigures().get(figure.id(), figure.initialValue()));
+            }
             // Parked: on the park curve but not started, so the client neither runs it along the
             // curve nor animates it as moving. A call (3893) hands it the client's curve state.
             gadget.setCurveMoveInfo(BMJNJLKCODG.newBuilder()
@@ -119,10 +134,35 @@ public final class SnezhnayaTrainSystem {
                     .build());
             scene.addEntity(gadget);
             train.entityId = gadget.getId();
+            train.entityScene = scene;
+            train.pendingCallQuests.clear();
             train.curveId = PARK_CURVE;
             train.segment = 1;
             Grasscutter.getLogger().debug("[Train] uid={} train entity {} parked at {}",
                     player.getUid(), gadget.getId(), PARK_POS);
+        }
+    }
+
+    /**
+     * Reconstructed EXEC 138: [scene 3, configured figure ID, visible 0/1]. Only the issuing
+     * player's real widget-owned train may change; no entity identifier comes from the client.
+     */
+    public static boolean setFigure(Player player, int targetScene, int figureId, int visible) {
+        var scene = player.getScene();
+        var figure = TrainFigureCatalog.installed().figure(figureId);
+        if (targetScene != SCENE || scene == null || scene.getId() != targetScene
+                || figure == null || visible < 0 || visible > 1
+                || player.getInventory().getItemCountById(GREY_EYES_WIDGET) <= 0) return false;
+        onEnterSceneDone(player);
+        var train = TRAINS.get(player.getUid());
+        if (train == null) return false;
+        synchronized (train) {
+            if (train.entityScene != scene || !(scene.getEntityById(train.entityId) instanceof EntityGadget gadget)
+                    || gadget.getGadgetId() != PLAYER_TRAIN_GADGET || gadget.getScene() != scene) return false;
+            if (player.getTrainFigures().set(figureId, visible)) player.save();
+            gadget.getGlobalAbilityValues().put(figure.sgv(), (float) visible);
+            scene.broadcastPacket(new PacketServerGlobalValueChangeNotify(gadget, figure.sgv(), visible));
+            return true;
         }
     }
 
@@ -135,18 +175,27 @@ public final class SnezhnayaTrainSystem {
                 "[Train] uid={} call: curve {} segment {} progress {} speed {} routes {} -> station {}",
                 player.getUid(), info.getEEFABNDBKCO(), info.getHMHCGLCNBMK(), info.getDEEKKONIOPE(),
                 info.getSpeed(), info.getBCOFNPNHJCIList().size(), station);
-        if (train != null) {
+        var scene = player.getScene();
+        if (train != null && scene != null && scene.getId() == SCENE && req.hasCurveInfo()
+                && info.getEEFABNDBKCO() > 0) {
             synchronized (train) {
+                var entity = scene.getEntityById(train.entityId);
+                if (train.entityScene != scene || !(entity instanceof EntityGadget gadget)
+                        || gadget.getGadgetId() != PLAYER_TRAIN_GADGET || gadget.getScene() != scene) return;
                 train.curveId = info.getEEFABNDBKCO();
                 train.segment = info.getHMHCGLCNBMK();
                 train.state = SnezhnayaTrainState.SNEZHNAYA_TRAIN_STATE_NONE;
                 train.destStation = 0;
                 train.stations = List.of();
                 train.reached = List.of();
-                if (player.getScene() != null
-                        && player.getScene().getEntityById(train.entityId) instanceof EntityGadget gadget) {
-                    gadget.setCurveMoveInfo(info);
-                }
+                gadget.setCurveMoveInfo(info);
+                train.pendingCallQuests.clear();
+                player.getQuestManager().getActiveMainQuests().stream()
+                        .flatMap(main -> main.getActiveQuests().stream())
+                        .filter(quest -> quest.getQuestData().getFinishCond().stream().anyMatch(condition ->
+                                condition.getType() == QuestContent.QUEST_CONTENT_CALL_PLAYER_TRAIN_IN_RANGE))
+                        .forEach(quest -> train.pendingCallQuests.add(quest.getSubQuestId()));
+                checkCallQuestProgress(player, train, gadget);
                 startBroadcast(player, train);
             }
         }
@@ -164,6 +213,7 @@ public final class SnezhnayaTrainSystem {
                 player.getUid(), req.getDestStationId(), route, req.getStationListList());
         if (train == null) return;
         synchronized (train) {
+            train.pendingCallQuests.clear();
             int calledAt = tables().stationOf(train.curveId);
             train.curveId = tables().nextCurve(train.curveId, route);
             train.destStation = req.getDestStationId();
@@ -183,19 +233,52 @@ public final class SnezhnayaTrainSystem {
 
     private static void startBroadcast(Player player, TrainState train) {
         Scene scene = player.getScene();
-        if (scene == null || train.taskId >= 0) return;
+        if (scene == null) return;
+        if (train.taskId >= 0) {
+            if (train.broadcastScene == scene) return;
+            train.broadcastScene.getScheduler().cancelTask(train.taskId);
+        }
+        train.broadcastScene = scene;
         int ticks = Math.max(1, BROADCAST_MS / Math.max(1, Configuration.GAME_INFO.tickRateMs));
         train.taskId = scene.getScheduler().scheduleRepeatingTask(() -> {
             synchronized (train) {
+                if (train.broadcastScene != scene) return;
                 if (!player.isOnline() || player.getScene() != scene
-                        || !(scene.getEntityById(train.entityId) instanceof EntityGadget)) {
+                        || !(scene.getEntityById(train.entityId) instanceof EntityGadget gadget)
+                        || gadget.getGadgetId() != PLAYER_TRAIN_GADGET) {
+                    train.pendingCallQuests.clear();
                     scene.getScheduler().cancelTask(train.taskId);
                     train.taskId = -1;
+                    train.broadcastScene = null;
                     return;
                 }
+                checkCallQuestProgress(player, train, gadget);
                 sendState(player, train);
             }
         }, ticks);
+    }
+
+    private static void checkCallQuestProgress(Player player, TrainState train, EntityGadget gadget) {
+        var position = gadget.getPosition().clone();
+        var pending = train.pendingCallQuests.iterator();
+        while (pending.hasNext()) {
+            int questId = pending.next();
+            var quest = player.getQuestManager().getQuestById(questId);
+            if (quest == null || quest.getState().getValue() != QuestState.QUEST_STATE_UNFINISHED.getValue()) {
+                pending.remove();
+                continue;
+            }
+            boolean inRange = quest.getQuestData().getFinishCond().stream()
+                    .filter(condition -> condition.getType() == QuestContent.QUEST_CONTENT_CALL_PLAYER_TRAIN_IN_RANGE)
+                    .anyMatch(condition -> ContentCallPlayerTrainInRange.matches(quest, condition, gadget, position));
+            if (inRange) {
+                pending.remove();
+                player.getQuestManager().queueEvent(QuestContent.QUEST_CONTENT_CALL_PLAYER_TRAIN_IN_RANGE,
+                        gadget.getScene().getId(), gadget.getId(), questId,
+                        Float.floatToIntBits(position.getX()), Float.floatToIntBits(position.getY()),
+                        Float.floatToIntBits(position.getZ()));
+            }
+        }
     }
 
     private static void sendState(Player player, TrainState train) {

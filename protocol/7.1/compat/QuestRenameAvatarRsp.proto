@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "FBBKMKEDGPH.proto";
+
+// 7.1 OCEEFJIIKJI, CmdId 20993; parser/receiver LLCGIEDMIIG.LBMMBLMFNNH verified.
+message QuestRenameAvatarRsp {
+  int32 retcode = 3;
+  bool is_check_only = 6;
+  string avatar_name = 7;
+  uint32 rename_id = 12;
+  FBBKMKEDGPH PLDMEKAFKCJ = 13;
+}

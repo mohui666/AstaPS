@@ -16,6 +16,6 @@ public class HandlerPersonalLineAllDataReq extends PacketHandler {
                 new PacketPersonalLineAllDataRsp(
                         session.getPlayer().getQuestManager().getMainQuests().values(),
                         session.getPlayer().getPersonalLineList()));
-        session.send(new PacketCoopDataNotify());
+        emu.grasscutter.game.quest.coop.CoopSystem.notifyState(session.getPlayer());
     }
 }

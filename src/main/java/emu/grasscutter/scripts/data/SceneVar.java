@@ -9,4 +9,5 @@ public class SceneVar {
     public int value;
     public boolean no_refresh;
     public int configId;
+    public int variable_type;
 }

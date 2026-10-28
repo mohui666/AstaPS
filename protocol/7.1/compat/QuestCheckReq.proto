@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// NOEFGCANIKL, CmdId 25324. Verified against the matching 7.1 native request writer.
+message QuestCheckReq {
+  uint32 check_id = 4;
+  uint32 parent_quest_id = 15;
+}

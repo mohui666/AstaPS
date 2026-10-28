@@ -11,6 +11,8 @@ This folder has the 7.1 protocol recovered for it (`tps_7.1.proto`) and the tool
 | Gun models | An avatar's worn TPS weapons get weapon entities (gadgets 50016001-50016008) and are listed in `SceneAvatarInfo.tps_weapon_list` (31) and `AvatarInfo.tps_weapon_list` (37). |
 | Abilities | Each worn weapon's affix (and unlocked accessory affixes) opens its `EquipAffixExcelConfigData.openConfig`, e.g. `TPS_Weapon_IceGun`, which adds `Avatar_TPS_IceGun_PressAim`, `Avatar_TPS_Ammo_Manager`, `Avatar_TPS_Ammo_Reload` and the rest to the avatar. `recalcStats` sends them with `AbilityChangeNotify`. |
 | Switching | `WearTpsEquipReq` (20756) replaces the avatar's whole TPS list, at most 2 guns and 1 grenade (`CONST_VALUE_TPS_SLOT_WEAR_NUM_LIMIT`). A weapon worn by another avatar moves. Replies `WearTpsEquipRsp` (25902) and broadcasts `TpsEquipChangeNotify` (21312). |
+| Story unlock | Quest 701215's `UNLOCK_TPS_AVATAR` creates the matching TPS traveler as persistent avatar type 1, initially level 20, with the player's TPS loadout (224001 when none exists). Repeating the action preserves equipment and progress. It does not add the character to an ordinary team. The character-page GUID and active TPS dungeon actors share loadout changes. |
+| Glasses chat | `SET_TPS_GLASSES_CHAT_PROGRESS` (134) persists the quest's integer topic progress, including 32/34, and sends a complete native chat snapshot on changes and login. The glasses page can save its native option selections and message progress; locked topics, arbitrary jumps and changes to an already chosen branch are rejected using the installed message/option graph. |
 | TPS traveler | The TPS dungeons (51334, 51336 shooting range, 51341-51345) allow only 10000134/10000135. Entering one swaps the team for the TPS traveler matching the player's traveler, as the level 20 trial avatar 10064/10065, wearing the player's TPS loadout (224001 the first time, `CONST_VALUE_INIT_TPS_WEAPON_ID`). Leaving the dungeon restores the team. Weapons chosen there are kept as the loadout. |
 | TPS traveler abilities | 10000134/10000135 share the travelers' icons, so the icon name alone gave them the normal traveler's abilities. They now load `ConfigAvatar_AetherShadow`/`LumineShadow` (`Avatar_TPS_Innate_Ability` and the rest; a stale `AbilityEmbryos.json` is backfilled). Their depot 50001 has no regular skills, only the attack mode skill 20000 (`Main_AimActive`), which is now in the skill maps. |
 | Ammunition | A reserve per `TpsAmmunitionExcelConfigData` id, shared by the slots it fills (1001 feeds both rifles' slot 101/201), full by default, capped at `tpsAmmoLimit`. `ABILITY_META_UPDATE_TPS_WEAPON_AMMUNITION` (invoke argument 31) applies the client's `ammunition_list` changes. Each weapon's `ammunition_list` reports the reserve per slot. On entering a scene the server sends an empty `TpsRegionalPlaySupplyInfoNotify` (6579) and then `TpsAmmunitionChangeNotify` (24371) with each worn ammunition's reserve, before `EnterSceneDoneRsp`, as a capture shows (`{1001: 1000, 1003: 12, 1005: 3}`). Without 24371 the client's reserves are 0. |
@@ -53,6 +55,31 @@ pool (1001) and the magazine size (45, or 75 with the magazine accessory), and t
 `EBDEAFMADGN` changes a slot by an amount or fills it.
 
 Ammunition traffic is logged at debug level (`TPS ammunition ...`).
+
+## Glasses chat protocol
+
+The matched 7.1 Global client module `JPFHDIAFJAG` dispatches chat data at RVA `0x12BE2510`.
+Its list consumer `0x12BE1D30` clears and replaces the topic dictionary, so CmdId 21361 always
+carries every saved topic. Native parsers/writers recover these fields:
+
+| Message | CmdId | Fields |
+|---|---:|---|
+| `TpsGlassesChatDataNotify` (`ICBBABCKGLO`) | 21361 | `chat_data` message 9; parser `0x8127C10` |
+| `TpsGlassesChatData` (`FPMCAGEOOGI`) | — | topic list 8; parser `0x126B8410`, codec `0x126B8720` |
+| `TpsGlassesChatTopicInfo` (`JOFFJAKCFIJ`) | — | option IDs packed uint32 2; native `KGBBAACLKLB` fixed32 3; native `CPGANAPPFDM` uint32 8; progress 10; topic ID 12; parser `0x82745F0`, writer `0x8274920` |
+| `UpdateTpsGlassesChatReq` (`IBHAFBKGAGL`) | 20783 | native `CPGANAPPFDM` 1; progress 4; topic ID 6; option IDs packed uint32 12; writer `0x811DE40` |
+| `UpdateTpsGlassesChatRsp` (`PHAOBBMLBEA`) | 21937 | retcode 7; parser `0xB902BC0` |
+
+The page's `JKLAADBHIFB.DLLJMBJHNIJ` (`0xE344C70`) appends a selected native option ID and
+advances to that option's explicit next node; automatic messages advance without an option
+(`0xE345E5F`). Closing the page (`0xE34361A`) submits the current progress to both request
+integer fields. The server preserves that wire contract and validates the submitted path against
+`TpsGlassesChatMessageExcelConfigData` / `TpsGlassesChatOptionExcelConfigData`, including their
+parent-choice gates. Server-side persistence and path admission are this implementation; the
+official server code is unavailable. An authoritative quest rewind discards choices at or beyond
+its new node. The two opaque fields retain their native names; no meaning or lifecycle is claimed
+for fixed32 field 3, which new records leave zero. This has protocol and server tests, not a live
+client playthrough.
 
 ## How the protocol was recovered
 
@@ -127,9 +154,18 @@ so it likely comes from a later build.
 - Whether `TpsWeaponAmmunitionInfo.current_ammunition` is the reserve or the loaded magazine. The
   ability config initialises the magazine on the client (`Avatar_TPS_Ammo_Manager`), so the
   server sends the reserve.
-- The TPS traveler is a trial avatar here. Whether the official server grants it as an owned
-  avatar instead is unknown. Outside TPS dungeons any avatar can still wear the weapons, which is
-  handy with `/tps wear` for testing.
+- The official server's TPS creation and progression rules are only partly recovered. The matched
+  7.1 native client confirms its character
+  page requires a type-1 AvatarInfo: `KJGDJADHLPO.PIHAJLJJHPL` (RVA `0xB44E5A0`) calls
+  `HPHFEMPMOJJ.FMPAIHHHAIB` (`0x12A48C80`), which rejects types 2/3. Both AvatarDataNotify and
+  AvatarAddNotify initialize that same data through `HLCKIFHENOB.INKJABMHLBL` (`0x12A172D0`);
+  AvatarInfo field 19 supplies the type. Native ConstValue rows 7013/7014, 7020 and 7030 supply
+  its config ids, initial TPS weapon and initial level. Persistent creation by quest 701215 is an
+  implementation inferred from those requirements and the quest's only character-unlock action;
+  the official server creation function and its complete progression rules have not been recovered.
+  Existing TPS dungeons still use their dedicated trial actors. Ordinary team setup rejects the TPS
+  traveler, consistent with the client's normal-party candidate filter. Ordinary avatars can still
+  wear TPS weapons with `/tps wear` for testing.
 
 A packet capture from the official client would settle all of these.
 

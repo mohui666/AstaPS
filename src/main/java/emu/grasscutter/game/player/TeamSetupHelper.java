@@ -26,6 +26,7 @@ public final class TeamSetupHelper {
         if (list == null
                 || list.isEmpty()
                 || list.size() > tm.getMaxTeamSize()
+                || tm.isQuestPartyLocked()
                 || player.isInMultiplayer()
                 || teamInfo == null) {
             if (teamInfo != null) {
@@ -39,7 +40,8 @@ public final class TeamSetupHelper {
         LinkedHashSet<Avatar> newTeam = new LinkedHashSet<>();
         for (Long guid : list) {
             Avatar avatar = player.getAvatars().getAvatarByGuid(guid.longValue());
-            if (avatar == null || newTeam.contains(avatar)) {
+            if (avatar == null || emu.grasscutter.game.tps.TpsAvatarSystem.isTpsAvatar(avatar)
+                    || newTeam.contains(avatar)) {
                 player.sendPacket(new PacketSetUpAvatarTeamRsp(player, teamId, teamInfo));
                 return;
             }

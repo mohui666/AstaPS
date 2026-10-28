@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+import "TpsGlassesChatData.proto";
+
+// Descriptive name for ICBBABCKGLO, CmdId 21361; native parser RVA 8127C10.
+// JPFHDIAFJAG.IGHPGHBLFKN (12BE1D30) replaces all previously known topics.
+message TpsGlassesChatDataNotify {
+  TpsGlassesChatData chat_data = 9;
+}

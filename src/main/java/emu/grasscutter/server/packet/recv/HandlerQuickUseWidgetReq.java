@@ -24,6 +24,14 @@ public class HandlerQuickUseWidgetReq extends PacketHandler {
         Player pl = session.getPlayer();
         synchronized (pl) {
             int materialId = pl.getWidgetId();
+            if(materialId==220009||materialId==220043){
+                boolean success=materialId==220009
+                        ?emu.grasscutter.game.quest.field.QuestFieldRuntime.useCompass(pl)
+                        :emu.grasscutter.game.quest.field.QuestFieldRuntime.armNet(pl);
+                proto.setMaterialId(materialId).setRetcode(success?0:1);
+                BasePacket rsp=new BasePacket(PacketOpcodes.QuickUseWidgetRsp);rsp.setData(proto);session.send(rsp);
+                return;
+            }
 
             // Repertoire: non-consumable UI widget — open repertoire, do not remove item.
             if (materialId == MusicGameBookSystem.GADGET_ITEM_ID) {

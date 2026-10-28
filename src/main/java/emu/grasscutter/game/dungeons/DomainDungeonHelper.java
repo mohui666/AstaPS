@@ -420,7 +420,9 @@ public final class DomainDungeonHelper {
         // still has to offer the dungeon and the player has to stand at it.
         if (scene.getSceneType() != SceneType.SCENE_WORLD
                 && scene.getSceneType() != SceneType.SCENE_ACTIVITY
-                && scene.getSceneType() != SceneType.SCENE_ROOM) {
+                && scene.getSceneType() != SceneType.SCENE_ROOM
+                && !emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction
+                        .canUsePrivateEntry(player,n,n2)) {
             Grasscutter.getLogger().warn("Blocked dungeon enter uid={} dungeon={} from scene {} ({})", new Object[]{player.getUid(), n2, scene.getId(), scene.getSceneType()});
             return false;
         }

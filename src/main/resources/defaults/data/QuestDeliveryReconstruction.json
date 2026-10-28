@@ -1,0 +1,7 @@
+{
+  "reconstructed": true,
+  "activityId": 5006,
+  "durationSeconds": 180,
+  "note": "AstaPS legacy delivery reconstruction: original Actor/Quest/EQ411xx Lua timers are unavailable. Fixed server 180-second real-time deadline and a nearby abandon worktop; motion/hurt prohibitions use each original watcher list. Original ability-state watcher engine is not restored.",
+  "quests": [4112102,4114102,4114202,4114302,4114402,4114502,4114602,4114702,4114802,4114902,4115002,4115102,4115202,4115302,4115402,4115502,4115602,4115702,4115802,4115902,4116002]
+}

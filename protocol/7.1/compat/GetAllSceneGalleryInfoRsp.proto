@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+import "SceneGalleryInfo.proto";
+
+// 7.1 PFINFBHOJAP, CmdId 9640; native parser at RVA B8FE510.
+message GetAllSceneGalleryInfoRsp {
+  repeated SceneGalleryInfo gallery_info_list = 1;
+  int32 retcode = 3;
+}

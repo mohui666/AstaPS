@@ -21,6 +21,14 @@ public final class PacketItemGivingRsp extends BasePacket {
         this.setData(packet);
     }
 
+    public PacketItemGivingRsp(int givingId, int groupId, boolean success) {
+        super(PacketOpcodes.ItemGivingRsp);
+        this.setData(ItemGivingRsp.newBuilder()
+                .setGivingId(givingId)
+                .setGivingGroupId(groupId)
+                .setRetcode(success ? 0 : 1));
+    }
+
     public enum Mode {
         GROUP_SUCCESS,
         EXACT_SUCCESS,

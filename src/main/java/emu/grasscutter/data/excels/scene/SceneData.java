@@ -17,5 +17,6 @@ public final class SceneData extends GameResource {
 
     private String scriptData;
     private String levelEntityConfig;
+    private String mpType;
     private List<Integer> specifiedAvatarList;
 }

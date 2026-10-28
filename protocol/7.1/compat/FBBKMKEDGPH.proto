@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// Optional native rename audit data; semantics remain opaque. 7.1 parser A264F50.
+message FBBKMKEDGPH {
+  uint32 HBMEFMAMOPB = 1;
+  fixed32 KHNCOKFKFFL = 2;
+}

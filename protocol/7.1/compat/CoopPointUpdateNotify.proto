@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "CoopPoint.proto";
+
+// HFBICBIFCGA, CmdId 6448. Parser RVA 1111A0E0.
+message CoopPointUpdateNotify {
+  CoopPoint coop_point = 13;
+}

@@ -34,6 +34,7 @@ public class ExecRefreshGroupSuite extends QuestExecHandler {
         if (scene == null) return false;
         var scripts = scene.getScriptManager();
         var dispatchedState = quest.getState();
+        boolean worldQuestFlow = condition.getType() == emu.grasscutter.game.quest.enums.QuestExec.QUEST_EXEC_REFRESH_WORLD_QUEST_FLOW_GROUP_SUITE;
 
         if (!scripts.isInit()) {
             scripts.whenInitialized(ready -> {
@@ -50,13 +51,13 @@ public class ExecRefreshGroupSuite extends QuestExecHandler {
                                     && quest.getOwner().getWorld() == world
                                     && world.getScenes().get(sceneId) == scene
                                     && !scripts.isDestroyed()) {
-                                apply(quest, params, sceneId, scene);
+                                apply(quest, params, sceneId, scene,worldQuestFlow);
                             }
                         }, 1);
             });
             return true;
         }
-        return apply(quest, params, sceneId, scene);
+        return apply(quest, params, sceneId, scene,worldQuestFlow);
     }
 
     /** Keep a group visible only while a successful quest suite override owns it. */
@@ -86,7 +87,7 @@ public class ExecRefreshGroupSuite extends QuestExecHandler {
 
     private boolean apply(
             GameQuest quest, String[] params, int sceneId,
-            emu.grasscutter.game.world.Scene scene) {
+            emu.grasscutter.game.world.Scene scene, boolean worldQuestFlow) {
         var scripts = scene.getScriptManager();
         if (!scripts.isInit() || scripts.isDestroyed()) return false;
         boolean complete = true;
@@ -122,7 +123,7 @@ public class ExecRefreshGroupSuite extends QuestExecHandler {
             }
             boolean applied = refreshWithVisibilityPin(
                     group, suiteId,
-                    () -> scripts.refreshGroupSuite(groupId, suiteId, quest),
+                    () -> scripts.refreshGroupSuite(groupId, suiteId, quest,worldQuestFlow),
                     () -> quest.getOwner().getQuestManager().getSceneGroupSuite(sceneId).stream()
                             .anyMatch(saved -> saved.getGroup() == groupId));
             if (!applied) {

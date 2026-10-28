@@ -77,6 +77,14 @@ public class Scene {
     @Getter @Setter private boolean dontDestroyWhenEmpty;
     @Getter private final SceneScriptManager scriptManager;
     @Getter @Setter private WorldChallenge challenge;
+    @Getter private final emu.grasscutter.scripts.ScriptGalleryManager scriptGalleries =
+            new emu.grasscutter.scripts.ScriptGalleryManager(this);
+    @Getter private final emu.grasscutter.scripts.ScriptVisionManager scriptVision =
+            new emu.grasscutter.scripts.ScriptVisionManager(this);
+    @Getter private final emu.grasscutter.scripts.ScriptEyePointManager scriptEyePoints =
+            new emu.grasscutter.scripts.ScriptEyePointManager(this);
+    @Getter private final emu.grasscutter.scripts.ScriptCameraLookManager scriptCameraLook =
+            new emu.grasscutter.scripts.ScriptCameraLookManager(this);
     @Getter private List<DungeonSettleListener> dungeonSettleListeners;
     @Getter @Setter private int prevScene;
     @Getter @Setter private int prevScenePoint;
@@ -183,6 +191,8 @@ public class Scene {
     }
 
     @Nullable public Route getSceneRouteById(int routeId) {
+        var reconstructed = emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.route(this,routeId);
+        if (reconstructed != null) return reconstructed;
         return sceneRoutes.get(routeId);
     }
 
@@ -248,7 +258,12 @@ public class Scene {
     }
 
     public synchronized void removePlayer(Player player) {
+        emu.grasscutter.game.quest.war.ReconstructedWarRuntime.capture(player);
+        emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.capture(player);
         PvpDuels.onPlayerLeave(player);
+        this.scriptGalleries.onPlayerLeave(player);
+        this.scriptVision.onPlayerLeave(player);
+        this.scriptEyePoints.removePlayer(player.getUid());
 
         if (this.getChallenge() != null && this.getChallenge().inProgress()) {
             player.sendPacket(new PacketDungeonChallengeFinishNotify(this.getChallenge()));
@@ -279,12 +294,12 @@ public class Scene {
     }
 
     private void setupPlayerAvatars(Player player) {
-
+        player.getTeamManager().prepareQuestPartyActors();
         player.getTeamManager().getActiveTeam().clear();
 
         TeamInfo teamInfo = player.getTeamManager().getCurrentTeamInfo();
         for (int avatarId : teamInfo.getAvatars()) {
-            Avatar avatar = player.getAvatars().getAvatarById(avatarId);
+            Avatar avatar = player.getTeamManager().getActivePartyAvatar(avatarId);
             if (avatar == null) {
                 if (player.getTeamManager().isUsingTrialTeam()) {
                     avatar = player.getTeamManager().getTrialAvatars().get(avatarId);
@@ -342,6 +357,9 @@ public class Scene {
     private void addEntityDirectly(GameEntity entity) {
         getEntities().put(entity.getId(), entity);
         if (blossomManager != null) blossomManager.onSceneEntityCreated(entity);
+        emu.grasscutter.scripts.SceneFlowEntities.onEntityCreated(entity);
+        emu.grasscutter.game.quest.war.ReconstructedWarRuntime.onEntityCreated(entity);
+        emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.onEntityCreated(entity);
         entity.onCreate();
     }
 
@@ -483,13 +501,18 @@ public class Scene {
     }
 
     public void handleAttack(AttackResult result) {
-        if (PvpDuels.handleAttack(this, result)) return;
         // Remap OSREL defenseId + clamp ore/breakable damage (multi-hit HP).
         try {
             result = emu.grasscutter.game.entity.gadget.OreMiningHelper.fixAttackResult(this, result);
         } catch (Throwable ignored) {
         }
         GameEntity target = getEntityById(result.getDefenseId());
+        var visionAttacker = getEntityById(result.getAttackerId());
+        if (visionAttacker instanceof EntityAvatar avatar && !scriptVision.canSee(avatar.getPlayer(), target)) return;
+        if (visionAttacker instanceof EntityClientGadget gadget && !scriptVision.canSee(gadget.getOwner(), target)) return;
+        if (target instanceof EntityAvatar avatar && visionAttacker != null
+                && !scriptVision.canSee(avatar.getPlayer(), visionAttacker)) return;
+        if (PvpDuels.handleAttack(this, result)) return;
         ElementType attackType = ElementType.getTypeByValue(result.getElementType());
 
         if (target == null) {
@@ -839,6 +862,7 @@ public class Scene {
         if (challenge != null) {
             challenge.onCheckTimeOut();
         }
+        this.scriptGalleries.onTick();
 
         var sceneTime = getSceneTimeSeconds();
 
@@ -1192,13 +1216,13 @@ public class Scene {
 
         return SceneIndexManager.queryNeighbors(
                 getScriptManager().getBlocksIndex(),
-                player.getPosition().toXZDoubleArray(),
+                scriptEyePoints.viewPosition(player).toXZDoubleArray(),
                 Grasscutter.getConfig().server.game.loadEntitiesForPlayerRange);
     }
 
     public Set<Integer> getPlayerActiveGroups(Player player) {
 
-        Position playerPosition = player.getPosition();
+        Position playerPosition = scriptEyePoints.viewPosition(player);
         Set<Integer> activeGroups = new HashSet<>();
         for (int i = 0; i < 4; i++) {
             Grid grid = getScriptManager().getGroupGrids().get(i);
@@ -1505,7 +1529,7 @@ public class Scene {
 
         for (var player : this.getPlayers()) {
             if (player != owner) {
-                player.getSession().send(new PacketSceneEntityAppearNotify(gadget));
+                player.sendPacket(new PacketSceneEntityAppearNotify(gadget));
             }
         }
     }
@@ -1532,7 +1556,7 @@ public class Scene {
     public void broadcastPacket(BasePacket packet) {
 
         for (Player player : this.getPlayers()) {
-            player.getSession().send(packet);
+            player.sendPacket(packet);
         }
     }
 
@@ -1547,7 +1571,7 @@ public class Scene {
                 continue;
             }
 
-            player.getSession().send(packet);
+            player.sendPacket(packet);
         }
     }
 
@@ -1604,6 +1628,7 @@ public class Scene {
                 i -> {
                     var groupInstance = scriptManager.getGroupInstanceById(i.getGroupId());
                     if (groupInstance != null) {
+                        if (!scriptVision.canSeeType(player,groupInstance.getLuaGroup().vision_type)) return;
                         if (i.getSuiteIdList() != null
                                 && !i.getSuiteIdList()
                                         .contains(groupInstance.getActiveSuiteId())) {
@@ -1679,5 +1704,6 @@ public class Scene {
     public void saveGroups() {
         emu.grasscutter.game.dailytask.DailyTaskGroupLifecycle.captureAll(this);
         this.getScriptManager().getCachedGroupInstances().values().forEach(SceneGroupInstance::save);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.capture(this);
     }
 }

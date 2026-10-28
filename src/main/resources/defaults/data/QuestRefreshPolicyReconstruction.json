@@ -1,0 +1,15 @@
+{
+  "reconstructed": true,
+  "notice": "AstaPS custom rule for exactly these nine missing-policy goals: pass at the next server 04:00 day boundary after the real Unix timer was started. Original policy IDs remain unchanged; no official schedule for these missing rows is claimed.",
+  "quests": [
+    { "questId": 7604603, "policyId": 990210, "timerParent": 76046, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7621501, "policyId": 200004, "timerParent": 76202, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7621601, "policyId": 200004, "timerParent": 76203, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7621701, "policyId": 200004, "timerParent": 76204, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7765905, "policyId": 200005, "timerParent": 77659, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7766005, "policyId": 200005, "timerParent": 77660, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7766105, "policyId": 200005, "timerParent": 77661, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7766205, "policyId": 200005, "timerParent": 77662, "timerIndex": 1, "serverDays": 1 },
+    { "questId": 7766305, "policyId": 200005, "timerParent": 77663, "timerIndex": 1, "serverDays": 1 }
+  ]
+}

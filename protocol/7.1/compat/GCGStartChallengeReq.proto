@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// FHMHHFNMJKN, CmdId 27000. Writer RVA 7FBE290.
+// Sent by LEJNNHDEGKK::FLHEAEJOCOE (782BB60).
+message GCGStartChallengeReq {
+  uint32 level_id = 3;
+  uint32 config_id = 7;
+  // Native DJIKODCDLAD enum; keep its numeric wire value for failure responses.
+  uint32 level_type = 13;
+}

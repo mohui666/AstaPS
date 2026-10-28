@@ -3,6 +3,12 @@ package emu.grasscutter.net.packet;
 import java.util.HashSet;
 
 public final class PacketOpcodes {
+    // Native 7.1 evidence module sender/receiver and registry identities, statically cross-checked.
+    public static final int QuestEventsDataNotify = 956;
+    public static final int UnlockQuestEventsItemReq = 22705;
+    public static final int UnlockQuestEventsItemRsp = 5731;
+    public static final int SubmitQuestEventsGivingReq = 9795;
+    public static final int SubmitQuestEventsGivingRsp = 7734;
     // ============================================
     // 为了向后兼容而添加的占位符常量 (7.0.0 升级；7.1.0 能对上的已填入)
     // 这些 opcode 在新版本中已被移除，但为了保持代码兼容性
@@ -15,7 +21,7 @@ public final class PacketOpcodes {
     public static final int AskAddFriendReq = 3092;
     public static final int BuyBattlePassLevelReq = 20941;
     public static final int BuyResinReq = 0;
-    public static final int CancelCoopTaskReq = 27925;
+    public static final int CancelCoopTaskReq = 27867;
     public static final int CheckUgcStateReq = 3955;
     public static final int CheckUgcUpdateReq = 0;
     public static final int DeleteFriendReq = 3037;
@@ -130,6 +136,8 @@ public final class PacketOpcodes {
     public static final int RegionSearchChangeRegionNotify = 6509;
     // public static final int EHILNPOJOEJ = 6994;
     public static final int _SceneMpUnlockNotify = 9135;
+    public static final int SceneVarListNotify = 1292; // 7.1 IJBLCEIIDAI, scene-variable snapshot.
+    public static final int SceneVarUpdateNotify = 29407; // 7.1 KJKHLLHNNPA, absolute value updates.
     // public static final int EKADHMJOIJB = 9997;
     public static final int GetCityHuntingOfferRsp = 6204;
     public static final int AddBlacklistReq = 0; // 7.1 CmdId unknown (7.0: 525)
@@ -433,7 +441,10 @@ public final class PacketOpcodes {
     public static final int QueryPathRsp = 2343;
     // public static final int LIHIGCOLGPG = 2393;
     public static final int QueryPathReq = 2328;
-    // public static final int GCGPVEStartGameReq = 21511;
+    public static final int GCGPVEStartGameReq = 21511;
+    public static final int GCGPVEStartGameRsp = 3903;
+    public static final int GCGStartChallengeReq = 27000;
+    public static final int GCGStartChallengeByCheckRewardReq = 3010;
     public static final int ShowMessageNotify = 8397;
     public static final int _DungeonTeamBuilderOperationReq = 27804;
     // public static final int PPPAJBNFBOO = 27174;
@@ -2662,6 +2673,8 @@ public final class PacketOpcodes {
     // public static final int HOJOHIGBKFB = 27532;
     public static final int _GetBeyondPlayerDetailRsp = 4162;
     public static final int _MiscRenameDataNotify = 7064;
+    public static final int ItemRenameMiscReq = 8564;
+    public static final int ItemRenameMiscRsp = 22894;
     public static final int AbilityInvocationFixedNotify = 29071;
     public static final int HomeAvatarTalkReq = 22008;
     public static final int ReliquaryUpgradeRsp = 25149;
@@ -2969,7 +2982,7 @@ public final class PacketOpcodes {
     public static final int AddCustomTeamRsp = 0; // 7.1 CmdId unknown (7.0: 1)
     public static final int AskAddFriendNotify = 5093; // 7.1 CmdId from kitkat-multiverse/genshin-protocol 7.1.0
     public static final int BuyBattlePassLevelRsp = 23240; // 7.1 CmdId unknown (7.0: 1)
-    public static final int CancelCoopTaskRsp = 26816; // 7.1 CmdId unknown (7.0: 1)
+    public static final int CancelCoopTaskRsp = 20629;
     public static final int CheckUgcStateRsp = 7329; // 7.1 CmdId unknown (7.0: 1)
     public static final int CloseCommonTipsNotify = 27695; // 7.1 CmdId unknown (7.0: 1)
     public static final int CustomTeamListNotify = 0; // 7.1 CmdId unknown (7.0: 1)
@@ -3069,7 +3082,20 @@ public final class PacketOpcodes {
     public static final int MusicGameBookAllDataNotify = 8786; // 7.1 packet of the same name
     public static final int Opcode6231 = -1012; // no 7.1 CmdId known
     public static final int PlayerOfferingReq = 4465; // 7.1 CmdId from kitkat-multiverse/genshin-protocol 7.1.0
-    public static final int SetCoopChapterViewedRsp = -1014; // no 7.1 CmdId known
+    public static final int SetCoopChapterViewedRsp = 1880;
+    // Recovered from the matching 7.1 hangout and quest-check senders/consumers.
+    public static final int SetCoopChapterViewedReq = 3900;
+    public static final int UnlockCoopChapterReq = 24676;
+    public static final int UnlockCoopChapterRsp = 3644;
+    public static final int FinishMainCoopReq = 25618;
+    public static final int FinishMainCoopRsp = 20224;
+    public static final int TakeCoopRewardReq = 4473;
+    public static final int TakeCoopRewardRsp = 21193;
+    public static final int MainCoopUpdateNotify = 4641;
+    public static final int CoopInteractionReq = 7504;
+    public static final int CoopInteractionRsp = 24547;
+    public static final int QuestCheckReq = 25324;
+    public static final int QuestCheckRsp = 23568;
     public static final int SetReliquaryStarStateReq = 5672; // 7.1 packet of the same name
     public static final int SetReliquaryStarStateRsp = 7536; // 7.1 packet of the same name
     public static final int ShowLoadingScreenNotify = 27335; // 7.1 packet of the same name

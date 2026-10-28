@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "reconstructed": true,
+  "rule": "AstaPS authored lifecycle: an owned nearby scenery worktop opens or pauses an already accepted linked story; resuming restarts only actual quests failed by that pause. Native ACTIVATE_SCENERY keeps its exact sub ID. Scenery ends only after every listed original terminal quest really finished. Native group/suite pairs are retained; missing group Lua is explicitly reconstructed. The native MBEHHFOAPCA list is explicitly used here to hide conflicting event tags; this usage is an authored rule, not a recovered official server implementation. Unknown LLIMEMMPDKE/PDAAABHDLHN semantics are not guessed.",
+  "nativeStateEvidence": "7.1 metadata defaults: fields 134460..134463, records at 0x3D5B048, data indexes 407452/407456/407460/407464, data base 0xF1775C yield None=0/Pausing=1/Running=2/Finish=3. Cross-checked against QuestCond 0..15 and QuestState 0..4. Client A5D84C0 compares 1->2 to resume.",
+  "primaries": [
+    { "id": 101001, "label": "在云间／白马闲游记", "completionQuests": [4022408, 7116216] },
+    { "id": 101002, "label": "若我们再次相见", "completionQuests": [4024713] }
+  ],
+  "runningSceneGateRule": "For these four explicit entry nodes, the reconstructed open worktop's Running state is insufficient: the player must also have actually loaded the original target scene. This authored constraint prevents the exported LOGIC_NONE/OR from treating an enabled world overlay as a completed dungeon or room transition.",
+  "runningSceneGates": [[4024405,20358],[4024506,1160],[4024533,1160],[4024603,20359]],
+  "groupScenes": [[133107292,3],[133107304,3],[133107293,3],[133107320,3],[133402906,3],[133401841,3],[201085018,1085],[133401848,3],[133401849,3]]
+}

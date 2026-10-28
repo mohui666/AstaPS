@@ -98,7 +98,8 @@ public class AbilityMixinData implements Serializable {
         // modifier. Missing here too, so GSON nulled them the same way.
         CheckSubTagScanEntityMixin,
         SubTagScanEntityMixin,
-        StageReadyMixin
+        StageReadyMixin,
+        ResistClimateMixin
     }
     public AbilityModifierAction[] idontknowwhattonamethis;
     public AbilityModifierAction[] idontknowwhattonamethis2;
@@ -193,6 +194,11 @@ public class AbilityMixinData implements Serializable {
     public boolean frigidOnly;
     public DynamicFloat costStaminaDelta = DynamicFloat.ZERO;
     public DynamicFloat ratio = DynamicFloat.ONE;
+    /** Native ResistClimateMixin filters; type is the avatar stage, not its $type. */
+    public List<String> climateTypes = new ArrayList<>();
+    @SerializedName("type") public String climateAvatarStage;
+    @SerializedName(value = "sourceType", alternate = "OADOKOIOBDH") public String climateSource;
+    @SerializedName("trend") public String climateTrend;
     /** ChangeNyxValueMixin's Nightsoul delta. Other mixins reuse the key for state IDs and flags. */
     public DynamicFloat value = DynamicFloat.ZERO;
     public DynamicFloat detectWindow = DynamicFloat.ONE;

@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "FBBKMKEDGPH.proto";
+
+// 7.1 LHKHKOANGBG, CmdId 5408. Unknown optional review fields retain their native names.
+message ItemRenameAvatarRsp {
+  uint32 rename_id = 2;
+  FBBKMKEDGPH PLDMEKAFKCJ = 3;
+  int32 retcode = 8;
+  uint32 KHNCOKFKFFL = 15;
+}

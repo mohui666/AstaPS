@@ -10,6 +10,7 @@ public abstract class SceneObject {
     public int config_id;
     public int area_id;
     public int vision_level = 0;
+    public java.util.List<String> logic_state = java.util.List.of();
 
     public Position pos;
     public Position rot;

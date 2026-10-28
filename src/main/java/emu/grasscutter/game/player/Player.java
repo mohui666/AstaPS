@@ -201,6 +201,53 @@ public class Player implements PlayerHook, FieldFetch {
     @Getter private transient MailHandler mailHandler;
     @Getter private transient AbilityManager abilityManager;
     @Getter private transient QuestManager questManager;
+    @Getter private emu.grasscutter.game.quest.evidence.QuestEvidenceState questEvidence =
+            new emu.grasscutter.game.quest.evidence.QuestEvidenceState();
+    @Getter private emu.grasscutter.game.quest.rename.QuestAvatarRenameState questAvatarRenames =
+            new emu.grasscutter.game.quest.rename.QuestAvatarRenameState();
+    @Getter private emu.grasscutter.game.tps.TpsGlassesChatState tpsGlassesChat =
+            new emu.grasscutter.game.tps.TpsGlassesChatState();
+    @Getter @Setter private emu.grasscutter.game.quest.QuestFreeMoonPhaseState questFreeMoonPhase =
+            new emu.grasscutter.game.quest.QuestFreeMoonPhaseState();
+    @Getter @Setter private emu.grasscutter.game.quest.coop.CoopState hangouts =
+            new emu.grasscutter.game.quest.coop.CoopState();
+    @Getter @Setter private emu.grasscutter.game.quest.check.QuestCheckState questCheckState =
+            new emu.grasscutter.game.quest.check.QuestCheckState();
+    @Getter @Setter private emu.grasscutter.game.gcg.story.StoryCardState storyCards =
+            new emu.grasscutter.game.gcg.story.StoryCardState();
+    @Getter @Setter private emu.grasscutter.game.quest.rename.QuestMiscRenameState questMiscRenames =
+            new emu.grasscutter.game.quest.rename.QuestMiscRenameState();
+    @Getter @Setter private emu.grasscutter.game.quest.comedy.ComedyVoucherState comedyVouchers =
+            new emu.grasscutter.game.quest.comedy.ComedyVoucherState();
+    @Getter @Setter private emu.grasscutter.game.quest.reconstruction.QuestActivityState questActivityState =
+            new emu.grasscutter.game.quest.reconstruction.QuestActivityState();
+    @Getter private emu.grasscutter.game.quest.world.QuestSceneMechanicsState questSceneMechanics =
+            new emu.grasscutter.game.quest.world.QuestSceneMechanicsState();
+    @Getter private emu.grasscutter.game.quest.scenery.QuestSceneryState scenery =
+            new emu.grasscutter.game.quest.scenery.QuestSceneryState();
+    @Getter private emu.grasscutter.game.quest.field.QuestFieldState fieldGames =
+            new emu.grasscutter.game.quest.field.QuestFieldState();
+    @Getter private emu.grasscutter.game.quest.delivery.QuestDeliveryState questDeliveryState =
+            new emu.grasscutter.game.quest.delivery.QuestDeliveryState();
+    @Getter @Setter private emu.grasscutter.game.quest.reconstruction.LegacyChannellerSlabCollection legacyChannellerSlabCollection =
+            new emu.grasscutter.game.quest.reconstruction.LegacyChannellerSlabCollection();
+    @Getter private emu.grasscutter.game.train.TrainFigureState trainFigures =
+            new emu.grasscutter.game.train.TrainFigureState();
+    @Getter private emu.grasscutter.game.quest.reconstruction.StoryReconstructionState storyReconstruction =
+            new emu.grasscutter.game.quest.reconstruction.StoryReconstructionState();
+    @Getter private emu.grasscutter.game.quest.aranara.AranaraCollectionState aranaraCollection =
+            new emu.grasscutter.game.quest.aranara.AranaraCollectionState();
+    @Getter private emu.grasscutter.game.quest.war.QuestWarState questWar =
+            new emu.grasscutter.game.quest.war.QuestWarState();
+    private Set<Integer> questSceneLevelTags = new HashSet<>();
+    private Map<Integer, Integer> questWeatherAreas = new HashMap<>();
+    @Transient @Getter @Setter private int managedQuestWeatherArea = -1;
+    @Getter private emu.grasscutter.game.quest.deathzone.DeathZoneState deathZones =
+            new emu.grasscutter.game.quest.deathzone.DeathZoneState();
+    private emu.grasscutter.game.quest.world.QuestSceneOverrides questSceneOverrides =
+            new emu.grasscutter.game.quest.world.QuestSceneOverrides();
+    @Getter private emu.grasscutter.game.quest.persistent.QuestPersistentDungeonState persistentDungeons =
+            new emu.grasscutter.game.quest.persistent.QuestPersistentDungeonState();
     @Getter private transient TowerManager towerManager;
     @Getter private transient SotSManager sotsManager;
     @Getter private transient MapMarksManager mapMarksManager;
@@ -650,11 +697,7 @@ public class Player implements PlayerHook, FieldFetch {
     }
 
     public boolean isScenePointForceLocked(int sceneId, int pointId) {
-        if (this.forceLockedScenePoints == null) {
-            return false;
-        }
-        var locked = this.forceLockedScenePoints.get(sceneId);
-        return locked != null && locked.contains(pointId);
+        return emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.isPointLocked(this, sceneId, pointId);
     }
 
     public int getLevel() {
@@ -1206,7 +1249,7 @@ public class Player implements PlayerHook, FieldFetch {
     public void interactWith(int gadgetEntityId, GadgetInteractReq interactReq) {
         GameEntity target = getScene().getEntityById(gadgetEntityId);
 
-        if (target == null) {
+        if (target == null || !getScene().getScriptVision().canSee(this, target)) {
             return;
         }
 
@@ -1232,6 +1275,8 @@ public class Player implements PlayerHook, FieldFetch {
     }
 
     public void sendPacket(BasePacket packet) {
+        if (getScene() != null) packet = getScene().getScriptVision().filterPacket(this, packet);
+        if (packet == null) return;
         this.getSession().send(packet);
     }
 
@@ -1496,6 +1541,18 @@ public class Player implements PlayerHook, FieldFetch {
         this.getHome().updateHourlyResources(this);
 
         this.getQuestManager().onTick();
+        emu.grasscutter.game.quest.QuestWeatherAreas.update(this, false);
+        emu.grasscutter.game.quest.QuestClimateAreas.update(this, false);
+        emu.grasscutter.game.quest.QuestFreeMoonPhase.onTick(this);
+        emu.grasscutter.game.quest.coop.CoopProgression.onTick(this);
+        emu.grasscutter.game.gcg.story.StoryCardRuntime.onTick(this);
+        emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.onTick(this);
+        emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.onTick(this);
+        emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.onTick(this);
+        emu.grasscutter.game.quest.field.QuestFieldRuntime.onTick(this);
+        emu.grasscutter.game.quest.war.ReconstructedWarRuntime.onTick(this);
+        emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.onTick(this);
+        emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onTick(this);
         this.getActivityManager().onTick();
     }
 
@@ -1537,9 +1594,47 @@ public class Player implements PlayerHook, FieldFetch {
 
     @PostLoad
     private void onLoad() {
+        if (questEvidence == null) questEvidence = new emu.grasscutter.game.quest.evidence.QuestEvidenceState();
+        if (questFreeMoonPhase == null) questFreeMoonPhase = new emu.grasscutter.game.quest.QuestFreeMoonPhaseState();
+        if (hangouts == null) hangouts = new emu.grasscutter.game.quest.coop.CoopState();
+        if (questCheckState == null) questCheckState = new emu.grasscutter.game.quest.check.QuestCheckState();
+        if (storyCards == null) storyCards = new emu.grasscutter.game.gcg.story.StoryCardState();
+        if (questMiscRenames == null) questMiscRenames = new emu.grasscutter.game.quest.rename.QuestMiscRenameState();
+        if (comedyVouchers == null) comedyVouchers = new emu.grasscutter.game.quest.comedy.ComedyVoucherState();
+        if (questActivityState == null) questActivityState = new emu.grasscutter.game.quest.reconstruction.QuestActivityState();
+        if (questSceneMechanics == null) questSceneMechanics = new emu.grasscutter.game.quest.world.QuestSceneMechanicsState();
+        if (scenery == null) scenery = new emu.grasscutter.game.quest.scenery.QuestSceneryState();
+        if (fieldGames == null) fieldGames = new emu.grasscutter.game.quest.field.QuestFieldState();
+        if (questDeliveryState == null) questDeliveryState = new emu.grasscutter.game.quest.delivery.QuestDeliveryState();
+        if (questAvatarRenames == null) questAvatarRenames = new emu.grasscutter.game.quest.rename.QuestAvatarRenameState();
+        if (tpsGlassesChat == null) tpsGlassesChat = new emu.grasscutter.game.tps.TpsGlassesChatState();
+        if (trainFigures == null) trainFigures = new emu.grasscutter.game.train.TrainFigureState();
+        if (storyReconstruction == null)
+            storyReconstruction = new emu.grasscutter.game.quest.reconstruction.StoryReconstructionState();
+        if (aranaraCollection == null) aranaraCollection = new emu.grasscutter.game.quest.aranara.AranaraCollectionState();
+        if (questWar == null) questWar = new emu.grasscutter.game.quest.war.QuestWarState();
+        if (deathZones == null) deathZones = new emu.grasscutter.game.quest.deathzone.DeathZoneState();
+        if (persistentDungeons == null)
+            persistentDungeons = new emu.grasscutter.game.quest.persistent.QuestPersistentDungeonState();
         this.getCodex().setPlayer(this);
         this.getProgressManager().setPlayer(this);
         this.getTeamManager().setPlayer(this);
+    }
+
+    public Set<Integer> getQuestSceneLevelTags() {
+        if (questSceneLevelTags == null) questSceneLevelTags = new HashSet<>();
+        return questSceneLevelTags;
+    }
+
+    public Map<Integer, Integer> getQuestWeatherAreas() {
+        if (questWeatherAreas == null) questWeatherAreas = new HashMap<>();
+        return questWeatherAreas;
+    }
+
+    public emu.grasscutter.game.quest.world.QuestSceneOverrides getQuestSceneOverrides() {
+        if (questSceneOverrides == null)
+            questSceneOverrides = new emu.grasscutter.game.quest.world.QuestSceneOverrides();
+        return questSceneOverrides;
     }
 
     public List<Integer> getTpsLoadout() {
@@ -1660,7 +1755,8 @@ public class Player implements PlayerHook, FieldFetch {
         // the world is what fires ENTER_MY_WORLD and lets the quest's own fail/rollback execs
         // restart the segment, so send the player back to where they walked in from.
         savedScene = GameData.getSceneDataMap().get(this.getSceneId());
-        if (savedScene != null && savedScene.getSceneType() == SceneType.SCENE_DUNGEON) {
+        if (savedScene != null && savedScene.getSceneType() == SceneType.SCENE_DUNGEON
+                && !emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.canRestoreLogin(this)) {
             var originScene = this.prevSceneForDungeon > 0 ? this.prevSceneForDungeon : 3;
             var originPos = this.getPrevPosForDungeon();
             this.setSceneId(originScene);
@@ -1672,6 +1768,7 @@ public class Player implements PlayerHook, FieldFetch {
 
         World world = new World(this);
         world.addPlayer(this);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.restoreLogin(this);
 
         this.setProperty(PlayerProperty.PROP_PLAYER_MP_SETTING_TYPE, this.getMpSetting().getNumber(), false);
         this.setProperty(PlayerProperty.PROP_IS_MP_MODE_AVAILABLE, 1, false);
@@ -1679,11 +1776,19 @@ public class Player implements PlayerHook, FieldFetch {
         this.doDailyReset();
 
         getQuestManager().onLogin();
+        emu.grasscutter.game.quest.evidence.QuestEvidenceService.onLogin(this);
 
         session.send(new PacketPlayerDataNotify(this));
         session.send(new PacketStoreWeightLimitNotify());
+        emu.grasscutter.game.tps.TpsAccessorySystem.refreshOwnedAccessories(this);
         session.send(new PacketPlayerStoreNotify(this));
         session.send(new PacketAvatarDataNotify(this));
+        emu.grasscutter.game.quest.rename.QuestAvatarRenameService.onLogin(this);
+        emu.grasscutter.game.quest.rename.QuestMiscRenameService.onLogin(this);
+        emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.onLogin(this);
+        emu.grasscutter.game.quest.field.QuestFieldRuntime.onLogin(this);
+        emu.grasscutter.game.quest.aranara.AranaraCollectionRuntime.onLogin(this);
+        emu.grasscutter.game.tps.TpsGlassesChatSystem.onLogin(this);
         session.send(new PacketCraftingAvatarDataNotify());
         session.send(new PacketAvatarWeaponSkinDataNotify(this));
         // 登录时下发头像/头像框数据：否则重登后个人主页的头像框会显示成"?"，要重新应用一次才恢复。
@@ -1764,6 +1869,12 @@ public class Player implements PlayerHook, FieldFetch {
 
     public void onLogout() {
         try {
+            emu.grasscutter.game.gcg.story.StoryCardRuntime.onLogout(this);
+            emu.grasscutter.game.quest.coop.CoopProgression.onLogout(this);
+            emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.onLogout(this);
+            emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.onLogout(this);
+            emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.onLogout(this);
+            emu.grasscutter.game.quest.field.QuestFieldRuntime.onLogout(this);
 
             this.getServer().getChatSystem().clearHistoryOnLogout(this);
 

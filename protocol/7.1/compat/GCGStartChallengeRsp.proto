@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// HHELDMBDBHN, CmdId 24456. Parser RVA 10578960.
+// LEJNNHDEGKK::BBDHOHFAKFF (7830CD0) handles a nonzero retcode as an error.
+message GCGStartChallengeRsp {
+  uint32 config_id = 8;
+  int32 retcode = 9;
+  uint32 level_type = 10;
+  uint32 level_id = 14;
+}

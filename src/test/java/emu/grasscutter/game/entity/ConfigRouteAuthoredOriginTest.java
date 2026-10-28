@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Native configured index/time origin contract, not a rendered-motion or receipt-time oracle. */
 class ConfigRouteAuthoredOriginTest {
@@ -69,6 +70,8 @@ class ConfigRouteAuthoredOriginTest {
             ConfigRouteDeadlineTest.field(gadget, "rotation", new Position());
             ConfigRouteDeadlineTest.field(gadget, "bornPos", new Position(spawn));
             ConfigRouteDeadlineTest.field(gadget, "bornRot", new Position());
+            // Match GameEntity's initializer when the real EntityGadget serializer is exercised.
+            ConfigRouteDeadlineTest.field(gadget, "globalAbilityValues", new ConcurrentHashMap<String, Float>());
             ConfigRouteDeadlineTest.field(gadget, "extraGlobalValues", new LinkedHashMap<>());
             gadget.setId(8388703);
             gadget.setGroupId(133003174);

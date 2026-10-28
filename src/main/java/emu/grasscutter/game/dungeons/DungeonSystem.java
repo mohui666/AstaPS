@@ -132,6 +132,14 @@ public final class DungeonSystem extends BaseGameSystem {
         }
 
         if (savePrevious) scene.setPrevScenePoint(pointId);
+        emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.applyDungeonExitOverride(player, dungeonId);
+        if (savePrevious && origin != null
+                && emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.isCalibertPrivateOrigin(
+                        data, origin.getId(), pointId)) {
+            scene.setPrevScene(origin.getId());
+            scene.setPrevScenePoint(pointId);
+        }
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.onEntered(scene);
         return true;
     }
 
@@ -177,6 +185,10 @@ public final class DungeonSystem extends BaseGameSystem {
             return;
         }
 
+        var questDungeon = scene.getDungeonManager();
+        if (questDungeon != null)
+            emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.applyDungeonExitOverride(
+                    player, questDungeon.getDungeonData().getId());
         // Get previous scene
         int prevScene = scene.getPrevScene() > 0 ? scene.getPrevScene() : 3;
 
@@ -199,8 +211,13 @@ public final class DungeonSystem extends BaseGameSystem {
 
             if (!towerDungeon && entry != null) {
                 prevPos.set(entry.getPointData().getTranPos());
+                if (emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.resolveDungeonExit(
+                            player, dungeonData.getId()) != null
+                        && entry.getPointData().getTranRot() != null)
+                    player.getRotation().set(entry.getPointData().getTranRot());
             }
-            if (!dungeonManager.isFinishedSuccessfully()) {
+            if (!dungeonManager.isFinishedSuccessfully()
+                    && !emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.shouldRestoreGroups(scene)) {
                 dungeonManager.quitDungeon();
             }
 

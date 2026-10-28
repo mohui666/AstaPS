@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// Descriptive name for IBHAFBKGAGL, CmdId 20783; writer RVA 811DE40.
+// Native close-chat sender E34361A supplies progress for both fields 1 and 4.
+message UpdateTpsGlassesChatReq {
+  uint32 CPGANAPPFDM = 1;
+  uint32 progress = 4;
+  uint32 topic_id = 6;
+  repeated uint32 chosen_option_list = 12;
+}

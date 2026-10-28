@@ -8,6 +8,10 @@ import emu.grasscutter.scripts.listener.ScriptMonsterListener;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Collections;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -25,6 +29,11 @@ public final class ScriptMonsterTideService {
     private final String source;
     private volatile boolean unloaded;
     private volatile boolean firstTurnStarted;
+    private final Map<Integer, EntityMonster> liveMonsters = new ConcurrentHashMap<>();
+    private final Map<EntityMonster, Boolean> knownMembers = Collections.synchronizedMap(new WeakHashMap<>());
+    private final ThreadLocal<Boolean> creatingMonster = new ThreadLocal<>();
+    private List<Integer> restoredAliveConfigs;
+    private boolean restoringMembers;
 
     /** Persistable progress of one tide, so a restored encounter resumes its pending waves. */
     public static final class State {
@@ -34,6 +43,7 @@ public final class ScriptMonsterTideService {
 
         /** Null in older snapshots, whose first turn was already published. */
         public Boolean started;
+        public List<Integer> aliveConfigIds;
     }
 
     public ScriptMonsterTideService(
@@ -77,6 +87,8 @@ public final class ScriptMonsterTideService {
         service.monsterKillCount.set(state.killCount);
         service.monsterAlive.set(state.alive);
         service.firstTurnStarted = state.started == null || state.started;
+        service.restoringMembers = state.alive > 0;
+        service.restoredAliveConfigs = state.aliveConfigIds;
         return service;
     }
 
@@ -118,9 +130,7 @@ public final class ScriptMonsterTideService {
                 if (unloaded || firstTurnStarted || sceneScriptManager.isDestroyed()) return;
                 firstTurnStarted = true;
                 for (int i = 0; !unloaded && i < monsterSceneLimit; i++) {
-                    var monster =
-                            sceneScriptManager.createMonster(
-                                    currentGroup.id, currentGroup.block_id, getNextMonster());
+                    var monster = createNextMonster();
                     if (monster != null) sceneScriptManager.addEntity(monster);
                 }
             }
@@ -130,9 +140,12 @@ public final class ScriptMonsterTideService {
     public class OnMonsterCreated implements ScriptMonsterListener {
         @Override
         public void onNotify(EntityMonster sceneMonster) {
-            if (!unloaded
+            if (!unloaded && Boolean.TRUE.equals(creatingMonster.get())
+                    && sceneMonster.getGroupId() == currentGroup.id
                     && monsterConfigIds.contains(sceneMonster.getConfigId())
                     && monsterSceneLimit > 0) {
+                liveMonsters.put(sceneMonster.getId(), sceneMonster);
+                knownMembers.put(sceneMonster, Boolean.TRUE);
                 monsterAlive.incrementAndGet();
                 monsterTideCount.decrementAndGet();
             }
@@ -156,7 +169,10 @@ public final class ScriptMonsterTideService {
     public class OnMonsterDead implements ScriptMonsterListener {
         @Override
         public void onNotify(EntityMonster sceneMonster) {
-            if (unloaded || monsterSceneLimit <= 0) {
+            if (unloaded || monsterSceneLimit <= 0 || sceneMonster.getGroupId() != currentGroup.id
+                    || !monsterConfigIds.contains(sceneMonster.getConfigId())
+                    || !resolveRestoredMembers(sceneMonster)
+                    || liveMonsters.remove(sceneMonster.getId()) != sceneMonster) {
                 return;
             }
             if (monsterAlive.decrementAndGet() >= monsterSceneLimit) {
@@ -166,9 +182,7 @@ public final class ScriptMonsterTideService {
             monsterKillCount.incrementAndGet();
             if (monsterTideCount.get() > 0) {
                 // add more
-                var next =
-                        sceneScriptManager.createMonster(
-                                currentGroup.id, currentGroup.block_id, getNextMonster());
+                var next = createNextMonster();
                 if (next != null) sceneScriptManager.addEntity(next);
             }
             // call registered events that may spawn in more monsters
@@ -190,9 +204,53 @@ public final class ScriptMonsterTideService {
         return source;
     }
 
+    private EntityMonster createNextMonster() {
+        creatingMonster.set(true);
+        try {
+            return sceneScriptManager.createMonster(currentGroup.id, currentGroup.block_id, getNextMonster());
+        } finally {
+            creatingMonster.remove();
+        }
+    }
+
+    /** Old snapshots identify members by group/config; overlapping unresolved tides are ambiguous. */
+    public boolean resolveRestoredMembers(EntityMonster dyingMonster) {
+        synchronized (sceneScriptManager) {
+            if (!restoringMembers) return true;
+            var configs = restoredAliveConfigs == null ? monsterConfigIds : restoredAliveConfigs;
+            var others = sceneScriptManager.getMonsterTides(currentGroup.id).stream()
+                    .filter(tide -> tide != this && !tide.unloaded).toList();
+            if (others.stream().anyMatch(tide -> tide.restoringMembers
+                    && (tide.restoredAliveConfigs == null ? tide.monsterConfigIds : tide.restoredAliveConfigs)
+                            .stream().anyMatch(configs::contains))) return false;
+            var members = new ArrayList<EntityMonster>();
+            for (var entity : sceneScriptManager.getScene().getEntities().values()) {
+                if (entity instanceof EntityMonster monster && monster.getGroupId() == currentGroup.id
+                        && configs.contains(monster.getConfigId())
+                        && others.stream().noneMatch(tide -> tide.knownMembers.containsKey(monster)))
+                    members.add(monster);
+            }
+            if (dyingMonster != null && !members.contains(dyingMonster)
+                    && others.stream().noneMatch(tide -> tide.knownMembers.containsKey(dyingMonster)))
+                members.add(dyingMonster);
+            if (members.size() != monsterAlive.get()) return false;
+            for (var member : members) {
+                liveMonsters.put(member.getId(), member);
+                knownMembers.put(member, Boolean.TRUE);
+            }
+            restoringMembers = false;
+            return true;
+        }
+    }
+
+    public List<EntityMonster> getLiveMonsters() {
+        return liveMonsters.values().stream().filter(monster ->
+                sceneScriptManager.getScene().getEntityById(monster.getId()) == monster).toList();
+    }
+
     /** A finished tide holds nothing worth saving. */
     public boolean isPending() {
-        return monsterSceneLimit > 0 && (monsterTideCount.get() > 0 || monsterAlive.get() > 0);
+        return !unloaded && monsterSceneLimit > 0 && (monsterTideCount.get() > 0 || monsterAlive.get() > 0);
     }
 
     public State snapshot() {
@@ -205,6 +263,8 @@ public final class ScriptMonsterTideService {
         state.orders = new ArrayList<>(monsterConfigOrders);
         state.configIds = new ArrayList<>(monsterConfigIds);
         state.started = firstTurnStarted;
+        state.aliveConfigIds = restoringMembers ? restoredAliveConfigs
+                : liveMonsters.values().stream().map(EntityMonster::getConfigId).toList();
         return state;
     }
 

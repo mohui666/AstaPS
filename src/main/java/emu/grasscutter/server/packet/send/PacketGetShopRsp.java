@@ -22,6 +22,13 @@ public class PacketGetShopRsp extends BasePacket {
                         .setCityId(1) // mock
                         .setCityReputationLevel(10); // mock
 
+        var assistantGoods = AssistantShop.goods(player, shopType);
+        if (assistantGoods != null) {
+            for (ShopInfo info : assistantGoods) shop.addGoodsList(ShopGoodsBuilder.fromShopInfo(info, 0, 0));
+            this.setData(GetShopRspOuterClass.GetShopRsp.newBuilder().setShop(shop).build());
+            return;
+        }
+
         ShopSystem manager = Grasscutter.getGameServer().getShopSystem();
         if (manager.getShopData().get(shopType) != null) {
             List<ShopInfo> list = manager.getShopData().get(shopType);

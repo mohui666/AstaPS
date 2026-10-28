@@ -27,12 +27,21 @@ public class MultiplayerSystem extends BaseGameSystem {
         return world.getPlayerCount() >= GAME_OPTIONS.avatarLimits.multiplayerTeam;
     }
 
+    private static boolean isGalleryBlocked(Player player) {
+        return player.getScene() != null && player.getScene().getScriptGalleries().isMultiplayerBlocked();
+    }
+
+    private static boolean isSceneBlocked(Player player) {
+        return emu.grasscutter.game.quest.world.QuestSceneMechanicsRuntime.isMultiplayerBlocked(player);
+    }
+
     public synchronized void applyEnterMp(Player player, int targetUid) {
         normalizeStaleMultiplayerWorld(player);
         Player target = getServer().getPlayerByUid(targetUid);
         if (target == null || target == player || target.getWorld() == null
                 || target.getWorld() == player.getWorld() || target.getWorld().getHost() != target
-                || isFull(target.getWorld())) {
+                || isFull(target.getWorld()) || isGalleryBlocked(target) || isGalleryBlocked(player)
+                || isSceneBlocked(target) || isSceneBlocked(player)) {
             player.sendPacket(new PacketPlayerApplyEnterMpResultNotify(targetUid, "", false, ReasonOuterClass.Reason.Reason_PLAYER_CANNOT_ENTER_MP));
             return;
         }
@@ -65,7 +74,9 @@ public class MultiplayerSystem extends BaseGameSystem {
 
         World hostWorld = hostPlayer.getWorld();
         if (requester == hostPlayer || requester.getWorld().isMultiplayer() || hostWorld == null
-                || hostWorld.getHost() != hostPlayer || isFull(hostWorld)) {
+                || hostWorld.getHost() != hostPlayer || isFull(hostWorld)
+                || isGalleryBlocked(hostPlayer) || isGalleryBlocked(requester)
+                || isSceneBlocked(hostPlayer) || isSceneBlocked(requester)) {
             request.getRequester().sendPacket(new PacketPlayerApplyEnterMpResultNotify(hostPlayer, false, ReasonOuterClass.Reason.Reason_PLAYER_CANNOT_ENTER_MP));
             return;
         }

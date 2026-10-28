@@ -140,6 +140,13 @@ public class SceneScriptManager {
         groupTempValues.remove(groupId);
     }
 
+    public boolean changeGroupTempValue(int groupId, String name, int delta) {
+        if (groupId <= 0 || name == null || name.isBlank()) return false;
+        groupTempValues.computeIfAbsent(groupId, ignored -> new ConcurrentHashMap<>())
+                .merge(name, delta, Integer::sum);
+        return true;
+    }
+
     /** Used under this monitor before nonlethal commission suspension. */
     public synchronized boolean isExecutingScripts() {
         return executingEvents != 0;
@@ -229,6 +236,14 @@ public class SceneScriptManager {
                         "Registered trigger {} from group {}", trigger.getName(), trigger.getCurrentGroup().id);
     }
 
+    public void registerFlowTriggers(List<SceneTrigger> triggers) {
+        for (var trigger : triggers) {
+            if (getTriggersByEvent(trigger.getEvent()).contains(trigger)) {
+                if (ongoingTriggers.contains(trigger)) trigger.setPreserved(true);
+            } else registerTrigger(trigger);
+        }
+    }
+
     public void deregisterTrigger(List<SceneTrigger> triggers) {
         triggers.forEach(this::deregisterTrigger);
     }
@@ -285,6 +300,38 @@ public class SceneScriptManager {
     public int restoreGroup(SceneGroupInstance instance, int overrideSuite) {
         var group = instance.getLuaGroup();
         int savedSuite = instance.getActiveSuiteId();
+        if (overrideSuite == 0 && group != null
+                && emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                        .shouldRestoreGroup(getScene(), group.id)) {
+            var savedSuites = emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                    .savedSuites(getScene(), group.id).stream()
+                    .sorted(Comparator.<Integer>comparingInt(id -> id == savedSuite ? 0 : 1)
+                            .thenComparingInt(id -> id)).toList();
+            for (int id : savedSuites) {
+                if (group.getSuiteByIndex(id) == null)
+                    throw new IllegalStateException("Saved persistent dungeon suite " + id
+                            + " is missing from group " + group.id);
+            }
+            for (int id : savedSuites) {
+                var suite = group.getSuiteByIndex(id);
+                registerTrigger(suite.sceneTriggers);
+                var liveGadgets = new SceneSuite();
+                liveGadgets.flow = suite.flow;
+                liveGadgets.sceneGadgets = suite.sceneGadgets.stream()
+                        .filter(gadget -> !instance.getDeadEntities().contains(gadget.config_id)).toList();
+                var entities = new ArrayList<GameEntity>(getGadgetsInGroupSuite(instance, liveGadgets));
+                suite.sceneMonsters.stream()
+                        .filter(monster -> !instance.getDeadEntities().contains(monster.config_id))
+                        .filter(monster -> getScene().getEntityByConfigId(monster.config_id, group.id) == null)
+                        .map(monster -> restoreMonster(group.id, group.block_id, monster))
+                        .filter(Objects::nonNull).forEach(entities::add);
+                entities.addAll(SceneFlowEntities.newNpcs(this,instance,suite));
+                addEntities(entities);
+                registerRegionInGroupSuite(group, suite);
+            }
+            callEvent(new ScriptArgs(instance.getGroupId(), EventType.EVENT_GROUP_REFRESH));
+            return savedSuite;
+        }
         if (getScene() != null && getScene().getSceneType() == SceneType.SCENE_WORLD && overrideSuite == 0
                 && group != null && group.suites != null
                 && group.getSuiteByIndex(savedSuite) != null) {
@@ -365,6 +412,12 @@ public class SceneScriptManager {
 
         groupInstance.setTargetSuiteId(0);
 
+        if (suiteData.flow != null && prevSuiteIndex != suiteIndex) {
+            SceneFlowSuites.applyVariables(this,groupInstance,suiteData);
+            for (var gadget : suiteData.sceneGadgets)
+                groupInstance.getCachedGadgetStates().put(gadget.config_id,suiteData.flow.gadgetState(gadget));
+        }
+
         if (prevSuiteData != null) {
             removeGroupSuite(group, prevSuiteData);
         } // Remove old group suite
@@ -381,7 +434,7 @@ public class SceneScriptManager {
         }
 
         // Refesh variables here
-        group.variables.forEach(
+        if (suiteData.flow == null) group.variables.forEach(
                 variable -> {
                     if (!variable.no_refresh)
                         groupInstance.getCachedVariables().put(variable.name, variable.value);
@@ -451,7 +504,12 @@ public class SceneScriptManager {
     }
 
     public boolean refreshGroupSuite(int groupId, int suiteId, GameQuest quest) {
-        var result = refreshGroupSuite(groupId, suiteId);
+        return refreshGroupSuite(groupId,suiteId,quest,false);
+    }
+
+    public boolean refreshGroupSuite(int groupId, int suiteId, GameQuest quest, boolean worldQuestFlow) {
+        var result = worldQuestFlow ? SceneFlowSuites.refreshWorldQuest(this,groupId,suiteId) == 0
+                : refreshGroupSuite(groupId,suiteId);
         if (result && quest != null) {
             boolean changed =
                     rememberQuestGroupSuite(
@@ -508,6 +566,7 @@ public class SceneScriptManager {
 
     public void registerRegionInGroupSuite(SceneGroup group, SceneSuite suite) {
         suite.sceneRegions.stream()
+                .filter(region -> suite.flow == null || getRegionByConfigId(group.id,region.config_id) == null)
                 .map(region -> new EntityRegion(this.getScene(), region))
                 .forEach(this::registerRegion);
     }
@@ -517,6 +576,11 @@ public class SceneScriptManager {
                 .filter(r -> r.getMetaRegion().equals(region))
                 .findFirst()
                 .ifPresent(entityRegion -> this.regions.remove(entityRegion.getId()));
+    }
+
+    public EntityRegion getRegionByConfigId(int groupId, int configId) {
+        return regions.values().stream().filter(region -> region.getGroupId() == groupId
+                && region.getConfigId() == configId).findFirst().orElse(null);
     }
 
     public Map<Integer, Set<SceneGroup>> getLoadedGroupSetPerBlock() {
@@ -878,6 +942,7 @@ public class SceneScriptManager {
     }
 
     public void checkRegions() {
+        getScene().getScriptVision().updateRegions(this.regions.values());
         RegionMembershipTick.check(this, this.regions);
     }
 
@@ -910,8 +975,11 @@ public class SceneScriptManager {
                                                     .isPermanentGatherPoint(m.point_type),
                                     groupInstance.getDeadEntities().contains(m.config_id));
                         })
-                .map(g -> createGadget(group.id, group.block_id, g, groupInstance.getCachedGadgetState(g)))
+                .map(g -> createGadget(group.id, group.block_id, g,
+                        suite.flow == null ? groupInstance.getCachedGadgetState(g)
+                                : groupInstance.getCachedGadgetStates().getOrDefault(g.config_id,suite.flow.gadgetState(g))))
                 .filter(Objects::nonNull)
+                .map(gadget -> SceneFlowEntities.configureNewGadget(gadget,suite))
                 .peek(g -> groupInstance.cacheGadgetState(g.getMetaGadget(), g.getState()))
                 .toList();
     }
@@ -929,7 +997,11 @@ public class SceneScriptManager {
                                                     .id); /*&& !groupInstance.getDeadEntities().contains(entity); */ // TODO:
                             // Investigate the usage of deadEntities
                         }) // TODO: Add persistent monster cached data
-                .map(mob -> createMonster(group.id, group.block_id, mob))
+                .map(mob -> {
+                    var entity = createMonster(group.id, group.block_id, mob);
+                    if (entity != null && suite.flow != null) entity.setPoseId(suite.flow.monsterPose(mob));
+                    return entity;
+                })
                 .filter(Objects::nonNull)
                 .toList();
     }
@@ -941,16 +1013,23 @@ public class SceneScriptManager {
     public void addGroupSuite(
             SceneGroupInstance groupInstance, SceneSuite suite, List<GameEntity> entities) {
         // we added trigger first
-        registerTrigger(suite.sceneTriggers);
+        if (suite.flow == null) registerTrigger(suite.sceneTriggers);
+        else registerFlowTriggers(suite.sceneTriggers);
 
         var group = groupInstance.getLuaGroup();
+        if (groupInstance.getActiveSuiteId() == 0) SceneFlowSuites.applyVariables(this,groupInstance,suite);
         var toCreate = new ArrayList<GameEntity>();
         toCreate.addAll(getGadgetsInGroupSuite(groupInstance, suite));
         toCreate.addAll(getMonstersInGroupSuite(groupInstance, suite));
+        toCreate.addAll(SceneFlowEntities.newNpcs(this,groupInstance,suite));
+        if (emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.shouldRestoreGroups(getScene()))
+            toCreate.forEach(entity -> groupInstance.getDeadEntities().remove(entity.getConfigId()));
         if (entities != null) entities.addAll(toCreate);
         else this.addEntities(toCreate);
 
         registerRegionInGroupSuite(group, suite);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                .suiteAdded(getScene(), group.id, group.suites.indexOf(suite) + 1);
     }
 
     public void refreshGroupSuite(SceneGroupInstance groupInstance, SceneSuite suite) {
@@ -961,9 +1040,13 @@ public class SceneScriptManager {
         var toCreate = new ArrayList<GameEntity>();
         toCreate.addAll(getGadgetsInGroupSuite(groupInstance, suite));
         toCreate.addAll(getMonstersInGroupSuite(groupInstance, suite));
+        if (emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.shouldRestoreGroups(getScene()))
+            toCreate.forEach(entity -> groupInstance.getDeadEntities().remove(entity.getConfigId()));
         addEntities(toCreate);
 
         registerRegionInGroupSuite(group, suite);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                .suiteAdded(getScene(), group.id, group.suites.indexOf(suite) + 1);
     }
 
     public void removeGroupSuite(SceneGroup group, SceneSuite suite) {
@@ -972,6 +1055,8 @@ public class SceneScriptManager {
         removeGadgetsInGroup(group, suite);
 
         suite.sceneRegions.forEach(this::deregisterRegion);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                .suiteRemoved(getScene(), group.id, group.suites.indexOf(suite) + 1);
     }
 
     public void killGroupSuite(SceneGroup group, SceneSuite suite) {
@@ -981,6 +1066,8 @@ public class SceneScriptManager {
         killGadgetsInGroup(group, suite);
 
         suite.sceneRegions.forEach(this::deregisterRegion);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                .suiteRemoved(getScene(), group.id, group.suites.indexOf(suite) + 1);
     }
 
     public void startMonsterTideInGroup(
@@ -1000,6 +1087,16 @@ public class SceneScriptManager {
     /** Every tide started in this scene; Lua may start several per group. */
     public synchronized List<ScriptMonsterTideService> getMonsterTides(int groupId) {
         return this.monsterTides.stream().filter(tide -> tide.getGroupId() == groupId).toList();
+    }
+
+    public synchronized boolean unloadMonsterTide(int groupId, String source) {
+        var selected = getMonsterTides(groupId).stream().filter(tide -> source.equals(tide.getSource())).toList();
+        for (var tide : selected) {
+            tide.unload();
+            this.monsterTides.remove(tide);
+            if (this.scriptMonsterTideService == tide) this.scriptMonsterTideService = null;
+        }
+        return !selected.isEmpty();
     }
 
     public synchronized void restoreMonsterTide(SceneGroup group, ScriptMonsterTideService.State state) {
@@ -1085,6 +1182,13 @@ public class SceneScriptManager {
             return null;
         }, eventExecutor);
         return liyueFireEvents;
+    }
+
+    /** Quest execution runs outside Lua callbacks; WQ refresh notifications precede its mutation. */
+    public void fireQuestFlowEvent(ScriptArgs params) {
+        if (params.type != EventType.EVENT_GROUP_WILL_REFRESH && params.type != EventType.EVENT_GROUP_REFRESH)
+            throw new IllegalArgumentException("Not a quest flow lifecycle event");
+        realCallEvent(params);
     }
 
     private void realCallEvent(@Nonnull ScriptArgs params) {
@@ -1315,7 +1419,13 @@ public class SceneScriptManager {
     }
 
     public EntityGadget createGadget(int groupId, int blockId, SceneGadget g, int state) {
+        return createGadget(groupId, blockId, g, state, null, null);
+    }
+
+    public EntityGadget createGadget(int groupId, int blockId, SceneGadget g, int state,
+            Position pos, Position rot) {
         if (!emu.grasscutter.game.dailytask.DailyTaskGroupLifecycle.maySpawn(this, groupId)) return null;
+        if (!emu.grasscutter.game.quest.war.ReconstructedWarRuntime.shouldSpawn(scene,groupId,g.config_id)) return null;
         if (scene.getSceneType() == SceneType.SCENE_WORLD
                 && !scene.getBlossomManager().isActiveAuthoredGadget(groupId, g.config_id, g.gadget_id))
             return null;
@@ -1330,7 +1440,8 @@ public class SceneScriptManager {
                 return null;
             }
         }
-        EntityGadget entity = new EntityGadget(getScene(), g.gadget_id, g.pos);
+        EntityGadget entity = new EntityGadget(getScene(), g.gadget_id,
+                pos != null ? pos : g.pos, rot != null ? rot : g.rot);
 
         if (entity.getGadgetData() == null) {
             return null;
@@ -1339,12 +1450,14 @@ public class SceneScriptManager {
         entity.setBlockId(blockId);
         entity.setConfigId(g.config_id);
         entity.setGroupId(groupId);
-        entity.getRotation().set(g.rot);
         entity.setState(state);
 
         entity.setPointType(g.point_type);
         entity.setRouteConfig(BaseRoute.fromSceneGadget(g));
         entity.setMetaGadget(g);
+        applyGroupLogicState(entity, g);
+        emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.freshEntityCreated(
+                scene, groupId, g.config_id);
         entity.buildContent();
 
         return entity;
@@ -1367,6 +1480,8 @@ public class SceneScriptManager {
             return null;
         }
 
+        if (!emu.grasscutter.game.quest.war.ReconstructedWarRuntime.shouldSpawn(scene,group.id,configId)) return null;
+
         var data = GameData.getMonsterDataMap().get(monster.monster_id);
         if (data == null) return null;
 
@@ -1383,6 +1498,10 @@ public class SceneScriptManager {
         entity.setConfigId(monster.config_id);
         entity.setPoseId(monster.pose_id);
         entity.setMetaMonster(monster);
+        applyGroupLogicState(entity, monster);
+        if (!this.isRestoringMonster())
+            emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.freshEntityCreated(
+                    scene, group.id, monster.config_id);
 
         this.getScriptMonsterSpawnService()
                 .onMonsterCreatedListener
@@ -1411,6 +1530,7 @@ public class SceneScriptManager {
         if (monster == null) {
             return null;
         }
+        if (!emu.grasscutter.game.quest.war.ReconstructedWarRuntime.shouldSpawn(scene,groupId,monster.config_id)) return null;
 
         var data = GameData.getMonsterDataMap().get(monster.monster_id);
 
@@ -1428,6 +1548,10 @@ public class SceneScriptManager {
         entity.setConfigId(monster.config_id);
         entity.setPoseId(monster.pose_id);
         entity.setMetaMonster(monster);
+        applyGroupLogicState(entity, monster);
+        if (!this.isRestoringMonster())
+            emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.freshEntityCreated(
+                    scene, groupId, monster.config_id);
 
         if (!this.isRestoringMonster()) {
             this.getScriptMonsterSpawnService()
@@ -1440,6 +1564,29 @@ public class SceneScriptManager {
 
     public void addEntity(GameEntity gameEntity) {
         getScene().addEntity(gameEntity);
+    }
+
+    private void applyGroupLogicState(GameEntity entity, SceneObject config) {
+        if (config.logic_state == null || config.logic_state.isEmpty()) return;
+        var values = getVariables(entity.getGroupId());
+        for (var name : config.logic_state)
+            entity.getGlobalAbilityValues().put(name, (float) values.getOrDefault(name, 0));
+    }
+
+    public int setGroupLogicState(SceneGroup group, String name, int value) {
+        if (group == null || name == null || group.variables == null
+                || group.variables.stream().noneMatch(variable -> name.equals(variable.name))) return -1;
+        getVariables(group.id).put(name, value);
+        for (var entity : scene.getEntities().values()) {
+            if (entity.getGroupId() != group.id) continue;
+            SceneObject config = entity instanceof EntityGadget gadget ? gadget.getMetaGadget()
+                    : entity instanceof EntityMonster monster ? monster.getMetaMonster() : null;
+            if (config == null || config.logic_state == null || !config.logic_state.contains(name)) continue;
+            entity.getGlobalAbilityValues().put(name, (float) value);
+            scene.runWhenHostInitialized(() -> scene.broadcastPacket(
+                    new emu.grasscutter.server.packet.send.PacketServerGlobalValueChangeNotify(entity, name, value)));
+        }
+        return 0;
     }
 
     public void meetEntities(List<? extends GameEntity> gameEntity) {
@@ -1646,6 +1793,10 @@ public class SceneScriptManager {
     }
 
     /** Whether a scripted scene is already waiting for a genuine cutscene completion. */
+    public synchronized boolean hasPendingCutscene() {
+        return !destroyed && !pendingCutsceneGroups.isEmpty();
+    }
+
     public synchronized boolean hasPendingCutscene(int cutsceneId) {
         return !destroyed && pendingCutsceneGroups.containsKey(cutsceneId);
     }
@@ -1654,12 +1805,18 @@ public class SceneScriptManager {
     public synchronized void finishCutscene(int cutsceneId) {
         var groups = pendingCutsceneGroups.remove(cutsceneId);
         if (destroyed || groups == null) return;
+        ScriptCutsceneActions.onFinished(this,cutsceneId);
         for (int groupId : groups) {
             callEvent(new ScriptArgs(groupId, EventType.EVENT_CUTSCENE_END, cutsceneId));
         }
     }
 
-    public synchronized void onDestroy() {
+    public void onDestroy() {
+        synchronized (scene) { destroyScripts(); }
+    }
+
+    private synchronized void destroyScripts() {
+        this.scene.getScriptCameraLook().clear();
         if (this.destroyed) {
             return;
         }
@@ -1667,6 +1824,7 @@ public class SceneScriptManager {
         this.liyueDungeonTimers.clear();
         this.initialization.complete(false);
         this.pendingCutsceneGroups.clear();
+        ScriptCutsceneActions.clear(this);
         this.sealBattleManager.clear();
 
         activeGroupTimers.forEach(

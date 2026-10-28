@@ -1,0 +1,7 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// EKILHADDKCA, CmdId 24676. Writer RVA 72AB7A0; chapter confirmation sender F322B80.
+message UnlockCoopChapterReq {
+  uint32 chapter_id = 15;
+}

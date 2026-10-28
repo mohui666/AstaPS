@@ -1,0 +1,21 @@
+{
+  "reconstructed": true,
+  "sceneId": 3,
+  "description": "AstaPS reconstruction: explicit quest figure IDs mapped to native visible train transforms; not the unrecovered official ID mapping.",
+  "figures": [
+    {"questFigureId": 1, "sgv": "SGV_TrainCollection_01", "transform": "Collection_01", "initialValue": 0},
+    {"questFigureId": 2, "sgv": "SGV_TrainCollection_02", "transform": "Collection_02", "initialValue": 0},
+    {"questFigureId": 3, "sgv": "SGV_TrainCollection_03", "transform": "Collection_03", "initialValue": 0},
+    {"questFigureId": 4, "sgv": "SGV_TrainCollection_04", "transform": "Collection_04", "initialValue": 0},
+    {"questFigureId": 5, "sgv": "SGV_TrainCollection_05", "transform": "Collection_05", "initialValue": 0},
+    {"questFigureId": 6, "sgv": "SGV_TrainCollection_06", "transform": "Collection_06", "initialValue": 0},
+    {"questFigureId": 7, "sgv": "SGV_TrainCollection_07", "transform": "Collection_07", "initialValue": 0},
+    {"questFigureId": 8, "sgv": "SGV_TrainCollection_08", "transform": "Collection_08", "initialValue": 0},
+    {"questFigureId": 9, "sgv": "SGV_CarriageWallpaper_01", "transform": "CarriageWallpaper_01", "initialValue": 0},
+    {"questFigureId": 10, "sgv": "SGV_CarriageWallpaper_02", "transform": "CarriageWallpaper_02", "initialValue": 0},
+    {"questFigureId": 11, "sgv": "SGV_CarriageWallpaper_03", "transform": "CarriageWallpaper_03", "initialValue": 0},
+    {"questFigureId": 12, "sgv": "SGV_CarriageWallpaper_04", "transform": "CarriageWallpaper_04", "initialValue": 0},
+    {"questFigureId": 13, "sgv": "SGV_CarriageWallpaper_05", "transform": "CarriageWallpaper_05", "initialValue": 0},
+    {"questFigureId": 14, "sgv": "SGV_CarriageWallpaper_06", "transform": "CarriageWallpaper_06", "initialValue": 0}
+  ]
+}

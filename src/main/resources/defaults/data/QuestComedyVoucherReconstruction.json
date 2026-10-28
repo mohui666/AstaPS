@@ -1,0 +1,13 @@
+{
+  "reconstructed": true,
+  "notice": "【AstaPS重建·特许券工作台】原Exhibition计分配置缺失。本服按当前任务期间实际新增的120400任务物品记分；也可在原引导地点完成加工补足剧情记分。三台装置按服务端给出的顺序加工一件工件，每件记100分；顺序错误只重做当前工件，不加分。加工记分不会发放或消耗背包特许券，不恢复原版全部打工玩法。",
+  "earnedItemId": 120400,
+  "earnedItemBinding": "AstaPS reconstruction: RewardExcelConfigData 174030..174033 award 280 of item120400; native Exhibition13502..13505 mapping is absent",
+  "pointsPerWorkpiece": 100,
+  "stages": [
+    {"questId":7402526,"exhibitionId":13502001,"target":300},
+    {"questId":7402529,"exhibitionId":13503001,"target":300},
+    {"questId":7402534,"exhibitionId":13504001,"target":500},
+    {"questId":7402539,"exhibitionId":13505001,"target":300}
+  ]
+}

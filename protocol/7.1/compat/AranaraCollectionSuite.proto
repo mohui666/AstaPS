@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "AranaraCollectionState.proto";
+
+// 7.1 JDANHNGAMJM; parser E310418 / codec map field tag 22, key 08, value 10.
+message AranaraCollectionSuite {
+  map<uint32, AranaraCollectionState> collection_id_state_map = 4;
+  uint32 collection_type = 7;
+}

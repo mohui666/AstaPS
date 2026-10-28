@@ -1,0 +1,1494 @@
+{
+  "reconstructed": true,
+  "rules": "每轮随机生成四步机关顺序，西到东编号1/2/3。错误只重做当前轮。每完成一轮记一次原活动目标；炼金轮消耗真实任务执行器发放的1/4/16号专用作物各1份，作物不进入普通背包。保存顺序、作物、已完成次数和原任务开始身份，重登继续。本配置只替代列出的活动专用触发，不能代替对白、演出或其他条件。",
+  "trials": [
+    {
+      "quest": 4008106,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉蕈兽",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008106,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4008108,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉蕈兽",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008108,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4008116,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008120,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4008117,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008121,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4008118,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008102,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4008119,
+      "parent": 40081,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008104,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009007,
+      "parent": 40090,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "完成一次秋津游艺比赛",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2018,
+          "trigger": 4009009,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009502,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉蕈兽",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008106,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009504,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉蕈兽",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008108,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009505,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008120,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009506,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008121,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009507,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008102,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009508,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "焕发蕈兽的潜能",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008104,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4009512,
+      "parent": 40095,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "(test)完成蕈兽培养4$HIDDEN",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2017,
+          "trigger": 4008104,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4012807,
+      "parent": 40128,
+      "scene": 3,
+      "position": [
+        3400.781,
+        444.742,
+        3013.794
+      ],
+      "anchorAtPlayer": false,
+      "title": "维护主板",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2026,
+          "trigger": 4012807,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014304,
+      "parent": 40143,
+      "scene": 3,
+      "position": [
+        895.916,
+        255.563,
+        330.665
+      ],
+      "anchorAtPlayer": false,
+      "title": "烹制「金玉满堂」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5178,
+          "trigger": 4014304,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014403,
+      "parent": 40144,
+      "scene": 3,
+      "position": [
+        2531.421,
+        207.032,
+        -1126.624
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试炼制药剂",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014403,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014404,
+      "parent": 40144,
+      "scene": 3,
+      "position": [
+        2501.023,
+        206.155,
+        -1132.51
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试上架售卖",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014404,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014405,
+      "parent": 40144,
+      "scene": 3,
+      "position": [
+        2500.991,
+        204.705,
+        -1136.7
+      ],
+      "anchorAtPlayer": false,
+      "title": "结束当前经营周期",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014405,
+          "count": 2
+        }
+      ]
+    },
+    {
+      "quest": 4014407,
+      "parent": 40144,
+      "scene": 3,
+      "position": [
+        2524.853,
+        210.7,
+        -1150.963
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试培育药材",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014407,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014702,
+      "parent": 40147,
+      "scene": 3,
+      "position": [
+        895.916,
+        255.563,
+        330.665
+      ],
+      "anchorAtPlayer": false,
+      "title": "烹制「繁弦急管」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5178,
+          "trigger": 4014702,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014803,
+      "parent": 40148,
+      "scene": 3,
+      "position": [
+        895.916,
+        255.563,
+        330.665
+      ],
+      "anchorAtPlayer": false,
+      "title": "烹制「知足常乐」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5178,
+          "trigger": 4014803,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4014903,
+      "parent": 40149,
+      "scene": 3,
+      "position": [
+        895.916,
+        255.563,
+        330.665
+      ],
+      "anchorAtPlayer": false,
+      "title": "烹制「随便做点」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5178,
+          "trigger": 4014903,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4015403,
+      "parent": 40154,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "活动剧情关卡 4015403",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4015403,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016002,
+      "parent": 40160,
+      "scene": 3,
+      "position": [
+        2531.421,
+        207.032,
+        -1126.624
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试炼制药剂",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014403,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016003,
+      "parent": 40160,
+      "scene": 3,
+      "position": [
+        2501.023,
+        206.155,
+        -1132.51
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试上架售卖",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014404,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016004,
+      "parent": 40160,
+      "scene": 3,
+      "position": [
+        2500.991,
+        204.705,
+        -1136.7
+      ],
+      "anchorAtPlayer": false,
+      "title": "等待一段时间",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014405,
+          "count": 2
+        }
+      ]
+    },
+    {
+      "quest": 4016005,
+      "parent": 40160,
+      "scene": 3,
+      "position": [
+        2524.853,
+        210.7,
+        -1150.963
+      ],
+      "anchorAtPlayer": false,
+      "title": "尝试培育药材",
+      "kind": "alchemy",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2029,
+          "trigger": 4014407,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016708,
+      "parent": 40167,
+      "scene": 3,
+      "position": [
+        -2028.887,
+        204.451,
+        2597.696
+      ],
+      "anchorAtPlayer": false,
+      "title": "前往集合地点",
+      "kind": "choice",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2034,
+          "trigger": 11,
+          "count": 1
+        },
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2034,
+          "trigger": 10,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016709,
+      "parent": 40167,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "前往集合地点$HIDDEN",
+      "kind": "sequence",
+      "observer": true,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2034,
+          "trigger": 11,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4016712,
+      "parent": 40167,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "前往集合地点$HIDDEN",
+      "kind": "sequence",
+      "observer": true,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2034,
+          "trigger": 10,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4017105,
+      "parent": 40171,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "使用灵性织机编织织物",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2035,
+          "trigger": 4017105,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4017203,
+      "parent": 40172,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "使用灵性织机编织织物",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2035,
+          "trigger": 4017203,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4018902,
+      "parent": 40189,
+      "scene": 3,
+      "position": [
+        3724.668,
+        444.459,
+        3940.248
+      ],
+      "anchorAtPlayer": false,
+      "title": "前往制定攻略",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2039,
+          "trigger": 4018902,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4018904,
+      "parent": 40189,
+      "scene": 3,
+      "position": [
+        3746.611,
+        443.218,
+        3932.823
+      ],
+      "anchorAtPlayer": false,
+      "title": "前往聘用员工",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2039,
+          "trigger": 4018904,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4018905,
+      "parent": 40189,
+      "scene": 3,
+      "position": [
+        3732.212,
+        444.75,
+        3928.145
+      ],
+      "anchorAtPlayer": false,
+      "title": "结束当前经营周期",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2039,
+          "trigger": 4018905,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4018907,
+      "parent": 40189,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "选择制作主题料理",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2039,
+          "trigger": 4018907,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4018909,
+      "parent": 40189,
+      "scene": 3,
+      "position": [
+        3724.668,
+        444.459,
+        3940.248
+      ],
+      "anchorAtPlayer": false,
+      "title": "前往升级设施",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2039,
+          "trigger": 4018909,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 4020402,
+      "parent": 40204,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "与达尔维什对话",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2040,
+          "trigger": 99,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7051502,
+      "parent": 70515,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "拼接「恒动械画」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5082,
+          "trigger": 101,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153302,
+      "parent": 71533,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和米卡一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71533,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153403,
+      "parent": 71534,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和九条裟罗一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71534,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153503,
+      "parent": 71535,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和迪希雅一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71535,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153603,
+      "parent": 71536,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和坎蒂丝一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71536,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153703,
+      "parent": 71537,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和诺艾尔一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71537,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153803,
+      "parent": 71538,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "和夏沃蕾一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71538,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7153903,
+      "parent": 71539,
+      "scene": 3,
+      "position": [
+        -473.947,
+        209.902,
+        340.95
+      ],
+      "anchorAtPlayer": false,
+      "title": "和派蒙一同完成祝柬",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。使用原任务指引坐标。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2036,
+          "trigger": 71539,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7268702,
+      "parent": 72687,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "完成花题",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_FINISH_FLOWER_COMBINATION",
+          "activity": 1,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7268803,
+      "parent": 72688,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "完成花题",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_FINISH_FLOWER_COMBINATION",
+          "activity": 2,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7268903,
+      "parent": 72689,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "完成花题",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_FINISH_FLOWER_COMBINATION",
+          "activity": 3,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269003,
+      "parent": 72690,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "完成花题",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_FINISH_FLOWER_COMBINATION",
+          "activity": 4,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269102,
+      "parent": 72691,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "准备四张以稻妻区域特产为主题的画片",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_REACH_MIN_PROGRESS",
+          "activity": 1,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269104,
+      "parent": 72691,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "回复莱内",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_FINISH_FILL_POETRY",
+          "activity": 1,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269202,
+      "parent": 72692,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "准备四张以稻妻特色动物为主题的画片",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_REACH_MIN_PROGRESS",
+          "activity": 2,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269204,
+      "parent": 72692,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "回复莱内",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_FINISH_FILL_POETRY",
+          "activity": 2,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269302,
+      "parent": 72693,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "准备四张以蒙德特产为主题的画片",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_REACH_MIN_PROGRESS",
+          "activity": 3,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269304,
+      "parent": 72693,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "回复大伴",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_IRODORI_POETRY_FINISH_FILL_POETRY",
+          "activity": 3,
+          "trigger": 0,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269403,
+      "parent": 72694,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "在野外采集3个矿物",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 101,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269405,
+      "parent": 72694,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "在野外采集3朵花",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 102,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269406,
+      "parent": 72694,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "在野外采集6颗果实",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 103,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269502,
+      "parent": 72695,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "到标记点附近附着火元素15秒",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 201,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269504,
+      "parent": 72695,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "到标记点附近附着水元素15秒",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 202,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269505,
+      "parent": 72695,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "到标记点附近附着雷元素15秒",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 203,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269602,
+      "parent": 72696,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "击败3个史莱姆获得3份核心动力",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 301,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269604,
+      "parent": 72696,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "进行一次玩具制造",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 401,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269606,
+      "parent": 72696,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "击败2个飘浮灵获得4份核心动力",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 302,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7269607,
+      "parent": 72696,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "击败无相元素获得4份核心动力",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5080,
+          "trigger": 303,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7350704,
+      "parent": 73507,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "试玩「灵蕈棋阵」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5120,
+          "trigger": 7350704,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7367702,
+      "parent": 73677,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "参加清泉镇附近的捕猎",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2016,
+          "trigger": 101,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7367802,
+      "parent": 73678,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "参加晨曦酒庄附近的捕猎",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2016,
+          "trigger": 102,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7367902,
+      "parent": 73679,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕获大雪猪王",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 2016,
+          "trigger": 103,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7450703,
+      "parent": 74507,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "游玩「小小灵蕈大幻戏」",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5166,
+          "trigger": 7450703,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7550503,
+      "parent": 75505,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉深渊蜜虫",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5216,
+          "trigger": 7550503,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "quest": 7550602,
+      "parent": 75506,
+      "scene": 3,
+      "position": null,
+      "anchorAtPlayer": true,
+      "title": "捕捉深渊蜜虫",
+      "kind": "sequence",
+      "observer": false,
+      "rationale": "AstaPS 自定义机关挑战，保留原活动目标参数与所需次数；不声称恢复原活动专用引擎。原指引没有可解析坐标，使用首次激活时保存的个人起点。",
+      "goals": [
+        {
+          "type": "QUEST_CONTENT_ACTIVITY_TRIGGER_UPDATE",
+          "activity": 5216,
+          "trigger": 7550602,
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

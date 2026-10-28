@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// ECOOEBOGEGA, CmdId 21511. Writer RVA B0A0500, codec tag 0x72.
+// Shared native field identities are confirmed by GCGPVELevelDataInfo (CPJGEDLAKGJ).
+message GCGPVEStartGameReq {
+  uint32 game_id = 1;
+  uint32 level_id = 6;
+  repeated uint32 affix_list = 14 [packed = true];
+}

@@ -1,10 +1,9 @@
 package emu.grasscutter.server.http.handlers;
 
-import static emu.grasscutter.config.Configuration.*;
-
 import emu.grasscutter.Grasscutter;
 import emu.grasscutter.data.DataLoader;
 import emu.grasscutter.server.http.Router;
+import emu.grasscutter.server.http.dispatch.RegionHandler;
 import emu.grasscutter.server.http.objects.HttpJsonResponse;
 import emu.grasscutter.utils.FileUtils;
 import io.javalin.Javalin;
@@ -43,13 +42,7 @@ public final class AnnouncementsHandler implements Router {
             return;
         }
 
-        String dispatchDomain =
-                "http"
-                        + (HTTP_ENCRYPTION.useInRouting ? "s" : "")
-                        + "://"
-                        + lr(HTTP_INFO.accessAddress, HTTP_INFO.bindAddress)
-                        + ":"
-                        + lr(HTTP_INFO.accessPort, HTTP_INFO.bindPort);
+        String dispatchDomain = RegionHandler.getEffectiveDispatchDomain(ctx);
 
         data =
                 data.replace("{{DISPATCH_PUBLIC}}", dispatchDomain)

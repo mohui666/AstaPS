@@ -15,7 +15,9 @@ public class PacketSceneDataNotify extends BasePacket {
         // the tags already supplied by PlayerWorldSceneInfoListNotify during scene init.
         this.setData(SceneDataNotify.newBuilder()
                 .setSceneId(sceneId)
-                .addAllSceneTagIdList(owner.getSceneTags().getOrDefault(sceneId, java.util.Set.of()))
+                .setLimitedRegionInfo(emu.grasscutter.game.quest.world.QuestSceneMechanicsRuntime.limitRegions(owner, sceneId))
+                .addAllSceneTagIdList(emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime
+                        .effectiveSceneTags(owner).getOrDefault(sceneId, java.util.Set.of()))
                 .build());
     }
 }

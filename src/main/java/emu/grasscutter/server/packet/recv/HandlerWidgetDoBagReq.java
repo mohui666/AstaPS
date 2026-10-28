@@ -14,6 +14,12 @@ public class HandlerWidgetDoBagReq extends PacketHandler {
     public void handle(GameSession session, byte[] header, byte[] payload) throws Exception {
         WidgetDoBagReqOuterClass.WidgetDoBagReq req =
                 WidgetDoBagReqOuterClass.WidgetDoBagReq.parseFrom(payload);
+        if(req.getMaterialId()==220009||req.getMaterialId()==220043){
+            boolean success=req.getMaterialId()==220009
+                    ?emu.grasscutter.game.quest.field.QuestFieldRuntime.useCompass(session.getPlayer())
+                    :emu.grasscutter.game.quest.field.QuestFieldRuntime.armNet(session.getPlayer());
+            session.send(new PacketWidgetDoBagRsp(req.getMaterialId(),success?0:1));return;
+        }
         var locationInfo = req.getWidgetCreatorInfo().getLocationInfo();
         Position pos = new Position(locationInfo.getPos());
         Position rot = new Position(locationInfo.getRot());

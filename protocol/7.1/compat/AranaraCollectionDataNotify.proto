@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "AranaraCollectionSuite.proto";
+
+// 7.1 NINALKKEMHN, CmdId 4234; parser E6D2F88 and receiver F1791E0.
+message AranaraCollectionDataNotify {
+  repeated AranaraCollectionSuite collection_suite_list = 3;
+}

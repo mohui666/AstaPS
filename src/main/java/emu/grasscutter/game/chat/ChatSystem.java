@@ -58,6 +58,7 @@ public class ChatSystem implements ChatSystemHandler {
     public synchronized void clearHistoryOnLogout(Player player) {
         this.history.remove(player.getUid());
         this.assistant.clear(player.getUid());
+        emu.grasscutter.game.shop.ShopSearch.revoke(player.getUid());
     }
 
     /** Copies one conversation so packets never iterate the live list. */

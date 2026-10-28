@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// IMKIHPMDMMM, CmdId 3903. Parser RVA CC25060.
+// JKFCCMCAMGA::AEGMLPEHIMI (8E28A80) sends any nonzero retcode to the error UI.
+message GCGPVEStartGameRsp {
+  uint32 level_id = 3;
+  int32 retcode = 5;
+}

@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 FMJJCFOOLMA, CmdId 9795. Sender BE1E820 / writer BBE68E0: tags 70, 50.
+message SubmitQuestEventsGivingReq {
+  uint32 giving_id = 14;
+  uint32 item_id = 10;
+}

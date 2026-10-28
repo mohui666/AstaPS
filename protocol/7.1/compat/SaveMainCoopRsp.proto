@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// KDNANPMGNDI, CmdId 22426. Parser RVA 82932D0; packed uint codec tag 0x32.
+message SaveMainCoopRsp {
+  int32 retcode = 4;
+  repeated uint32 save_point_id_list = 6 [packed = true];
+  uint32 id = 8;
+}

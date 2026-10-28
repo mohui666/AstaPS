@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// IJFNMCLFBFF, native writer RVA 7588B30; shared by request and persisted data.
+message MiscRenameInfo {
+  string name = 4;
+  uint32 rename_id = 8;
+}

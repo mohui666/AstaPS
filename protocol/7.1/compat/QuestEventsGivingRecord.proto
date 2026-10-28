@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 CFNCHOHPEIO. Native parser and GOALJOJGKME evidence module cross-checked.
+message QuestEventsGivingRecord {
+  uint32 giving_id = 4;
+  bool is_finished = 8;
+  repeated uint32 item_id_list = 11 [packed = true];
+}

@@ -8,6 +8,7 @@ import emu.grasscutter.game.quest.conditions.BaseCondition;
 import emu.grasscutter.game.quest.content.BaseContent;
 import emu.grasscutter.game.quest.content.ContentServerState;
 import emu.grasscutter.game.quest.enums.QuestContent;
+import emu.grasscutter.game.quest.enums.QuestExec;
 import emu.grasscutter.game.quest.handlers.QuestExecHandler;
 import emu.grasscutter.server.game.*;
 import it.unimi.dsi.fastutil.ints.*;
@@ -35,6 +36,9 @@ public final class QuestSystem extends BaseGameSystem {
         for (var type : QuestContent.values()) {
             if (type.isServerStatePredicate()) this.contHandlers.put(type.getValue(), serverState);
         }
+        var questParty = new emu.grasscutter.game.quest.exec.QuestPartyExec();
+        for (var type : emu.grasscutter.game.quest.exec.QuestPartyExec.TYPES)
+            this.execHandlers.put(type.getValue(), questParty);
     }
 
     public <T> void registerHandlers(Int2ObjectMap<T> map, Class<T> clazz) {
@@ -118,15 +122,15 @@ public final class QuestSystem extends BaseGameSystem {
             return;
         }
 
-        QuestManager.eventExecutor.submit(
-                () -> {
-                    if (!handler.execute(quest, execParam, params)) {
-                        Grasscutter.getLogger()
-                                .debug(
-                                        "Execute trigger failed for {} at {}.",
-                                        execParam.getType().name(),
-                                        quest.getQuestData());
-                    }
-                });
+        Runnable action = () -> {
+            if (!emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.execute(
+                    quest, execParam, handler, params)) {
+                Grasscutter.getLogger().debug("Execute trigger failed for {} at {}.",
+                        execParam.getType().name(), quest.getQuestData());
+            }
+        };
+        // The finishing child's selection must be applied before its parent grants the reward.
+        if (execParam.getType() == QuestExec.QUEST_EXEC_UPDATE_PARENT_QUEST_REWARD_INDEX) action.run();
+        else QuestManager.eventExecutor.submit(action);
     }
 }

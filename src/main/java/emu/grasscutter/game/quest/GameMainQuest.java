@@ -32,8 +32,11 @@ public class GameMainQuest {
     @Getter private int parentQuestId;
     @Getter private int[] questVars;
     @Getter private long[] timeVar;
+    /** New native timers use Unix seconds; existing timeVar entries keep their saved game-minute units. */
+    @Getter private Map<Integer, Long> timeVarUnixSeconds = new HashMap<>();
     @Getter private ParentQuestState state;
     @Getter private boolean isFinished;
+    @Getter private int rewardIndex;
     // Completion evidence for MQ1000 rescue plot reports that arrive before acceptance.
     @Getter @Setter(AccessLevel.PACKAGE) private boolean liyueRescuePlotReported;
     @Getter @Setter(AccessLevel.PACKAGE) private int liyueAmberSuite;
@@ -146,6 +149,7 @@ public class GameMainQuest {
         questManager.queueEvent(QuestContent.QUEST_CONTENT_QUEST_VAR_EQUAL, index, value);
         questManager.queueEvent(QuestContent.QUEST_CONTENT_QUEST_VAR_GREATER, index, value);
         questManager.queueEvent(QuestContent.QUEST_CONTENT_QUEST_VAR_LESS, index, value);
+        questManager.queueEvent(QuestContent.QUEST_CONTENT_QUEST_VAR_NOT_EQUAL, index, value);
 
         this.getOwner()
                 .sendPacket(new PacketQuestUpdateQuestVarNotify(this.getParentQuestId(), this.questVars));
@@ -160,6 +164,18 @@ public class GameMainQuest {
                 .filter(p -> p.getQuestData().getOrder() == order)
                 .toList()
                 .get(0);
+    }
+
+    /** Native parent rewards are alternatives, selected by a zero-based quest action. */
+    public boolean setRewardIndex(int index) {
+        var data = GameData.getMainQuestDataMap().get(this.parentQuestId);
+        if (data == null || data.getRewardIdList() == null
+                || index < 0 || index >= data.getRewardIdList().length) return false;
+        if (this.rewardIndex != index) {
+            this.rewardIndex = index;
+            save();
+        }
+        return true;
     }
 
     public void finish() {
@@ -178,24 +194,19 @@ public class GameMainQuest {
             this.state = ParentQuestState.PARENT_QUEST_STATE_FINISHED;
         }
 
-        this.getOwner().getSession().send(new PacketFinishedParentQuestUpdateNotify(this));
-        this.getOwner().getSession().send(new PacketCodexDataUpdateNotify(this));
+        this.getOwner().sendPacket(new PacketFinishedParentQuestUpdateNotify(this));
+        this.getOwner().sendPacket(new PacketCodexDataUpdateNotify(this));
 
         this.save();
 
         // Add rewards
         MainQuestData mainQuestData = GameData.getMainQuestDataMap().get(this.getParentQuestId());
-        if (mainQuestData.getRewardIdList() != null) {
-            for (int rewardId : mainQuestData.getRewardIdList()) {
-                RewardData rewardData = GameData.getRewardDataMap().get(rewardId);
-                if (rewardData == null) {
-                    continue;
-                }
-
-                this.getOwner()
-                        .getInventory()
-                        .addItemParamDatas(rewardData.getRewardItemList(), ActionReason.QuestReward);
-            }
+        var rewards = mainQuestData.getRewardIdList();
+        if (rewards != null && rewardIndex >= 0 && rewardIndex < rewards.length) {
+            RewardData rewardData = GameData.getRewardDataMap().get(rewards[rewardIndex]);
+            if (rewards[rewardIndex] != 0 && rewardData != null)
+                this.getOwner().getInventory()
+                        .addItemParamDatas(rewardData.getAllRewardItems(), ActionReason.QuestReward);
         }
 
         this.tryStartFollowingQuests();
@@ -256,6 +267,22 @@ public class GameMainQuest {
     /** Resume reviewed parallel stages without replaying completed talks or resetting counters. */
     public List<Position> resumeOnLogin() {
         if (this.questManager == null) this.questManager = getOwner().getQuestManager();
+        if (emu.grasscutter.game.quest.coop.CoopSystem.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.check.QuestCheckRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.gcg.story.StoryCardRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.rename.QuestMiscRenameService.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.field.QuestFieldRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.delivery.QuestDeliveryRuntime.preserveOnLogin(this)) return null;
+        if (emu.grasscutter.game.quest.war.ReconstructedWarRuntime.preserveOnLogin(this)) return null;
+        if (QuestInventoryProgress.preserveOnLogin(this)) return null;
+        // Replaying this waiting stage's begin exec can restart its deadline on every login.
+        if (QuestTimeConditions.preserveOnLogin(this)
+                || emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.preserveOnLogin(this)
+                || getActiveQuests().stream().anyMatch(emu.grasscutter.game.quest.reconstruction
+                        .CalibertQuestReconstruction::shouldPreserveOnLogin)) return null;
         if (QuestManager.isQuestingActive()) {
             var jadePosition = LiyueJadeChamberRecovery.resumeOnLogin(this);
             if (jadePosition != null) return jadePosition;
@@ -562,39 +589,82 @@ public class GameMainQuest {
         return proto.build();
     }
 
-    // TimeVar handling TODO check if in-game or irl time
-    public boolean initTimeVar(int index) {
-        if (index >= this.timeVar.length) {
+    public synchronized boolean initTimeVar(int index) {
+        if (index < 0 || index >= 10) {
             Grasscutter.getLogger()
                     .error(
                             "Trying to init out of bounds time var {} for quest {}", index, this.parentQuestId);
             return false;
         }
-        this.timeVar[index] = owner.getWorld().getTotalGameTimeMinutes();
-        owner.getActiveQuestTimers().add(this.parentQuestId);
+        // The old unit cannot be converted into an original wall-clock start. Keep a running
+        // legacy slot until its actual CLEAR exec instead of resetting its current wait.
+        if (legacyTimeVar(index) < 0) {
+            if (this.timeVarUnixSeconds == null) this.timeVarUnixSeconds = new HashMap<>();
+            this.timeVarUnixSeconds.put(index, timeVarNowSeconds());
+            this.save();
+        }
+        synchronized (owner.getActiveQuestTimers()) {
+            owner.getActiveQuestTimers().add(this.parentQuestId);
+        }
+        owner.getQuestManager().queueTimeVarChecks(this.parentQuestId);
         return true;
     }
 
-    public boolean clearTimeVar(int index) {
-        if (index >= this.timeVar.length) {
+    public synchronized boolean clearTimeVar(int index) {
+        if (index < 0 || index >= 10) {
             Grasscutter.getLogger()
                     .error(
                             "Trying to clear out of bounds time var {} for quest {}", index, this.parentQuestId);
             return false;
         }
-        this.timeVar[index] = -1;
+        boolean changed = legacyTimeVar(index) >= 0;
+        if (this.timeVar != null && index < this.timeVar.length) this.timeVar[index] = -1;
+        if (this.timeVarUnixSeconds != null) changed |= this.timeVarUnixSeconds.remove(index) != null;
         if (!checkActiveTimers()) {
-            owner.getActiveQuestTimers().remove(this.parentQuestId);
+            synchronized (owner.getActiveQuestTimers()) {
+                owner.getActiveQuestTimers().remove(this.parentQuestId);
+            }
         }
+        if (changed) this.save();
+        owner.getQuestManager().queueTimeVarChecks(this.parentQuestId);
         return true;
     }
 
-    public boolean checkActiveTimers() {
-        return Arrays.stream(timeVar).anyMatch(value -> value != -1);
+    public synchronized boolean checkActiveTimers() {
+        return this.timeVar != null && Arrays.stream(timeVar).anyMatch(value -> value >= 0)
+                || this.timeVarUnixSeconds != null && !this.timeVarUnixSeconds.isEmpty();
     }
 
-    public long getDaysSinceTimeVar(int index) {
-        if (index >= this.timeVar.length) {
+    public synchronized boolean isTimeVarActive(int index) {
+        if (index < 0 || index >= 10) return false;
+        return legacyTimeVar(index) >= 0 || this.timeVarUnixSeconds != null
+                && this.timeVarUnixSeconds.getOrDefault(index, 0L) > 0;
+    }
+
+    private long legacyTimeVar(int index) {
+        return this.timeVar != null && index >= 0 && index < this.timeVar.length ? this.timeVar[index] : -1;
+    }
+
+    /** A narrow clock seam lets elapsed-time tests advance time without waiting or changing the OS clock. */
+    protected long timeVarNowSeconds() {
+        return java.time.Instant.now().getEpochSecond();
+    }
+
+    public synchronized long getSecondsSinceTimeVar(int index) {
+        if (index < 0 || index >= 10) return -1;
+        var stamp = this.timeVarUnixSeconds == null ? null : this.timeVarUnixSeconds.get(index);
+        if (stamp != null) {
+            long now = timeVarNowSeconds();
+            return stamp > 0 && now >= stamp ? now - stamp : -1;
+        }
+        long legacy = legacyTimeVar(index);
+        if (legacy < 0 || owner == null || owner.getWorld() == null) return -1;
+        long minutes = owner.getWorld().getTotalGameTimeMinutes() - legacy;
+        return minutes >= 0 ? minutes * 60 : -1;
+    }
+
+    public synchronized long getDaysSinceTimeVar(int index) {
+        if (index < 0 || index >= 10) {
             Grasscutter.getLogger()
                     .error(
                             "Trying to get days for out of bounds time var {} for quest {}",
@@ -602,17 +672,20 @@ public class GameMainQuest {
                             this.parentQuestId);
             return -1;
         }
-        val varTime = timeVar[index];
-
-        if (varTime == -1) {
-            return 0;
+        var stamp = this.timeVarUnixSeconds == null ? null : this.timeVarUnixSeconds.get(index);
+        if (stamp != null) {
+            long now = timeVarNowSeconds();
+            if (stamp <= 0 || now < stamp) return -1;
+            return QuestTimeConditions.dayIndex(now) - QuestTimeConditions.dayIndex(stamp);
         }
-
-        return owner.getWorld().getTotalGameTimeDays() - ConversionUtils.gameTimeToDays(varTime);
+        long legacy = legacyTimeVar(index);
+        if (legacy < 0 || owner == null || owner.getWorld() == null) return -1;
+        if (owner.getWorld().getTotalGameTimeMinutes() < legacy) return -1;
+        return owner.getWorld().getTotalGameTimeDays() - ConversionUtils.gameTimeToDays(legacy);
     }
 
-    public long getHoursSinceTimeVar(int index) {
-        if (index >= this.timeVar.length) {
+    public synchronized long getHoursSinceTimeVar(int index) {
+        if (index < 0 || index >= 10) {
             Grasscutter.getLogger()
                     .error(
                             "Trying to get hours for out of bounds time var {} for quest {}",
@@ -620,12 +693,7 @@ public class GameMainQuest {
                             this.parentQuestId);
             return -1;
         }
-        val varTime = timeVar[index];
-
-        if (varTime == -1) {
-            return 0;
-        }
-
-        return ConversionUtils.gameTimeToHours(owner.getWorld().getTotalGameTimeMinutes() - varTime);
+        long elapsed = getSecondsSinceTimeVar(index);
+        return elapsed < 0 ? -1 : elapsed / 3600;
     }
 }

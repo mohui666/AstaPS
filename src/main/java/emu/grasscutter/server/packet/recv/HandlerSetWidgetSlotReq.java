@@ -32,6 +32,9 @@ public class HandlerSetWidgetSlotReq extends PacketHandler {
         } else {
             player.setWidgetId(0);
         }
+        player.getQuestManager().queueEvent(
+                emu.grasscutter.game.quest.enums.QuestContent.QUEST_CONTENT_SPECIFIC_WIDGET_ATTACHED,
+                player.getWidgetId());
 
         // WidgetSlotChangeNotify op & slot key
         session.send(

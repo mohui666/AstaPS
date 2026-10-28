@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "AvatarRenameInfo.proto";
+
+// 7.1 MDCMLJGMDPI, CmdId 209; native receiver C25DC90, AvatarRenameInfo parser 1094E220.
+message AvatarRenameInfoNotify {
+  repeated AvatarRenameInfo avatar_rename_list = 15;
+}

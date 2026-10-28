@@ -12,10 +12,12 @@ import emu.grasscutter.game.Account;
 import emu.grasscutter.game.avatar.Avatar;
 import emu.grasscutter.game.avatar.AvatarStorage;
 import emu.grasscutter.game.player.Player;
+import emu.grasscutter.game.quest.QuestManager;
 import emu.grasscutter.net.packet.BasePacket;
 import emu.grasscutter.net.packet.PacketOpcodes;
 import emu.grasscutter.net.proto.QueryCurrRegionHttpRspOuterClass.QueryCurrRegionHttpRsp;
 import emu.grasscutter.net.proto.RegionInfoOuterClass.RegionInfo;
+import emu.grasscutter.server.born.BornIntroGate;
 import emu.grasscutter.server.game.GameSession;
 import emu.grasscutter.server.game.GameSession.SessionState;
 import emu.grasscutter.server.packet.send.PacketDoSetPlayerBornDataNotify;
@@ -24,6 +26,7 @@ import emu.grasscutter.server.packet.send.PacketSetPlayerBornDataRsp;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,7 @@ final class NativeCharacterSelectionTest {
     private GameOptions.NewAccountIntro previousIntro;
     private ServerRunMode previousRunModeOverride;
     private Object previousRegionCache;
+    private RecordingSession currentSession;
 
     @BeforeEach
     void useNativeSelectionWithoutStartingARegionServer() throws Exception {
@@ -55,6 +59,14 @@ final class NativeCharacterSelectionTest {
         GAME_OPTIONS.newAccountIntro = previousIntro;
         Grasscutter.setRunModeOverride(previousRunModeOverride);
         field(PacketPlayerLoginRsp.class, "regionCache").set(null, previousRegionCache);
+        if (currentSession != null) {
+            var bootstraps = (Map<?, ?>) field(BornIntroGate.class, "FRESH_PLAYER_BOOTSTRAPS").get(null);
+            var pending = bootstraps.get(currentSession.player.getUid());
+            if (pending != null
+                    && field(pending.getClass(), "originSession").get(pending) == currentSession) {
+                bootstraps.remove(currentSession.player.getUid());
+            }
+        }
     }
 
     @Test
@@ -130,6 +142,8 @@ final class NativeCharacterSelectionTest {
         assertSame(avatar, session.player.getAvatars().getAvatarById(traveler));
         assertEquals(0, session.player.avatarAdds);
         assertEquals(List.of(PacketOpcodes.PlayerLoginRsp), opcodes(session));
+        // An empty quest log can arm bootstrap, but quests begin only after first scene entry.
+        assertTrue(session.player.getQuestManager().getMainQuests().isEmpty());
     }
 
     @Test
@@ -151,10 +165,12 @@ final class NativeCharacterSelectionTest {
         return session.packets.stream().map(BasePacket::getOpcode).toList();
     }
 
-    private static RecordingSession session(int traveler) throws Exception {
+    private RecordingSession session(int traveler) throws Exception {
         var session = allocate(RecordingSession.class);
         var player = allocate(RecordingPlayer.class);
         player.avatars = new AvatarStorage(player);
+        // Match Player's constructor without inventing completed quests for an existing avatar.
+        field(Player.class, "questManager").set(player, new QuestManager(player));
         player.traveler = traveler;
         player.nickname = "Existing Traveler";
         player.session = session;
@@ -163,6 +179,7 @@ final class NativeCharacterSelectionTest {
         session.account = allocate(Account.class);
         session.packets = new ArrayList<>();
         session.setState(SessionState.WAITING_FOR_LOGIN);
+        currentSession = session;
         return session;
     }
 

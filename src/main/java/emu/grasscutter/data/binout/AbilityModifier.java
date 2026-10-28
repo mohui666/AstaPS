@@ -465,6 +465,8 @@ public class AbilityModifier implements Serializable {
             return this.ratio == DynamicFloat.ONE ? DynamicFloat.ZERO : this.ratio;
         }
         public String determineType;
+        /** AddClimateMeter's JSON climate, independently of sky/weather enum values. */
+        public String climateType;
         public int configID;
 
         public int[] configIdArray;

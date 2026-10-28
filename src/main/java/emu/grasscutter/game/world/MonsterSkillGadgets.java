@@ -11,16 +11,18 @@ import emu.grasscutter.game.entity.GameEntity;
 import emu.grasscutter.game.props.CampTargetType;
 import emu.grasscutter.net.proto.AbilityActionCreateGadgetOuterClass.AbilityActionCreateGadget;
 import emu.grasscutter.net.proto.VisionTypeOuterClass.VisionType;
+import java.util.Map;
 
 /** Monster mechanics keep their native spawn points instead of replacing every same-ID summon. */
 public final class MonsterSkillGadgets {
     private static final float SAME_POSITION_SQUARED = 0.25f * 0.25f;
+    private static final int DVALIN_MOVING_CENTER = 42901008;
 
     private MonsterSkillGadgets() {}
 
     /**
-     * Honor the client's real, positioned CreateGadget request. An empty onAdded replay does not
-     * have the native born position and must not put another mechanic at the monster's origin.
+     * Honor the client's positioned request, or an explicit world position in native onAdded data.
+     * Other born rules require client placement and must not spawn at the monster's origin.
      */
     public static boolean createFromClientRequest(
             GameEntity owner, AbilityModifierAction action, ByteString payload) {
@@ -33,9 +35,9 @@ public final class MonsterSkillGadgets {
         } catch (InvalidProtocolBufferException invalid) {
             return false;
         }
-        if (!request.hasPos()) return true;
-
-        var position = new Position(request.getPos());
+        var position = request.hasPos() ? new Position(request.getPos())
+                : payload.isEmpty() ? fixedWorldBornPosition(action) : null;
+        if (position == null) return true;
         if (!Float.isFinite(position.getX()) || !Float.isFinite(position.getY())
                 || !Float.isFinite(position.getZ())) return false;
         var rotation = request.hasRot() ? new Position(request.getRot()) : new Position(owner.getRotation());
@@ -53,7 +55,7 @@ public final class MonsterSkillGadgets {
             int limit = switch (action.gadgetID) {
                 case 42004010, 42004016 -> 3;
                 case 42004017 -> 2;
-                case 42004018 -> 1;
+                case 42004018, DVALIN_MOVING_CENTER -> 1;
                 default -> Integer.MAX_VALUE;
             };
             if (owned >= limit) return true;
@@ -71,6 +73,35 @@ public final class MonsterSkillGadgets {
                     action.gadgetID, gadget.getId(), owner.getId(), position);
         }
         return true;
+    }
+
+    /** Monster constructors load abilities before registration, so replay this fixed flight anchor after it. */
+    public static void onMonsterCreated(EntityMonster monster) {
+        var monsterData = monster.getMonsterData();
+        if (monsterData == null || (monsterData.getId() != 29010103 && monsterData.getId() != 29010101)) return;
+        for (var ability : monster.getInstancedAbilities()) {
+            var data = ability.getData();
+            if (data == null || !"Dvalin_S01_Enviroment".equals(data.abilityName)
+                    || data.onAdded == null) continue;
+            for (var action : data.onAdded) {
+                if (action != null && action.type == AbilityModifierAction.Type.CreateGadget
+                        && action.gadgetID == DVALIN_MOVING_CENTER) {
+                    createFromClientRequest(monster, action, ByteString.EMPTY);
+                }
+            }
+        }
+    }
+
+    private static Position fixedWorldBornPosition(AbilityModifierAction action) {
+        // Native 7.1 ConfigBornByWorld: NONIAFMFFBP is the absolute world position.
+        if (action.born == null || !"AMOMFFPOKPI".equals(action.born.get("$type"))
+                || !(action.born.get("NONIAFMFFBP") instanceof Map<?, ?> position)) return null;
+        return new Position(coordinate(position, "x"), coordinate(position, "y"), coordinate(position, "z"));
+    }
+
+    private static float coordinate(Map<?, ?> position, String axis) {
+        var value = position.get(axis);
+        return value == null ? 0f : value instanceof Number number ? number.floatValue() : Float.NaN;
     }
 
     /** Resolve enemy ownership locally; do not change the avatar ownership rules of client gadgets. */
@@ -114,7 +145,7 @@ public final class MonsterSkillGadgets {
         return x * x + y * y + z * z <= SAME_POSITION_SQUARED;
     }
 
-    /** A later local SkillObj takes over only its matching requested server mechanic. */
+    /** A later local SkillObj takes over its matching mechanic; the unique flight center may have moved. */
     public static void onClientGadgetCreated(EntityClientGadget client) {
         var boss = rootMonster(client);
         if (boss == null) return;
@@ -125,7 +156,8 @@ public final class MonsterSkillGadgets {
                     .map(entity -> (SkillGadget) entity)
                     .filter(gadget -> gadget.getOwner() != null && gadget.root == boss
                             && ownedGadget(client, gadget.getOwner(), boss, gadget.getGadgetId())
-                            && samePosition(gadget.getPosition(), client.getPosition()))
+                            && (gadget.getGadgetId() == DVALIN_MOVING_CENTER
+                                    || samePosition(gadget.getPosition(), client.getPosition())))
                     .toList();
             for (var gadget : duplicates) scene.removeEntity(gadget, VisionType.VisionType_VISION_REMOVE);
         }

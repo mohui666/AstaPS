@@ -6,6 +6,7 @@ import emu.grasscutter.data.GameData;
 import emu.grasscutter.game.entity.EntityNPC;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.world.Position;
+import emu.grasscutter.game.world.PaimonCompanions;
 import emu.grasscutter.server.packet.send.PacketGroupSuiteNotify;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -31,7 +32,7 @@ public final class NpcCommand implements CommandHandler {
         private final Player sender;
         private final Player targetPlayer;
 
-        @Parameters(index = "0..*", arity = "1..3", paramLabel = "<npcId|near|group|clear> [args]")
+        @Parameters(index = "0..*", arity = "1..3", paramLabel = "<npcId|near|group|clear|follow> [args]")
         private List<String> args = List.of();
 
         private Args(Player sender, Player targetPlayer) {
@@ -41,6 +42,18 @@ public final class NpcCommand implements CommandHandler {
 
         @Override
         public void run() {
+            if (args.get(0).equalsIgnoreCase("follow")) {
+                if (args.size() != 2) { usage(sender); return; }
+                try {
+                    CommandOutput.sendMessage(sender, PaimonCompanions.configure(targetPlayer, Integer.parseInt(args.get(1))));
+                } catch (IllegalArgumentException error) {
+                    CommandOutput.sendMessage(sender, error.getMessage());
+                } catch (java.io.UncheckedIOException error) {
+                    Grasscutter.getLogger().error("Cannot save Paimon follower configuration.", error);
+                    CommandOutput.sendMessage(sender, error.getMessage());
+                }
+                return;
+            }
             var scene = targetPlayer.getScene();
             if (scene == null) {
                 CommandOutput.sendMessage(sender, "Target player has no active scene.");
@@ -161,6 +174,6 @@ public final class NpcCommand implements CommandHandler {
     private static void usage(Player sender) {
         CommandOutput.sendMessage(
                 sender,
-                "Usage: /npc <npcId> | /npc near [radius] | /npc group <groupId> <suiteId> | /npc clear");
+                "Usage: /npc <npcId> | /npc near [radius] | /npc group <groupId> <suiteId> | /npc clear | /npc follow <0-20>");
     }
 }

@@ -15,6 +15,8 @@ public final class GivingGroupData extends GameResource {
     @SerializedName(value = "itemIds", alternate = "ItemIds")
     private List<Integer> itemIds;
 
+    @SerializedName(value = "finishTalkId", alternate = "finishDialogId")
     private int finishTalkId;
+    @SerializedName(value = "mistakeTalkId", alternate = "mistakeDialogId")
     private int mistakeTalkId;
 }

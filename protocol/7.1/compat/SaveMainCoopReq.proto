@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// BFNBHLFPMMC, CmdId 21623. Writer RVA 71FC2A0; model-copy sender RVA F322410.
+message SaveMainCoopReq {
+  uint32 self_confidence = 2;
+  uint32 save_point_id = 3;
+  map<uint32, int32> normal_var_map = 4;
+  uint32 id = 6;
+  map<uint32, int32> temp_var_map = 12;
+}

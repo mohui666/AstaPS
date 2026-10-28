@@ -1,5 +1,7 @@
 # MGC · 7.1 默绘定制版
 
+本版补齐主线、森林书及重要世界任务机制，重建缺失关卡，支持可信好友 PvP 配对和公网/局域网不同游戏端口。请配套应用[剧情资源增量](tools/quest-resource-patches/README.md)，连接包源码见[一键连接模板](client/package-template/README.md)，支持范围见[剧情说明](docs/quest/runtime-support.md)。
+
 包含原生 PVP 与多个假玩家测试目标，客户端编译及部署见 [client/](client/README.md)。
 
 [English](README.md) · 简体中文 · [繁體中文](README_zh-TW.md)

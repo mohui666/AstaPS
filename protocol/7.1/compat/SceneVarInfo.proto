@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// BBAPAPEIFCI. Native parser RVA AEB8CC0: fixed32 float tag 0x35, int32 tag 0x48.
+message SceneVarInfo {
+  float value = 6;
+  int32 key_hash = 9;
+}

@@ -10,8 +10,10 @@ import lombok.val;
 public class ExecInitTimeVar extends QuestExecHandler {
     @Override
     public boolean execute(GameQuest quest, QuestData.QuestExecParam condition, String... paramStr) {
-        val timeVarId = Integer.parseInt(condition.getParam()[0]);
-        val mainQuest = quest.getMainQuest();
-        return mainQuest.initTimeVar(timeVarId);
+        var params = condition.getParam();
+        if (params == null || params.length < 1) return false;
+        try {
+            return quest.getMainQuest().initTimeVar(Integer.parseInt(params[0]));
+        } catch (NumberFormatException error) { return false; }
     }
 }

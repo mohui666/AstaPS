@@ -24,6 +24,24 @@ public class HandlerSelectWorktopOptionReq extends PacketHandler {
                 return;
             }
 
+            if (emu.grasscutter.game.gcg.story.StoryCardRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.field.QuestFieldRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.coop.CoopProgression.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+
+            if (emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+            if (emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.tryInteract(
+                    session.getPlayer(),entity,req.getOptionId())) return;
+
             if (entity instanceof EntityGadget jadeGadget
                     && jadeGadget.getContent() instanceof emu.grasscutter.game.entity.gadget.GadgetLiyueJadeMaterials jade) {
                 jade.openCage(session.getPlayer(), req.getOptionId());
@@ -47,7 +65,7 @@ public class HandlerSelectWorktopOptionReq extends PacketHandler {
                                     entity.getGroupId(),
                                     EventType.EVENT_SELECT_OPTION,
                                     entity.getConfigId(),
-                                    req.getOptionId()));
+                                    req.getOptionId()).setUid(session.getPlayer().getUid()));
             session
                     .getPlayer()
                     .getQuestManager()

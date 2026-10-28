@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "SceneVarInfo.proto";
+
+// IJBLCEIIDAI, CmdId 1292. Parser RVA 12A90710; field codec tag 0x4A.
+// JJAGJFIKABD::MEJMGAIKEHC replaces this scene's server-variable cache.
+message SceneVarListNotify {
+  repeated SceneVarInfo scene_var_list = 9;
+  uint32 scene_id = 12;
+}

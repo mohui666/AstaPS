@@ -24,6 +24,7 @@ public class WorldChallenge {
     private final int challengeIndex;
     private final List<Integer> paramList;
     private int timeLimit;
+    private final int initialTimeLimit;
     private GameEntity guardEntity;
     private final List<ChallengeTrigger> challengeTriggers;
     private final int goal;
@@ -32,6 +33,8 @@ public class WorldChallenge {
     private boolean success;
     private int startedAt;
     private int finishedTime;
+    private int fatherIndex;
+    private List<Integer> participantUids = List.of();
 
     /**
      * @param scene The scene the challenge is in.
@@ -58,6 +61,7 @@ public class WorldChallenge {
         this.challengeIndex = challengeIndex;
         this.paramList = paramList;
         this.timeLimit = timeLimit;
+        this.initialTimeLimit = timeLimit;
         this.challengeTriggers = challengeTriggers;
         this.goal = goal;
         this.score = new AtomicInteger(0);
@@ -66,6 +70,27 @@ public class WorldChallenge {
 
     public boolean inProgress() {
         return this.progress;
+    }
+
+    public synchronized boolean setRemainingDuration(int seconds) {
+        if (!inProgress() || seconds < 0) return false;
+        int elapsed = Math.max(0, getScene().getSceneTimeSeconds() - startedAt);
+        timeLimit = Math.addExact(elapsed, seconds);
+        getScene().broadcastPacket(new PacketChallengeDataNotify(this, 2, startedAt + timeLimit));
+        if (seconds == 0) fail();
+        return true;
+    }
+
+    public synchronized boolean addDuration(int seconds) {
+        return addDuration(seconds, true);
+    }
+
+    public synchronized boolean addDuration(int seconds, boolean canExceedLimit) {
+        if (!inProgress()) return false;
+        int elapsed = Math.max(0, getScene().getSceneTimeSeconds() - startedAt);
+        int remaining = Math.max(0, Math.addExact(timeLimit - elapsed, seconds));
+        if (!canExceedLimit) remaining = Math.min(remaining, initialTimeLimit);
+        return setRemainingDuration(remaining);
     }
 
     public void onCheckTimeOut() {
@@ -146,6 +171,7 @@ public class WorldChallenge {
         var challengeSuccess =
                 scriptManager.callEvent(
                         new ScriptArgs(this.getGroup().id, EventType.EVENT_CHALLENGE_SUCCESS)
+                                .setParam1(this.getChallengeIndex())
                                 .setParam2(param2)
                                 .setEventSource(this.getChallengeIndex()));
 
@@ -179,6 +205,7 @@ public class WorldChallenge {
         var scriptManager = this.getScene().getScriptManager();
         scriptManager.callEvent(
                 new ScriptArgs(this.getGroup().id, EventType.EVENT_CHALLENGE_FAIL)
+                        .setParam1(this.getChallengeIndex())
                         .setEventSource(this.getChallengeIndex()));
         challengeTriggers.forEach(t -> t.onFinish(this));
     }

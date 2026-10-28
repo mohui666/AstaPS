@@ -67,6 +67,7 @@ public class QuestData extends GameResource {
         if (this.finishCondComb == null) this.finishCondComb = LogicType.LOGIC_NONE;
 
         if (this.failCondComb == null) this.failCondComb = LogicType.LOGIC_NONE;
+        restoreLynetteCheckCombinators();
 
         if (this.gainItems == null) this.gainItems = Collections.emptyList();
 
@@ -92,6 +93,7 @@ public class QuestData extends GameResource {
         this.failCondComb =
                 effectiveConditionCombinator(
                         this.failCondComb, additionalData.getFailCondComb(), this.failCond);
+        restoreLynetteCheckCombinators();
 
         // Reviewed BinOutput prerequisites govern 35101 and the 36301 chapter gate.
         // A flattened quest-0 placeholder must not start the chapter before hilltop 35202.
@@ -125,6 +127,28 @@ public class QuestData extends GameResource {
             return excel;
         }
         return bin;
+    }
+
+    /** The five D20 outcomes need both a real result and their completed dialogue. */
+    private void restoreLynetteCheckCombinators() {
+        if (mainId != 19182 || subId < 1918220 || subId > 1918224) return;
+        int check = 1005 + subId - 1918220;
+        int dialogue = 1918215 + subId - 1918220;
+        if (isLynetteCheckPair(finishCond, check, dialogue, 1)
+                && (finishCondComb == null || finishCondComb == LogicType.LOGIC_NONE))
+            finishCondComb = LogicType.LOGIC_AND;
+        if (isLynetteCheckPair(failCond, check, dialogue, 0)
+                && (failCondComb == null || failCondComb == LogicType.LOGIC_NONE))
+            failCondComb = LogicType.LOGIC_AND;
+    }
+
+    private static boolean isLynetteCheckPair(List<QuestContentCondition> conditions,
+            int check, int dialogue, int outcome) {
+        if (conditions == null || conditions.size() != 2) return false;
+        return conditions.stream().anyMatch(c -> c.getType() == QuestContent.QUEST_CONTENT_QUEST_CHECK_EQUAL
+                        && Arrays.equals(c.getParam(), new int[] {check, outcome}))
+                && conditions.stream().anyMatch(c -> c.getType() == QuestContent.QUEST_CONTENT_QUEST_STATE_EQUAL
+                        && Arrays.equals(c.getParam(), new int[] {dialogue, QuestState.QUEST_STATE_FINISHED.getValue()}));
     }
 
     static List<QuestExecParam> effectiveExecList(
@@ -250,6 +274,9 @@ public class QuestData extends GameResource {
                 value = "_param",
                 alternate = {"param"})
         String[] param;
+
+        @SerializedName(value = "_resourceOpType", alternate = {"resourceOpType"})
+        String resourceOpType;
 
         @SerializedName(
                 value = "_count",

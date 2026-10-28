@@ -19,6 +19,12 @@ public class ConditionActivityCond extends BaseCondition {
             int... params) {
         val activityCondId = condition.getParam()[0];
         val targetState = condition.getParam()[1]; // only 1 for now
+        for (var activity : owner.getQuestActivityState().getConditions().entrySet()) {
+            var override = activity.getValue().get(activityCondId);
+            if (override != null) return (override
+                    && owner.getActivityManager().isActivityActive(activity.getKey())
+                    && owner.getActivityManager().isActivityOpen(activity.getKey())) == (targetState == 1);
+        }
         return owner.getActivityManager().meetsCondition(activityCondId) == (targetState == 1);
     }
 }

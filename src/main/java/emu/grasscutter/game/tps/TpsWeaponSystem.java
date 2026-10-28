@@ -252,7 +252,15 @@ public final class TpsWeaponSystem {
         }
 
         // Nothing to change: answer, but do not resend weapons the client already shows.
-        if (itemIds.equals(avatar.getTpsWeaponIds())) return Retcode.RET_SUCC_VALUE;
+        if (itemIds.equals(avatar.getTpsWeaponIds())) {
+            if (TpsAvatarSystem.isTpsAvatar(avatar) && !itemIds.equals(player.getTpsLoadout())) {
+                player.getTpsLoadout().clear();
+                player.getTpsLoadout().addAll(itemIds);
+                player.save();
+            }
+            TpsAvatarSystem.synchronizeLoadout(player, avatar);
+            return Retcode.RET_SUCC_VALUE;
+        }
 
         for (Avatar other : player.getAvatars()) {
             if (other == avatar || !other.getTpsWeaponIds().removeIf(itemIds::contains)) continue;
@@ -275,6 +283,7 @@ public final class TpsWeaponSystem {
         if (avatar.getTrialAvatarId() == 0) avatar.save();
         avatar.recalcStats();
         sendEquipChange(avatar);
+        TpsAvatarSystem.synchronizeLoadout(player, avatar);
         return Retcode.RET_SUCC_VALUE;
     }
 

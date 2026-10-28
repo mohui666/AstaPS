@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 JOFFJAKCFIJ: parser RVA 82745F0, writer RVA 8274920.
+message TpsGlassesChatTopicInfo {
+  repeated uint32 chosen_option_list = 2;
+  // These fields retain native names until their meanings are recovered.
+  fixed32 KGBBAACLKLB = 3;
+  uint32 CPGANAPPFDM = 8;
+  uint32 progress = 10;
+  uint32 topic_id = 12;
+}

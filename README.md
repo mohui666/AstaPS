@@ -1,5 +1,7 @@
 # MGC
 
+This version adds main-story, Aranyaka and important world-quest fixes, reconstructed missing stages, trusted friend PvP pairs, and separate public/LAN game ports. Apply the [quest resource increment](tools/quest-resource-patches/README.md) with the server source; reusable [one-click connection templates](client/package-template/README.md) are included. Gameplay support boundaries are documented in [docs/quest/runtime-support.md](docs/quest/runtime-support.md).
+
 Mohui's custom **7.1.0** server and Windows client patch. Native PvP and multiple player targets are included; setup is documented in [client/](client/README.md).
 
 English · [简体中文](README_zh-CN.md) · [繁體中文](README_zh-TW.md)

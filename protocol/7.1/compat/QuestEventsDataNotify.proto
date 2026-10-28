@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "QuestEventsData.proto";
+
+// 7.1 IOGIMHDDOHK, CmdId 956. Receiver GOALJOJGKME.LBKAECDPLKM emits event 1650.
+message QuestEventsDataNotify {
+  repeated QuestEventsData event_list = 6;
+}

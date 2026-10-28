@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// FDFGHCOBFFF. Writer 10EAEE30 emits +18/tag10, +20/tag28, +1C/tag38.
+// Consumer A5CFD10 keys entries by +18; A5D84C0 compares the +20 state.
+message QuestScenery {
+  uint32 primary_scenery_id = 2;
+  uint32 state = 5;
+  uint32 sub_scenery_id = 7;
+}

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "reconstructed": true,
+  "rules": [
+    "AstaPS authored substitutes for missing fishing/capture engines. Only these original quest IDs participate. Native dialogue/plot objectives are never completed by the field controller.",
+    "Fishing is a provided physical shore rig: cast, wait three seconds for the bite, hook within three seconds, then reel three times with 0.5-3 second intervals while staying within six metres. The rig provides tackle and bait; it does not silently deduct an item for an unimplemented native fishing UI. A real live fish entity and successful inventory admission are required before one source-table fish item and its task evidence are granted. These deterministic mechanics and supplied tackle are reconstructed, not official fishing behavior.",
+    "Native 3.4 Quest::isParamMatch establishes first fishing parameter 1=ordinary,2=furniture; FishExcelConfigMgr classifies fish_cate_id!=0 as furniture. The 7.1 second parameter5001 matches the native fishing pool5001. This reconstruction explicitly treats a positive second parameter as a pool filter; the newer official server predicate is unavailable.",
+    "Survey193 requires the actual current avatar10000130 and the exact original animal, followed by three seconds at close range. Missing trial-entry Lua is replaced with source-table trial1130 in a quest-owned mirror team. A real animal is removed without a kill reward after the survey. It does not claim to implement the missing native Linnea skill capture system.",
+    "Net145 requires the equipped and owned Omni-Ubiquity Net220043, three seconds near the real spawned finch, successful source drop21330032 reward admission, and actual consumption of one net. The original capture table maps finch28010101/tag1001 to drop21330032, whose guaranteed item is369113. Failed admission consumes nothing and grants no success.",
+    "Compass220009 retains the original widget allowCityId1 and gadget70500008. A real five-second compass points toward the nearest visible unopened chest within200m, reports whether a chest was found and saves a ten-second authored cooldown. The range/lifetime/cooldown are reconstructed. Merely requesting another unsupported widget does not count as use."
+  ],
+  "fishing": [
+    {"id":1,"label":"普通鱼钓具","pool":101,"fish":1,"quests":[7066104],"bank":{"x":2042.0,"y":207.094,"z":-809.001},"water":{"x":2055.037,"y":202.4,"z":-805.678}},
+    {"id":2,"label":"观赏鱼钓具","pool":101,"fish":1001,"quests":[7066110,7066107],"bank":{"x":2045.0,"y":207.094,"z":-809.001},"water":{"x":2055.037,"y":202.4,"z":-805.678}},
+    {"id":3,"label":"观赏鱼钓具","pool":102,"fish":1001,"quests":[7066110,7066107],"bank":{"x":2742.906,"y":258.014,"z":-1330.466},"water":{"x":2755.631,"y":256.2,"z":-1333.031}},
+    {"id":4,"label":"塞洛海原西岸钓具","pool":5001,"fish":30,"quests":[7404201],"bankAtPlayer":true,"bank":{"x":3753.083,"y":440.0,"z":4261.985},"water":{"x":3753.083,"y":440.0,"z":4261.985}}
+  ],
+  "capture": [
+    {"quest":7618903,"animal":28021403,"avatar":10000130,"trial":1130,"position":{"x":1689.715,"y":200.383,"z":10937.08}},
+    {"quest":7619003,"animal":28010223,"avatar":10000130,"trial":1130,"position":{"x":5721.692,"y":261.57,"z":9657.868}},
+    {"quest":7619109,"animal":28022205,"avatar":10000130,"trial":1130,"position":{"x":5307.248,"y":239.835,"z":9625.598}},
+    {"quest":7267203,"animal":28010101,"material":220043,"drop":21330032,"reward":369113,"anchorAtPlayer":true,"position":{"x":0,"y":0,"z":0}}
+  ]
+}

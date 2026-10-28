@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "MiscRenameInfo.proto";
+
+// OHFJECJHFJF, CmdId 2429; writer 7BA9190, sender C241300.
+message QuestRenameMiscReq {
+  MiscRenameInfo rename_info = 8;
+  bool is_check_only = 15;
+}

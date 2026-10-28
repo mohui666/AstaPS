@@ -13,13 +13,13 @@ public class PacketQuestProgressUpdateNotify extends BasePacket {
                 QuestProgressUpdateNotify.newBuilder().setQuestId(quest.getSubQuestId());
 
         if (quest.getFinishProgressList() != null) {
-            for (int i : quest.getFinishProgressList()) {
+            for (int i : quest.getFinishProgressForNotify()) {
                 proto.addFinishProgressList(i);
             }
         }
 
         if (quest.getFailProgressList() != null) {
-            for (int i : quest.getFailProgressList()) {
+            for (int i : quest.getFailProgressForNotify()) {
                 proto.addFailProgressList(i);
             }
         }

@@ -45,6 +45,10 @@ public class CookingManager extends BasePlayerManager {
         }
         this.player.getUnlockedRecipies().put(id, 0);
         this.player.sendPacket(new PacketCookRecipeDataNotify(id));
+        this.player.getQuestManager().queueEvent(
+                emu.grasscutter.game.quest.enums.QuestContent.QUEST_CONTENT_UNLOCKED_RECIPE, id);
+        this.player.getQuestManager().queueEvent(
+                emu.grasscutter.game.quest.enums.QuestContent.QUEST_CONTENT_NOT_UNLOCKED_RECIPE, id);
         return true;
     }
 
@@ -124,13 +128,17 @@ public class CookingManager extends BasePlayerManager {
             }
         }
 
+        var waitingAttempts = emu.grasscutter.game.quest.world.QuestCookingProgress.captureWaitingAttempts(player);
         List<GameItem> cookResults = new ArrayList<>();
+        List<GameItem> acceptedResults = new ArrayList<>();
         int normalCount = count - specialtyCount;
         if (normalCount > 0) {
             GameItem cookResultNormal =
                     new GameItem(resultItemData, resultParam.getCount() * normalCount);
             cookResults.add(cookResultNormal);
-            this.player.getInventory().addItem(cookResultNormal, ActionReason.Cook);
+            if (this.player.getInventory().addItem(cookResultNormal, ActionReason.Cook)) {
+                acceptedResults.add(cookResultNormal);
+            }
         }
 
         if (specialtyCount > 0 && bonusData != null) {
@@ -140,9 +148,13 @@ public class CookingManager extends BasePlayerManager {
                 GameItem cookResultSpecialty =
                         new GameItem(specialtyItemData, resultParam.getCount() * specialtyCount);
                 cookResults.add(cookResultSpecialty);
-                this.player.getInventory().addItem(cookResultSpecialty, ActionReason.Cook);
+                if (this.player.getInventory().addItem(cookResultSpecialty, ActionReason.Cook)) {
+                    acceptedResults.add(cookResultSpecialty);
+                }
             }
         }
+
+        emu.grasscutter.game.quest.world.QuestCookingProgress.onAcceptedCook(player, waitingAttempts, acceptedResults);
 
         // quality 0 is treated as perfect for proficiency; also accept explicit perfect (3)
         if (quality == 0 || quality == MANUAL_PERFECT_COOK_QUALITY) {

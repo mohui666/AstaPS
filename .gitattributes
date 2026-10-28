@@ -6,3 +6,6 @@
 
 # shell scripts should be checked out with LF line endings
 gradlew text eol=lf
+
+# Unified patch context lines preserve their required leading space.
+tools/quest-resource-patches/7.1-story-repairs.patch whitespace=-blank-at-eol,-space-before-tab

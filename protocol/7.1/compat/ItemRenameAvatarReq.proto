@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 HOODMLAGFOD, CmdId 28101; native writer 11DDA6F0.
+message ItemRenameAvatarReq {
+  string avatar_name = 5;
+  uint32 rename_id = 7;
+}

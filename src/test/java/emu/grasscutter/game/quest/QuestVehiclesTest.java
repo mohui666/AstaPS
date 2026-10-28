@@ -15,6 +15,43 @@ import org.junit.jupiter.api.Test;
 
 final class QuestVehiclesTest {
     @Test
+    void vehicleFeatureTagsComeFromTheNativeGroupAndRidersAreDeduplicatedByUid() throws Exception {
+        var vehicleData = JsonUtils.loadToList(emu.grasscutter.utils.FileUtils.getExcelPath(
+                "VehicleExcelConfigData.json"), emu.grasscutter.data.excels.avatar.VehicleData.class)
+                .stream().filter(data -> data.getId() == 45003041).findFirst().orElseThrow();
+        var features = JsonUtils.loadToList(emu.grasscutter.utils.FileUtils.getExcelPath(
+                "FeatureTagGroupExcelConfigData.json"), emu.grasscutter.data.excels.FeatureTagGroupData.class)
+                .stream().filter(data -> data.getId() == vehicleData.getFeatureTagGroupID()).findFirst().orElseThrow();
+        var oldVehicle = GameData.getVehicleDataMap().put(vehicleData.getId(), vehicleData);
+        var oldFeatures = GameData.getFeatureTagGroupDataMap().put(features.getId(), features);
+        ScriptLoader.init();
+        boolean scripts = Grasscutter.getConfig().server.game.enableScriptInBigWorld;
+        Grasscutter.getConfig().server.game.enableScriptInBigWorld = false;
+        try {
+            assertTrue(QuestVehicles.featureTags(45003041).contains(30014));
+            var owner = new TestWorld.TestPlayer();
+            var world = TestWorld.create(owner);
+            var scene = new TestWorld.TestScene(world,3,SceneType.SCENE_WORLD);
+            var vehicle = new emu.grasscutter.game.entity.EntityVehicle(scene,owner,45003041,0,new Position(),new Position());
+            var first = emu.grasscutter.net.proto.VehicleMemberOuterClass.VehicleMember.newBuilder()
+                    .setUid(101).setAvatarGuid(1).build();
+            var changedAvatar = first.toBuilder().setAvatarGuid(2).build();
+            assertTrue(QuestVehicles.board(vehicle,first));
+            assertFalse(QuestVehicles.board(vehicle,changedAvatar));
+            assertEquals(1,vehicle.getVehicleMembers().size());
+            assertTrue(QuestVehicles.dismount(vehicle,changedAvatar));
+            assertFalse(QuestVehicles.dismount(vehicle,first));
+            assertTrue(vehicle.getVehicleMembers().isEmpty());
+        } finally {
+            if (oldVehicle == null) GameData.getVehicleDataMap().remove(vehicleData.getId());
+            else GameData.getVehicleDataMap().put(vehicleData.getId(), oldVehicle);
+            if (oldFeatures == null) GameData.getFeatureTagGroupDataMap().remove(features.getId());
+            else GameData.getFeatureTagGroupDataMap().put(features.getId(), oldFeatures);
+            Grasscutter.getConfig().server.game.enableScriptInBigWorld = scripts;
+        }
+    }
+
+    @Test
     void nativeAndClientCreationReuseOnlyTheSameOwnersVehicleAtTheSamePoint() throws Exception {
         ScriptLoader.init();
         boolean scripts = Grasscutter.getConfig().server.game.enableScriptInBigWorld;

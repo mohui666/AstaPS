@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// JOFCCGDIMKK, CmdId 4269. Parser RVA B3FBE10.
+// This failure-only schema omits the two success/reward-check lists (fields 3 and 4).
+// LEJNNHDEGKK::BOKGDIIJHHI (781F740) handles a nonzero retcode as an error.
+message GCGStartChallengeByCheckRewardRsp {
+  uint32 config_id = 1;
+  int32 retcode = 7;
+  uint32 level_id = 10;
+  uint32 level_type = 13;
+}

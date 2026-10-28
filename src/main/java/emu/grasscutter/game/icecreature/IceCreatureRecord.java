@@ -24,6 +24,8 @@ public class IceCreatureRecord {
     private int createTime;
     private int likeNum;
     private int cost;
+    /** Nonzero only for an explicitly reconstructed quest obstacle; ordinary player builds keep zero. */
+    private int sourceQuestId;
     /** IceCreatureBuildReq field 11, echoed back in the gadget info; its meaning is unknown. */
     private boolean flag;
     /** The serialized beacon/decorate choice from the build request, echoed back as-is. */

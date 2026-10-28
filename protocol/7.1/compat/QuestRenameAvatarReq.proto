@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 IAOIOBBMHPE, CmdId 2670; native writer 111AACC0 and sender C242540.
+message QuestRenameAvatarReq {
+  string avatar_name = 6;
+  bool is_check_only = 10;
+  uint32 rename_id = 12;
+}

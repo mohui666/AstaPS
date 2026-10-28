@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "MiscRenameData.proto";
+
+// ALNDPFOPBLP, CmdId 7064; parser 1273CC80, receiver C25E240 consumes rename_list.
+message MiscRenameDataNotify {
+  MiscRenameData data = 7;
+}

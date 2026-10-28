@@ -1,0 +1,7 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// Descriptive name for PHAOBBMLBEA, CmdId 21937; parser RVA B902BC0.
+message UpdateTpsGlassesChatRsp {
+  int32 retcode = 7;
+}

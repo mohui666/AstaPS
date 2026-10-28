@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "_MapLayerInfo.proto";
+
+// 7.1 FKCDBJPOIJI, parser 1355ADE0; consumed by KLLNGCPBLMM.LJPNALCLNPJ.
+message PlayerWorldSceneInfo {
+  repeated uint32 scene_tag_id_list = 4;
+  uint32 scene_id = 13;
+  _MapLayerInfo _map_layer_info = 14;
+}

@@ -19,4 +19,20 @@ final class DomainClaimRunIdentity {
     void restart() {
         token = UUID.randomUUID().toString();
     }
+
+    String snapshotToken() { return token; }
+
+    static boolean validToken(String token) {
+        if (token == null) return false;
+        try {
+            return UUID.fromString(token).toString().equals(token);
+        } catch (IllegalArgumentException invalid) {
+            return false;
+        }
+    }
+
+    void restoreToken(String token) {
+        if (!validToken(token)) throw new IllegalArgumentException("Invalid saved dungeon claim identity");
+        this.token = token;
+    }
 }

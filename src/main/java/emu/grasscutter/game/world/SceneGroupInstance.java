@@ -23,6 +23,8 @@ public final class SceneGroupInstance {
     // Explicit Lua gadget removal must survive later group loads. Ordinary
     // combat kills retain their pre-existing oneoff/persistent spawn policy.
     private Set<Integer> scriptDestroyedGadgets = new HashSet<>();
+    /** NPCs actually instantiated by native flow stages, which do not clear earlier NPCs. */
+    private Set<Integer> flowNpcConfigs = new HashSet<>();
     private boolean isCached;
 
     @Getter private Map<Integer, Integer> cachedGadgetStates;
@@ -95,6 +97,11 @@ public final class SceneGroupInstance {
 
     public synchronized boolean isScriptGadgetDestroyed(int configId) {
         return scriptDestroyedGadgets != null && scriptDestroyedGadgets.contains(configId);
+    }
+
+    public synchronized Set<Integer> getFlowNpcConfigs() {
+        if (flowNpcConfigs == null) flowNpcConfigs = new HashSet<>();
+        return flowNpcConfigs;
     }
 
     /** Mark even unloaded gadgets so the next group spawn cannot revive them. */

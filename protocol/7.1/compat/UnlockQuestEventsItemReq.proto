@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 DEDJHLNPDIF, CmdId 22705. Sender BE1EDE0 / writer 1028DBC0: tags 08, 42.
+message UnlockQuestEventsItemReq {
+  uint32 event_id = 1;
+  repeated uint32 item_id_list = 8 [packed = true];
+}

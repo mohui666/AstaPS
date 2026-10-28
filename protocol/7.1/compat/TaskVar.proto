@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// KJOADDBNNJK. Native parser 1387DC30 accepts packed/unpacked int32 tag 0x1A/0x18,
+// and uint32 key tag 0x70; the daily-task consumer uses key at +20h and values at +18h.
+message TaskVar {
+  repeated int32 value_list = 3 [packed = true];
+  uint32 key = 14;
+}

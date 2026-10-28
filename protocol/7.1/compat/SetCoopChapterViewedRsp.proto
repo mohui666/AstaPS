@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// LEJLMNACMHN, CmdId 1880. Parser RVA 12013D70; F321960 updates the viewed set.
+message SetCoopChapterViewedRsp {
+  uint32 chapter_id = 9;
+  int32 retcode = 12;
+}

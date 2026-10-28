@@ -13,21 +13,18 @@ public class PacketPlayerWorldSceneInfoListNotify extends BasePacket {
     public PacketPlayerWorldSceneInfoListNotify(Player player) {
         super(PacketOpcodes.PlayerWorldSceneInfoListNotify); // Rename opcode later
 
-        var sceneTags = player.getSceneTags();
+        var sceneTags = emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.effectiveSceneTags(player);
 
         PlayerWorldSceneInfoListNotify.Builder proto =
                 PlayerWorldSceneInfoListNotify.newBuilder()
                         .addInfoList(
-                                PlayerWorldSceneInfo.newBuilder().setSceneId(1).setIsLocked(false).build());
+                                PlayerWorldSceneInfo.newBuilder().setSceneId(1).build());
 
         // Iterate over all scenes
         for (int scene : GameData.getSceneDataMap().keySet()) {
             var worldInfoBuilder =
                     PlayerWorldSceneInfo.newBuilder()
-                            .setSceneId(scene)
-                            .setIsLocked(false)
-                            .setLimitedRegionInfo(
-                                    emu.grasscutter.game.world.WorldRegions.unrestricted());
+                            .setSceneId(scene);
 
             /** Add scene-specific data */
 
@@ -46,12 +43,12 @@ public class PacketPlayerWorldSceneInfoListNotify extends BasePacket {
                 worldInfoBuilder.setMapLayerInfo(
                         MapLayerInfo._MapLayerInfo.newBuilder()
                                 .addAllUnlockMapLayerList(
-                                        GameData.getMapLayerDataMap().keySet()) // MapLayer Ids
-                                // the floor list is the one unnamed repeated field of 7.0's _MapLayerInfo
+                                        emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.unlockedMapLayers(
+                                                player, GameData.getMapLayerDataMap().keySet())) // MapLayer Ids
                                 .addAllUnlockMapLayerGroupList(
-                                        GameData.getMapLayerGroupDataMap()
-                                                .keySet()) // will show MapLayer options when hovered over
-                                .build()); // map layer test
+                                        emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.shownMapLayerGroups(
+                                                player, GameData.getMapLayerGroupDataMap().keySet()))
+                                .build());
             }
 
             proto.addInfoList(worldInfoBuilder.build());

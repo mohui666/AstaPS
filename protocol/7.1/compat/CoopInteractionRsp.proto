@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// GKFHBMPAGDL, CmdId 24547. Parser RVA 8C17780; exact rotated-tag jump table at 8C178BC.
+message CoopInteractionRsp {
+  uint32 chapter_id = 2;
+  int32 retcode = 4;
+  uint32 interaction_id = 14;
+}

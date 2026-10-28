@@ -2,13 +2,17 @@ package emu.grasscutter.game.world;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import emu.grasscutter.Grasscutter;
 import emu.grasscutter.command.Command;
 import emu.grasscutter.command.commands.PvpCommand;
 import emu.grasscutter.data.GameData;
+import emu.grasscutter.game.Account;
 import emu.grasscutter.game.ability.AbilityManager;
 import emu.grasscutter.game.avatar.Avatar;
 import emu.grasscutter.game.entity.EntityAvatar;
 import emu.grasscutter.game.entity.EntityClientGadget;
+import emu.grasscutter.game.entity.EntityGadget;
+import emu.grasscutter.game.entity.EntityMonster;
 import emu.grasscutter.game.entity.GameEntity;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.player.BasePlayerManager;
@@ -31,6 +35,7 @@ import emu.grasscutter.server.game.GameServer;
 import emu.grasscutter.server.game.GameSession;
 import emu.grasscutter.server.game.GameSessionManager;
 import emu.grasscutter.server.packet.recv.HandlerCombatInvocationsNotify;
+import emu.grasscutter.scripts.ScriptVisionManager;
 import emu.grasscutter.utils.Utils;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -40,6 +45,8 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.Label;
@@ -65,15 +72,16 @@ final class PvpDuelsTest {
         scene.players = new ArrayList<>();
         scene.entities = new HashMap<>();
         scene.packets = new ArrayList<>();
+        set(scene, Scene.class, "scriptVision", new ScriptVisionManager(scene));
         gameServer = allocate(GameServer.class);
         set(gameServer, GameServer.class, "players", new HashMap<Integer, Player>());
         trainingBots = new ArrayList<>();
         first = player(1);
         second = player(2);
-        outsider = player(3);
+        outsider = player(5);
         attacker = avatar(first, 0x200001);
         defender = avatar(second, 0x200002);
-        avatar(outsider, 0x200003);
+        avatar(outsider, 0x200005);
     }
 
     @AfterEach
@@ -174,6 +182,59 @@ final class PvpDuelsTest {
         assertFalse(target.getGlobalAbilityValues().containsKey(PvpClientTargeting.KEY));
         assertEquals(1, PvpDuels.checkReportedHit(first, hit(attacker.getId(), defender.getId(), 13)));
         assertEquals(-1, PvpDuels.checkReportedHit(first, hit(attacker.getId(), target.getId(), 13)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"1,3", "1,4", "2,3", "2,4", "3,4"})
+    void newTrustedFriendPairsSettleBothDirectionsWithoutGrantingOtherPlayers(int leftUid, int rightUid)
+            throws Exception {
+        var third = player(3);
+        var fourth = player(4);
+        avatar(third, 0x200003);
+        avatar(fourth, 0x200004);
+        var left = gameServer.getPlayers().get(leftUid);
+        var right = gameServer.getPlayers().get(rightUid);
+        var leftAvatar = (RecordingAvatar) left.getTeamManager().getCurrentAvatarEntity();
+        var rightAvatar = (RecordingAvatar) right.getTeamManager().getCurrentAvatarEntity();
+        PvpDuels.enable(left, right);
+        assertEquals(-leftAvatar.globals.get(PvpClientTargeting.KEY),
+                rightAvatar.globals.get(PvpClientTargeting.KEY));
+        var forward = hit(leftAvatar.getId(), rightAvatar.getId(), 31);
+        assertTrue(PvpDuels.reportHit(left, forward));
+        apply(left, forward);
+        var reverse = hit(rightAvatar.getId(), leftAvatar.getId(), 17);
+        assertTrue(PvpDuels.reportHit(right, reverse));
+        apply(right, reverse);
+        assertEquals(31, rightAvatar.lastDamage);
+        assertEquals(17, leftAvatar.lastDamage);
+        assertEquals(1, leftAvatar.damageCalls);
+        assertEquals(1, rightAvatar.damageCalls);
+        assertThrows(IllegalArgumentException.class, () -> PvpDuels.enable(left, left));
+        assertThrows(IllegalArgumentException.class, () -> PvpDuels.enable(left, outsider));
+        assertEquals(-1, PvpDuels.checkReportedHit(outsider, forward));
+    }
+
+    @Test
+    void switchingFriendsRevokesTheOldPairAndQueuedHitBeforeAcceptingTheNewOpponent() throws Exception {
+        var third = player(3);
+        var thirdAvatar = avatar(third, 0x200003);
+        PvpDuels.enable(first, second);
+        var previousHit = hit(attacker.getId(), defender.getId(), 90);
+        assertTrue(PvpDuels.reportHit(first, previousHit));
+        PvpDuels.enable(first, third);
+        assertFalse(defender.globals.containsKey(PvpClientTargeting.KEY));
+        assertEquals(-attacker.globals.get(PvpClientTargeting.KEY),
+                thirdAvatar.globals.get(PvpClientTargeting.KEY));
+        apply(first, previousHit);
+        assertEquals(0, defender.damageCalls);
+        assertFalse(PvpDuels.reportHit(first, hit(attacker.getId(), defender.getId(), 90)));
+        var current = hit(attacker.getId(), thirdAvatar.getId(), 23);
+        assertTrue(PvpDuels.reportHit(first, current));
+        apply(first, current);
+        assertEquals(23, thirdAvatar.lastDamage);
+        PvpDuels.onPlayerLeave(third);
+        assertFalse(thirdAvatar.globals.containsKey(PvpClientTargeting.KEY));
+        assertFalse(PvpDuels.reportHit(first, hit(attacker.getId(), thirdAvatar.getId(), 23)));
     }
 
     @Test
@@ -431,11 +492,54 @@ final class PvpDuelsTest {
     }
 
     @Test
-    void unrelatedPlayersSelfDamageAndOrdinaryPveKeepTheirExistingPipeline() {
+    void unpairedPlayerAndPlayerGadgetHitsCannotFallThroughToOrdinaryAvatarDamage() throws Exception {
+        var third = player(3);
+        var thirdAvatar = avatar(third, 0x200003);
         PvpDuels.enable(first, second);
         var otherAvatar = outsider.getTeamManager().getCurrentAvatarEntity();
+        var outsideArrow = gadget(outsider, otherAvatar.getId(), 0x900001);
+        var thirdArrow = gadget(third, thirdAvatar.getId(), 0x900002);
+        var missingOwnerArrow = gadget(third, 0x200099, 0x900003);
+        var nested = allocate(EntityGadget.class);
+        nested.setId(0x900004);
+        nested.setOwner(missingOwnerArrow);
+        scene.entities.put(nested.getId(), nested);
+        for (var attack : List.of(hit(otherAvatar.getId(), defender.getId(), 10),
+                hit(thirdAvatar.getId(), defender.getId(), 10),
+                hit(outsideArrow.getId(), defender.getId(), 10),
+                hit(thirdArrow.getId(), defender.getId(), 10),
+                hit(missingOwnerArrow.getId(), defender.getId(), 10),
+                hit(nested.getId(), defender.getId(), 10))) {
+            assertEquals(-1, PvpDuels.checkReportedHit(third, attack));
+            assertFalse(PvpDuels.reportHit(third, attack));
+            assertTrue(PvpDuels.handleAttack(scene, attack));
+        }
+        // Use the real Scene hook too: an unpaired, present player cannot damage an Avatar.
+        scene.handleAttack(hit(otherAvatar.getId(), defender.getId(), 50));
+        scene.handleAttack(hit(outsideArrow.getId(), defender.getId(), 50));
+        assertEquals(0, defender.damageCalls);
+        assertEquals(-1, PvpDuels.checkReportedHit(outsider, hit(0x900099, defender.getId(), 10)));
+        PvpDuels.disable();
+        assertFalse(PvpDuels.reportHit(first, hit(attacker.getId(), defender.getId(), 10)));
+        scene.handleAttack(hit(attacker.getId(), defender.getId(), 50));
+        assertEquals(0, defender.damageCalls);
+    }
+
+    @Test
+    void selfDamageMonstersEnvironmentAndOrdinaryPveKeepTheirExistingPipeline() throws Exception {
+        PvpDuels.enable(first, second);
+        var monster = allocate(EntityMonster.class);
+        monster.setId(0x400001);
+        scene.entities.put(monster.getId(), monster);
+        var environment = allocate(EntityGadget.class);
+        environment.setId(0x900001);
+        scene.entities.put(environment.getId(), environment);
+        var ownArrow = gadget(first, attacker.getId(), 0x900002);
         for (var hit : List.of(hit(attacker.getId(), attacker.getId(), 10),
-                hit(otherAvatar.getId(), defender.getId(), 10), hit(attacker.getId(), 0x400099, 10))) {
+                hit(ownArrow.getId(), attacker.getId(), 10),
+                hit(monster.getId(), attacker.getId(), 10),
+                hit(environment.getId(), attacker.getId(), 10),
+                hit(0, attacker.getId(), 10), hit(attacker.getId(), 0x400099, 10))) {
             assertEquals(0, PvpDuels.checkReportedHit(first, hit));
             assertTrue(PvpDuels.reportHit(first, hit));
             PvpDuels.setReporter(first, hit);
@@ -449,7 +553,42 @@ final class PvpDuelsTest {
         var annotation = PvpCommand.class.getAnnotation(Command.class);
         assertEquals("server.pvp", annotation.permission());
         assertFalse(annotation.inlineTarget());
-        assertTrue(new PvpCommand().createCommandLine(null, null).getUsageMessage().contains("on|off|status"));
+        var cli = new PvpCommand().createCommandLine(null, null);
+        assertTrue(cli.getUsageMessage().contains("@UID1 @UID2"));
+        assertDoesNotThrow(() -> cli.parseArgs("on", "@3"));
+        assertDoesNotThrow(() -> cli.parseArgs("on", "@3", "@4"));
+        assertThrows(picocli.CommandLine.ParameterException.class, () -> cli.parseArgs("on", "3"));
+        assertThrows(picocli.CommandLine.ParameterException.class, () -> cli.parseArgs("on", "@0"));
+        assertThrows(picocli.CommandLine.ParameterException.class, () -> cli.parseArgs("on", "@1", "@2", "@3"));
+    }
+
+    @Test
+    void commandResolvesExplicitOpponentsAndPreservesTheOldDefaultWithoutAcceptingOfflinePlayers()
+            throws Exception {
+        var third = player(3);
+        var fourth = player(4);
+        avatar(third, 0x200003);
+        avatar(fourth, 0x200004);
+        var previousServer = Grasscutter.getGameServer();
+        try {
+            set(null, Grasscutter.class, "gameServer", gameServer);
+            new PvpCommand().createCommandLine(null, null).execute("on", "@3");
+            assertTrue(PvpDuels.status().contains("UID 1 ↔ UID 3"));
+            new PvpCommand().createCommandLine(null, null).execute("on", "@3", "@4");
+            assertTrue(PvpDuels.status().contains("UID 3 ↔ UID 4"));
+            new PvpCommand().createCommandLine(null, null).execute("on");
+            assertTrue(PvpDuels.status().contains("UID 1 ↔ UID 2"));
+            var before = PvpDuels.status();
+            new PvpCommand().createCommandLine(null, null).execute("on", "@5");
+            assertEquals(before, PvpDuels.status());
+            fourth.session = null;
+            new PvpCommand().createCommandLine(null, null).execute("on", "@4");
+            assertEquals(before, PvpDuels.status());
+            new PvpCommand().createCommandLine(null, null).execute("off", "@3");
+            assertEquals(before, PvpDuels.status());
+        } finally {
+            set(null, Grasscutter.class, "gameServer", previousServer);
+        }
     }
 
     @Test
@@ -521,6 +660,8 @@ final class PvpDuelsTest {
         player.scene = scene;
         player.world = world;
         player.session = session(player);
+        player.account = new Account();
+        player.account.setUsername("player_" + uid);
         player.team = new TeamManager(player);
         player.abilities = allocate(AbilityManager.class);
         scene.players.add(player);
@@ -609,9 +750,11 @@ final class PvpDuelsTest {
         private TeamManager team;
         private AbilityManager abilities;
         private GameSession session;
+        private Account account;
         private boolean godMode;
         private RecordingPlayer() { super((GameSession) null); }
-        @Override public boolean isOnline() { return true; }
+        @Override public boolean isOnline() { return session != null && session.isActive(); }
+        @Override public Account getAccount() { return account; }
         @Override public World getWorld() { return world; }
         @Override public Scene getScene() { return scene; }
         @Override public GameSession getSession() { return session; }

@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// EMOEAALLBKB, CmdId 21193. Parser RVA 14051530.
+message TakeCoopRewardRsp {
+  int32 retcode = 3;
+  uint32 reward_id = 9;
+}

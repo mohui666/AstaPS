@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 KBLNNKCANDM, CmdId 480; native parser at RVA B41E2E0.
+message GalleryStopNotify {
+  uint32 gallery_id = 8;
+  uint32 reason = 13;
+}

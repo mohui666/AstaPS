@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// LHMKCAOBIOA, CmdId 23568. Matching native parser accepts these exact field tags.
+message QuestCheckRsp {
+  repeated uint32 applied_bonus_id_list = 1 [packed = true];
+  int32 retcode = 5;
+  uint32 check_id = 6;
+  bool is_success = 8;
+  uint32 parent_quest_id = 12;
+  uint32 total_roll = 14;
+}

@@ -14,8 +14,7 @@ public class HandlerCancelCoopTaskReq extends PacketHandler {
         CancelCoopTaskReqOuterClass.CancelCoopTaskReq req =
                 CancelCoopTaskReqOuterClass.CancelCoopTaskReq.parseFrom(payload);
         var chapterId = req.getChapterId();
-        Grasscutter.getLogger().warn("Call to unimplemented packet CancelCoopTaskReq");
-        // TODO: Actually cancel the quests.
-        session.send(new PacketCancelCoopTaskRsp(chapterId));
+        int result = emu.grasscutter.game.quest.coop.CoopSystem.cancel(session.getPlayer(), chapterId);
+        session.send(new PacketCancelCoopTaskRsp(chapterId, result));
     }
 }

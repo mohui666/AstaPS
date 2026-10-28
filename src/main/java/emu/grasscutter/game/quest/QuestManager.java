@@ -29,8 +29,7 @@ public final class QuestManager extends BasePlayerManager {
     @Getter private Int2ObjectMap<int[]> acceptProgressLists;
     @Getter private final List<Integer> loggedQuests;
 
-    private long lastHourCheck = 0;
-    private long lastDayCheck = 0;
+    private long lastTimeVarCheckSeconds = -1;
 
     // One thread, not four: quest events mutate shared quest state and racing them corrupted it.
     public static final ExecutorService eventExecutor =
@@ -123,7 +122,9 @@ public final class QuestManager extends BasePlayerManager {
         var givings = progress.getItemGivings();
 
         // Check if the action is not present.
-        if (!givings.containsKey(givingId)) {
+        var existing = givings.get(givingId);
+        var config = GameData.getGivingDataMap().get(givingId);
+        if (existing == null || (existing.isFinished() && config != null && config.isRepeatable())) {
             givings.put(givingId, ItemGiveRecord.resolve(givingId));
             player.save();
         }
@@ -293,7 +294,10 @@ public final class QuestManager extends BasePlayerManager {
     }
 
     boolean canStartMainQuestIfUnlinked(int mainQuestId) {
-        return opensUnlinked(mainQuestId)
+        var config = GameData.getMainQuestDataMap().get(mainQuestId);
+        int coopChapter = config == null ? 0 : emu.grasscutter.game.quest.coop.CoopCatalog.chapterForQuest(mainQuestId);
+        return coopChapter == 0
+                && opensUnlinked(mainQuestId)
                 && canResumeUnlinkedParent(this.getMainQuestById(mainQuestId));
     }
 
@@ -358,6 +362,7 @@ public final class QuestManager extends BasePlayerManager {
             }
             quest.checkProgress();
         }
+        this.resumeTimeVarChecks();
 
         if (isQuestingActive()) {
             this.resumeMainQuestHandoffs();
@@ -374,9 +379,11 @@ public final class QuestManager extends BasePlayerManager {
         var world = this.getPlayer().getWorld();
         if (world == null) return;
 
+        emu.grasscutter.game.quest.delivery.QuestDeliveryRuntime.onTick(player);
         this.checkTimeVars();
         // trigger game time tick for quests
         this.queueEvent(QuestContent.QUEST_CONTENT_GAME_TIME_TICK);
+        this.queueEvent(QuestContent.QUEST_CONTENT_ACTIVITY_END);
         // Spatial predicates must also be checked when the player is already in the target
         // scene or walks out of a quest area without teleporting.
         if (isQuestingActive() && player.getSceneLoadState() == Player.SceneLoadState.LOADED) {
@@ -387,31 +394,40 @@ public final class QuestManager extends BasePlayerManager {
     }
 
     private void checkTimeVars() {
-        val currentDays = player.getWorld().getTotalGameTimeDays();
-        val currentHours = player.getWorld().getTotalGameTimeHours();
-        boolean checkDays = currentDays != lastDayCheck;
-        boolean checkHours = currentHours != lastHourCheck;
+        checkTimeVars(java.time.Instant.now().getEpochSecond(), false);
+    }
 
-        if (!checkDays && !checkHours) {
-            return;
+    /** Rebuild only the derived registrations; the parent quest owns each persisted start time. */
+    void resumeTimeVarChecks() {
+        for (var parent : mainQuests.values()) {
+            boolean active = parent.checkActiveTimers();
+            synchronized (player.getActiveQuestTimers()) {
+                if (active) player.getActiveQuestTimers().add(parent.getParentQuestId());
+                else player.getActiveQuestTimers().remove(parent.getParentQuestId());
+            }
         }
+        checkTimeVars(java.time.Instant.now().getEpochSecond(), true);
+    }
 
-        this.lastDayCheck = currentDays;
-        this.lastHourCheck = currentHours;
+    void checkTimeVars(long nowSeconds, boolean force) {
+        if (!force && nowSeconds == lastTimeVarCheckSeconds) return;
+        lastTimeVarCheckSeconds = nowSeconds;
+        // An elapsed hour can begin at any second. A global clock-hour transition misses
+        // 12:37 -> 13:37, and game-time changes must not drive a real-time deadline.
+        final List<Integer> parents;
+        synchronized (player.getActiveQuestTimers()) { parents = List.copyOf(player.getActiveQuestTimers()); }
+        for (int parentId : parents) {
+            var parent = mainQuests.get(parentId);
+            if (parent != null && parent.checkActiveTimers()) queueTimeVarChecks(parentId);
+        }
+    }
 
-        player
-                .getActiveQuestTimers()
-                .forEach(
-                        mainQuestId -> {
-                            if (checkHours) {
-                                this.queueEvent(QuestCond.QUEST_COND_TIME_VAR_GT_EQ, mainQuestId);
-                                this.queueEvent(QuestContent.QUEST_CONTENT_TIME_VAR_GT_EQ, mainQuestId);
-                            }
-                            if (checkDays) {
-                                this.queueEvent(QuestCond.QUEST_COND_TIME_VAR_PASS_DAY, mainQuestId);
-                                this.queueEvent(QuestContent.QUEST_CONTENT_TIME_VAR_PASS_DAY, mainQuestId);
-                            }
-                        });
+    public void queueTimeVarChecks(int parentId) {
+        this.queueEvent(QuestCond.QUEST_COND_TIME_VAR_GT_EQ, parentId);
+        this.queueEvent(QuestContent.QUEST_CONTENT_TIME_VAR_GT_EQ, parentId);
+        this.queueEvent(QuestCond.QUEST_COND_TIME_VAR_PASS_DAY, parentId);
+        this.queueEvent(QuestContent.QUEST_CONTENT_TIME_VAR_PASS_DAY, parentId);
+        this.queueEvent(QuestContent.QUEST_CONTENT_TIME_VAR_PASS_REFRESH_POLICY, parentId);
     }
 
     private List<GameMainQuest> addMultMainQuests(Set<Integer> mainQuestIds) {
@@ -651,6 +667,8 @@ public final class QuestManager extends BasePlayerManager {
 
         potentialQuests.forEach(
                 questData -> {
+                    if (!emu.grasscutter.game.quest.coop.CoopSystem.mayAccept(owner, questData)) return;
+                    if (!emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.mayAccept(owner, questData)) return;
                     if (this.wasSubQuestStarted(questData)) {
                         return;
                     }
@@ -662,7 +680,11 @@ public final class QuestManager extends BasePlayerManager {
                         // may become false before the other prerequisite finishes.
                         boolean liveQuestState =
                                 condition.getType() == QuestCond.QUEST_COND_STATE_EQUAL
-                                        || condition.getType() == QuestCond.QUEST_COND_STATE_NOT_EQUAL;
+                                        || condition.getType() == QuestCond.QUEST_COND_STATE_NOT_EQUAL
+                                          || condition.getType() == QuestCond.QUEST_COND_TIME_VAR_GT_EQ
+                                          || condition.getType() == QuestCond.QUEST_COND_TIME_VAR_PASS_DAY
+                                        || condition.getType() == QuestCond.QUEST_COND_SCENE_LEVEL_TAG_EQ;
+                        liveQuestState |= condition.getType() == QuestCond.QUEST_COND_CUR_CLIMATE;
                         if (condition.getType() == condType || liveQuestState) {
                             boolean result =
                                     questSystem.triggerCondition(owner, questData, condition, paramStr, params);

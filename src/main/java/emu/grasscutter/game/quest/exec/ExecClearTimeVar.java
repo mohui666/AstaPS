@@ -10,9 +10,11 @@ import lombok.val;
 public class ExecClearTimeVar extends QuestExecHandler {
     @Override
     public boolean execute(GameQuest quest, QuestData.QuestExecParam condition, String... paramStr) {
-        val mainQuestId = Integer.parseInt(condition.getParam()[0]);
-        val timeVarId = Integer.parseInt(condition.getParam()[1]);
-        val mainQuest = quest.getOwner().getQuestManager().getMainQuestById(mainQuestId);
-        return mainQuest.clearTimeVar(timeVarId);
+        var params = condition.getParam();
+        if (params == null || params.length < 2) return false;
+        try {
+            var mainQuest = quest.getOwner().getQuestManager().getMainQuestById(Integer.parseInt(params[0]));
+            return mainQuest != null && mainQuest.clearTimeVar(Integer.parseInt(params[1]));
+        } catch (NumberFormatException error) { return false; }
     }
 }

@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+option java_outer_classname = "MapLayerInfo";
+
+// 7.1 IOOBEFIGOOB: parser 99F4DF0; group/layer model consumer 9C67630.
+message _MapLayerInfo {
+  repeated uint32 _unlock_map_layer_list = 2;
+  repeated uint32 _unlock_map_layer_group_list = 7;
+  // Preserved native field; its meaning has not been verified and is not populated.
+  repeated uint32 CGAHBCDBIGF = 5;
+}

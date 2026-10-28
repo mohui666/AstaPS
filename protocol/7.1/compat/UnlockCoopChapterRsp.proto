@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// PGLMEBFHNFM, CmdId 3644. Parser RVA 7C385A0; consumer updates chapter to State_ACCEPT.
+message UnlockCoopChapterRsp {
+  int32 retcode = 1;
+  uint32 chapter_id = 9;
+}

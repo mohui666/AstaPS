@@ -20,6 +20,7 @@ import emu.grasscutter.game.props.FightProperty;
 import emu.grasscutter.net.packet.BasePacket;
 import emu.grasscutter.net.proto.AttackResultOuterClass.AttackResult;
 import emu.grasscutter.net.proto.SceneEntityInfoOuterClass.SceneEntityInfo;
+import emu.grasscutter.scripts.ScriptVisionManager;
 
 import it.unimi.dsi.fastutil.ints.Int2FloatMap;
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
@@ -199,6 +200,8 @@ public final class SceneArlecchinoCombatTest {
     private RecordingScene scene(int avatarId, float bond) throws Exception {
         var scene = allocate(RecordingScene.class);
         scene.entities = new ConcurrentHashMap<>();
+        // Unsafe skips Scene's field initializers; attacks still use the real visibility manager.
+        set(scene, Scene.class, "scriptVision", new ScriptVisionManager(scene));
         set(scene, Scene.class, "arlecchinoNaBoLReduceMs", new ConcurrentHashMap<>());
         var avatar = new Avatar();
         set(avatar, Avatar.class, "avatarId", avatarId);

@@ -10,6 +10,7 @@ import emu.grasscutter.data.binout.config.fields.ConfigAbilityData;
 import emu.grasscutter.data.excels.avatar.AvatarSkillDepotData;
 import emu.grasscutter.game.ability.PartyReviveHelper;
 import emu.grasscutter.game.avatar.Avatar;
+import emu.grasscutter.game.avatar.QuestPartyAvatar;
 import emu.grasscutter.game.entity.*;
 import emu.grasscutter.game.props.*;
 import emu.grasscutter.game.tps.TpsAvatarSystem;
@@ -58,6 +59,10 @@ public final class TeamManager extends BasePlayerDataManager {
     @Transient @Getter @Setter private TeamInfo trialAvatarTeam;
 
     @Transient @Getter @Setter private Map<Integer, Avatar> trialAvatars;
+    @Getter private QuestPartyLock questPartyLock;
+    @Transient private TeamInfo questParty;
+    @Transient private final Map<Integer, Avatar> questPartyAvatars = new LinkedHashMap<>();
+    @Transient private Scene questPartyScene;
 
     @Transient @Getter @Setter
     private int previousIndex = -1;
@@ -157,6 +162,207 @@ public final class TeamManager extends BasePlayerDataManager {
         return this.getPlayer().getWorld();
     }
 
+    public boolean isQuestPartyLocked() {
+        return this.questPartyLock != null;
+    }
+
+    /** Actor identity takes precedence over owned avatar id, including a mirror of an owned actor. */
+    public Avatar getActivePartyAvatar(int avatarId) {
+        var avatar = this.questPartyAvatars.get(avatarId);
+        if (avatar == null) avatar = this.trialAvatars.get(avatarId);
+        return avatar != null ? avatar : this.getPlayer().getAvatars().getAvatarById(avatarId);
+    }
+
+    public Collection<Avatar> getQuestPartyAvatars() {
+        return this.questPartyAvatars.values().stream()
+                .filter(QuestPartyAvatar.class::isInstance).toList();
+    }
+
+    public Avatar getQuestPartyAvatarByGuid(long guid) {
+        return this.questPartyAvatars.values().stream()
+                .filter(avatar -> avatar.getGuid() == guid).findFirst().orElse(null);
+    }
+
+    private boolean questPartySceneReady() {
+        var player = this.getPlayer();
+        return player.getScene() != null && player.getWorld() != null
+                && player.getWorld().getHost() == player && this.getEntity() != null
+                && player.hasSentLoginPackets()
+                && player.getSceneLoadState() == Player.SceneLoadState.LOADED;
+    }
+
+    private Map<Integer, Avatar> createQuestPartyActors(QuestPartyLock lock) {
+        Map<Integer, Avatar> actors = new LinkedHashMap<>();
+        for (int id : lock.getAvatarIds()) {
+            Avatar actor;
+            if (lock.isTrial()) {
+                actor = QuestPartyAvatar.fromTrial(this.getPlayer(), id, lock.getQuestMainId(), lock.isMirror());
+            } else {
+                actor = this.trialAvatars.get(id);
+                if (actor == null) actor = this.getPlayer().getAvatars().getAvatarById(id);
+                if (lock.isMirror()) actor = QuestPartyAvatar.copyOwned(this.getPlayer(), actor, lock.getQuestMainId());
+            }
+            if (actor == null || actors.putIfAbsent(actor.getAvatarId(), actor) != null) return null;
+            if (actor instanceof QuestPartyAvatar) {
+                for (var item : actor.getEquips().values()) {
+                    item.setEquipCharacter(actor.getAvatarId());
+                    item.setOwner(this.getPlayer());
+                }
+            }
+        }
+        return actors;
+    }
+
+    /** Called before scene entity creation and login avatar data; does not depend on loaded quests. */
+    public synchronized boolean prepareQuestPartyActors() {
+        if (!isQuestPartyLocked() || this.questParty != null) return true;
+        var actors = createQuestPartyActors(this.questPartyLock);
+        if (actors == null) {
+            Grasscutter.getLogger().error("Cannot restore quest {} party: missing or duplicate avatar resources",
+                    this.questPartyLock.getQuestMainId());
+            return false;
+        }
+        this.questPartyAvatars.putAll(actors);
+        this.questParty = new TeamInfo(new ArrayList<>(actors.keySet()));
+        this.currentCharacterIndex = Math.min(this.currentCharacterIndex, actors.size() - 1);
+        return true;
+    }
+
+    public synchronized boolean lockQuestParty(QuestPartyLock requested) {
+        var player = this.getPlayer();
+        if (requested == null || player.isInMultiplayer() || this.useTemporarilyTeamIndex >= 0) return false;
+        if (this.questPartyLock != null && this.questPartyLock.getQuestMainId() != requested.getQuestMainId()) {
+            var owner = player.getQuestManager().getMainQuestById(this.questPartyLock.getQuestMainId());
+            if (owner == null || !owner.isFinished()) return false;
+            if (!unlockQuestParty(this.questPartyLock.getQuestMainId(), 0)) return false;
+        }
+        // Another quest or an activity owns its own trial roster and must retire it itself.
+        if (this.trialAvatars.values().stream().anyMatch(avatar ->
+                avatar.getGrantReason() != GrantReason.GRANT_REASON_BY_QUEST.getNumber()
+                || avatar.getFromParentQuestId() != requested.getQuestMainId())) return false;
+        if (this.questPartyLock != null && this.questPartyLock.getKind() == requested.getKind()
+                && this.questPartyLock.getAvatarIds().equals(requested.getAvatarIds()))
+            return resumeQuestPartyLock();
+        var actors = createQuestPartyActors(requested);
+        if (actors == null) return false;
+        var oldActors = getQuestPartyAvatars();
+        int restoreIndex = this.questPartyLock == null ? requested.getPreviousCharacterIndex()
+                : this.questPartyLock.getPreviousCharacterIndex();
+        var stored = new QuestPartyLock(requested.getQuestMainId(), requested.getKind(), requested.getAvatarIds(),
+                restoreIndex, requested.getDungeonId());
+        if (questPartySceneReady()) removeActiveQuestPartyEntities();
+        this.questPartyLock = stored;
+        this.questPartyAvatars.clear();
+        this.questPartyAvatars.putAll(actors);
+        this.questParty = new TeamInfo(new ArrayList<>(actors.keySet()));
+        this.currentCharacterIndex = 0;
+        this.questPartyScene = null;
+        if (player.hasSentLoginPackets() && !oldActors.isEmpty())
+            player.sendPacket(new PacketAvatarDelNotify(oldActors.stream().map(Avatar::getGuid).toList()));
+        player.save();
+        return !questPartySceneReady() || resumeQuestPartyLock();
+    }
+
+    private void removeActiveQuestPartyEntities() {
+        var scene = this.getPlayer().getScene();
+        if (scene != null) this.getActiveTeam().forEach(actor -> scene.removeEntity(
+                actor, VisionTypeOuterClass.VisionType.VisionType_VISION_REMOVE));
+        this.getActiveTeam().clear();
+    }
+
+    /** Rebind scene entities after transfer/relogin while retaining the mirror's combat state. */
+    public synchronized boolean resumeQuestPartyLock() {
+        if (!isQuestPartyLocked()) return true;
+        if (!prepareQuestPartyActors()) return false;
+        if (!questPartySceneReady()) return true;
+        var player = this.getPlayer();
+        var owner = player.getQuestManager().getMainQuestById(this.questPartyLock.getQuestMainId());
+        if (owner != null && owner.isFinished())
+            return unlockQuestParty(this.questPartyLock.getQuestMainId(), 0);
+        if (this.questPartyLock.getDungeonId() == 0 && player.getScene().getDungeonManager() != null) {
+            var previous = this.questPartyLock;
+            this.questPartyLock = new QuestPartyLock(previous.getQuestMainId(), previous.getKind(),
+                    previous.getAvatarIds(), previous.getPreviousCharacterIndex(),
+                    player.getScene().getDungeonManager().getDungeonData().getId());
+            player.save();
+        }
+        if (this.questPartyScene == player.getScene() && this.getActiveTeam().size() == this.questParty.size()
+                && this.getActiveTeam().stream().allMatch(entity ->
+                    this.questPartyAvatars.get(entity.getAvatar().getAvatarId()) == entity.getAvatar())) return true;
+        removeActiveQuestPartyEntities();
+        for (var avatar : this.questPartyAvatars.values()) {
+            var entity = EntityCreationEvent.call(EntityAvatar.class,
+                    new Class<?>[] {Scene.class, Avatar.class}, new Object[] {player.getScene(), avatar});
+            if (entity == null) throw new IllegalStateException("Quest party entity creation was cancelled");
+            this.getActiveTeam().add(entity);
+            if (avatar instanceof QuestPartyAvatar) player.sendPacket(new PacketAvatarAddNotify(avatar, true));
+        }
+        this.questPartyScene = player.getScene();
+        this.currentCharacterIndex = Math.max(0, Math.min(this.currentCharacterIndex, this.questParty.size() - 1));
+        this.updateTeamProperties();
+        player.getScene().addEntity(this.getCurrentAvatarEntity());
+        player.sendPacket(new PacketQuestPartyUpdateNotify(player));
+        return true;
+    }
+
+    /** Only the owning quest (or a successor after it finishes) may release the party. */
+    public synchronized boolean unlockQuestParty(int requestingMainId, int dungeonId) {
+        if (requestingMainId <= 0) return false;
+        var player = this.getPlayer();
+        var lock = this.questPartyLock;
+        if (lock != null) {
+            if (dungeonId != 0 && lock.getDungeonId() != dungeonId) return false;
+            if (lock.getQuestMainId() != requestingMainId) {
+                var owner = player.getQuestManager().getMainQuestById(lock.getQuestMainId());
+                if (owner == null || !owner.isFinished()) return false;
+            }
+            boolean ready = questPartySceneReady();
+            if (player.getScene() != null) removeActiveQuestPartyEntities();
+            var temporary = getQuestPartyAvatars();
+            this.questParty = null;
+            this.questPartyLock = null;
+            this.questPartyAvatars.clear();
+            this.questPartyScene = null;
+            this.currentCharacterIndex = lock.getPreviousCharacterIndex();
+            if (player.hasSentLoginPackets() && !temporary.isEmpty())
+                player.sendPacket(new PacketAvatarDelNotify(temporary.stream().map(Avatar::getGuid).toList()));
+            var trials = questTrialIds(lock.getQuestMainId());
+            if (!trials.isEmpty()) {
+                if (player.hasSentLoginPackets()) player.sendPacket(new PacketAvatarDelNotify(
+                        trials.stream().map(this::getTrialAvatarGuid).toList()));
+                this.retireTrialAvatarRoster(trials);
+                if (!this.isUsingTrialTeam()) this.setPreviousIndex(-1);
+            }
+            if (player.getScene() != null && this.getActiveTeam().isEmpty()) {
+                for (int avatarId : this.getCurrentTeamInfo().getAvatars()) {
+                    var avatar = getActivePartyAvatar(avatarId);
+                    if (avatar == null) continue;
+                    var entity = EntityCreationEvent.call(EntityAvatar.class,
+                            new Class<?>[] {Scene.class, Avatar.class}, new Object[] {player.getScene(), avatar});
+                    if (entity != null) this.getActiveTeam().add(entity);
+                }
+            }
+            if (ready) {
+                this.updateTeamProperties();
+                var current = this.getCurrentAvatarEntity();
+                if (current != null) player.getScene().addEntity(current);
+            }
+            if (player.hasSentLoginPackets()) player.sendPacket(new PacketAvatarTeamUpdateNotify(player));
+            player.save();
+            return true;
+        }
+        if (dungeonId != 0) return true;
+        this.removeTrialAvatar(questTrialIds(requestingMainId));
+        return true;
+    }
+
+    private List<Integer> questTrialIds(int mainId) {
+        return this.trialAvatars.values().stream()
+                .filter(avatar -> avatar.getGrantReason() == GrantReason.GRANT_REASON_BY_QUEST.getNumber()
+                        && avatar.getFromParentQuestId() == mainId)
+                .map(Avatar::getTrialAvatarId).toList();
+    }
+
     public int getTeamId(TeamInfo team) {
         for (int i = 1; i <= this.teams.size(); i++) {
             if (this.teams.get(i).equals(team)) {
@@ -187,6 +393,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public TeamInfo getCurrentTeamInfo() {
+        if (questParty != null) return questParty;
         if (useTemporarilyTeamIndex >= 0 && useTemporarilyTeamIndex < temporaryTeam.size()) {
             return temporaryTeam.get(useTemporarilyTeamIndex);
         }
@@ -197,7 +404,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     /**
-     * Drops avatar ids the player does not own from every saved team. A trial avatar is added to
+     * Drops unowned and dedicated TPS avatar ids from ordinary saved teams. A trial avatar is added to
      * the current team while it is in use (see {@link #addAvatarToTrialTeam}); one left behind, by
      * leaving through a path that did not remove it or by logging out mid-dungeon, gets saved, and
      * the next team rebuild has no avatar for it.
@@ -208,7 +415,8 @@ public final class TeamManager extends BasePlayerDataManager {
         var avatars = this.getPlayer().getAvatars();
         boolean changed = false;
         for (TeamInfo team : this.getTeams().values()) {
-            changed |= team.getAvatars().removeIf(id -> avatars.getAvatarById(id) == null);
+            changed |= team.getAvatars().removeIf(
+                    id -> avatars.getAvatarById(id) == null || TpsAvatarSystem.isTpsAvatar(id));
             if (team.getAvatars().isEmpty() && team == this.getCurrentSinglePlayerTeamInfo()) {
                 var main = avatars.getAvatarById(this.getPlayer().getMainCharacterId());
                 if (main != null) team.getAvatars().add(main.getAvatarId());
@@ -248,7 +456,9 @@ public final class TeamManager extends BasePlayerDataManager {
             // An empty team gets the player's own main character. This used to add the entity of a
             // fresh, unowned Avatar, which has none: the team then held a null that broke the scene
             // info, ability creation and everything else that walks the team.
-            var mainCharacter = this.player.getAvatars().getAvatarById(this.player.getMainCharacterId());
+            var mainCharacter = this.questParty != null && !this.questParty.getAvatars().isEmpty()
+                    ? getActivePartyAvatar(this.questParty.getAvatars().getFirst())
+                    : this.player.getAvatars().getAvatarById(this.player.getMainCharacterId());
             var scene = this.player.getScene();
             if (mainCharacter == null || scene == null) return null;
             var entity =
@@ -296,6 +506,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public boolean canAddAvatarsToTeam(TeamInfo team, int avatars) {
+        if (team == this.questParty) return false;
         return team.size() + avatars <= this.getMaxTeamSize();
     }
 
@@ -304,7 +515,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public boolean canAddAvatarsToCurrentTeam(int avatars) {
-        if (this.useTemporarilyTeamIndex != -1) {
+        if (isQuestPartyLocked() || this.useTemporarilyTeamIndex != -1) {
             return false;
         }
         return this.canAddAvatarsToTeam(this.getCurrentTeamInfo(), avatars);
@@ -315,7 +526,8 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public boolean addAvatarsToTeam(TeamInfo team, Collection<Avatar> avatars) {
-        if (!this.canAddAvatarsToTeam(team, avatars.size())) {
+        if (avatars.stream().anyMatch(TpsAvatarSystem::isTpsAvatar)
+                || !this.canAddAvatarsToTeam(team, avatars.size())) {
             return false;
         }
 
@@ -349,7 +561,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public boolean addAvatarsToCurrentTeam(Collection<Avatar> avatars) {
-        if (this.useTemporarilyTeamIndex != -1) {
+        if (isQuestPartyLocked() || this.useTemporarilyTeamIndex != -1) {
             return false;
         }
         return this.addAvatarsToTeam(this.getCurrentTeamInfo(), avatars);
@@ -425,10 +637,8 @@ public final class TeamManager extends BasePlayerDataManager {
      * exists, so a level sent before that is dropped on the floor.
      */
     public void sendMoonsignState() {
-        int moonsignLevel = this.getMoonsignLevel();
-
-        this.getPlayer().sendPacket(new PacketServerGlobalValueChangeNotify(
-            this.getEntity().getId(), "SGV_MoonPhaseLevel", (float) moonsignLevel));
+        int moonsignLevel = emu.grasscutter.game.quest.QuestFreeMoonPhase.current(this.getPlayer()).level();
+        emu.grasscutter.game.quest.QuestFreeMoonPhase.sendState(this.getPlayer(), false);
 
         // Seeds the party's Verdant Dew. The client owns the value from here on and mirrors its
         // own updates back through AbilityManager, which is why this is a seed and not a refresh.
@@ -437,7 +647,6 @@ public final class TeamManager extends BasePlayerDataManager {
                 this.getEntity().getId(), VERDANT_DEW, 100f));
         }
 
-        this.getPlayer().sendPacket(new PacketTeamMoonPhaseChangeNotify(moonsignLevel));
     }
 
     public void updateTeamEntities(BasePacket responsePacket) {
@@ -477,7 +686,7 @@ public final class TeamManager extends BasePlayerDataManager {
                     EntityCreationEvent.call(
                         EntityAvatar.class,
                         new Class<?>[] {Scene.class, Avatar.class},
-                        new Object[] {player.getScene(), player.getAvatars().getAvatarById(avatarId)});
+                        new Object[] {player.getScene(), getActivePartyAvatar(avatarId)});
             }
 
             // An id with no owned avatar behind it (a trial avatar's) gives no entity.
@@ -554,6 +763,10 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public synchronized void setupAvatarTeam(int teamId, List<Long> list) {
+        if (isQuestPartyLocked()) {
+            this.getPlayer().sendPacket(new PacketQuestPartyUpdateNotify(this.getPlayer()));
+            return;
+        }
         // Must look up by teamId. An old bug used get(list.size()) / get(team.size()) and always wrote team 1.
         TeamInfo teamInfo = this.getTeams().get(teamId);
 
@@ -575,7 +788,7 @@ public final class TeamManager extends BasePlayerDataManager {
         LinkedHashSet<Avatar> newTeam = new LinkedHashSet<>();
         for (Long aLong : list) {
             Avatar avatar = this.getPlayer().getAvatars().getAvatarByGuid(aLong);
-            if (avatar == null || newTeam.contains(avatar)) {
+            if (avatar == null || TpsAvatarSystem.isTpsAvatar(avatar) || newTeam.contains(avatar)) {
                 this.getPlayer()
                         .sendPacket(new PacketSetUpAvatarTeamRsp(this.getPlayer(), teamId, teamInfo));
                 return;
@@ -593,6 +806,7 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public void setupMpTeam(List<Long> list) {
+        if (isQuestPartyLocked()) return;
 
         if (list.size() == 0
             || list.size() > this.getMaxTeamSize()
@@ -605,7 +819,7 @@ public final class TeamManager extends BasePlayerDataManager {
         LinkedHashSet<Avatar> newTeam = new LinkedHashSet<>();
         for (Long aLong : list) {
             Avatar avatar = this.getPlayer().getAvatars().getAvatarByGuid(aLong);
-            if (avatar == null || newTeam.contains(avatar)) {
+            if (avatar == null || TpsAvatarSystem.isTpsAvatar(avatar) || newTeam.contains(avatar)) {
 
                 return;
             }
@@ -756,7 +970,7 @@ public final class TeamManager extends BasePlayerDataManager {
                         LinkedHashSet<Avatar> newTeam = new LinkedHashSet<>();
                         for (Long aLong : list) {
                             Avatar avatar = this.getPlayer().getAvatars().getAvatarByGuid(aLong);
-                            if (avatar == null || newTeam.contains(avatar)) {
+                            if (avatar == null || TpsAvatarSystem.isTpsAvatar(avatar) || newTeam.contains(avatar)) {
 
                                 return null;
                             }
@@ -804,6 +1018,10 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public synchronized void setCurrentTeam(int teamId) {
+        if (isQuestPartyLocked()) {
+            this.getPlayer().sendPacket(new PacketQuestPartyUpdateNotify(this.getPlayer()));
+            return;
+        }
 
         if (this.getPlayer().isInMultiplayer()) {
             return;
@@ -1049,6 +1267,65 @@ public final class TeamManager extends BasePlayerDataManager {
         }
 
         return false;
+    }
+
+    /** Native OptionalRevivalTeamType: none, full HP, full energy, full HP and energy. */
+    public boolean optionalRevivalTeam(int mode) {
+        if (mode < 0 || mode > 3) return false;
+        if (mode == 0) return true;
+        boolean fullHp = (mode & 1) != 0;
+        boolean fullEnergy = (mode & 2) != 0;
+        Map<Avatar, EntityAvatar> members = new LinkedHashMap<>();
+        for (int id : this.getCurrentTeamInfo().getAvatars()) {
+            var avatar = this.getActivePartyAvatar(id);
+            if (avatar == null || fullHp && avatar.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP) <= 0f)
+                return false;
+            var entity = this.getActiveTeam().stream().filter(member -> member.getAvatar() == avatar)
+                    .findFirst().orElse(null);
+            members.put(avatar, entity);
+        }
+        if (members.isEmpty()) return false;
+        for (var member : members.entrySet()) {
+            var avatar = member.getKey();
+            var entity = member.getValue();
+            var updates = new HashMap<Integer, Float>();
+            if (fullHp) {
+                float maxHp = avatar.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP);
+                if (entity != null && (!entity.isAlive()
+                        || entity.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP) <= 0f)) entity.reviveToRatio(1f);
+                avatar.setFightProperty(FightProperty.FIGHT_PROP_CUR_HP, maxHp);
+                avatar.setCurrentHp(maxHp);
+                updates.put(FightProperty.FIGHT_PROP_CUR_HP.getId(), maxHp);
+            }
+            if (fullEnergy && avatar.getSkillDepot() != null
+                    && avatar.getSkillDepot().getEnergySkillData() != null) {
+                var depot = avatar.getSkillDepot();
+                boolean special = depot.getEnergySkillData().getSpecialEnergyMin() > 0;
+                var current = special ? FightProperty.FIGHT_PROP_CUR_SPECIAL_ENERGY
+                        : depot.getElementType().getCurEnergyProp();
+                var maximum = special ? FightProperty.FIGHT_PROP_MAX_SPECIAL_ENERGY
+                        : depot.getElementType().getMaxEnergyProp();
+                float maxEnergy = avatar.getFightProperty(maximum);
+                avatar.setCurrentEnergy(current, maxEnergy);
+                // Energy-usage configuration may suppress the persisted helper, but quest refill is explicit.
+                avatar.setFightProperty(current, maxEnergy);
+                updates.put(current.getId(), maxEnergy);
+            }
+            avatar.save();
+            if (this.getPlayer().hasSentLoginPackets()) {
+                this.getPlayer().sendPacket(new PacketAvatarFightPropUpdateNotify(avatar, updates));
+                if (fullHp) this.getPlayer().sendPacket(new PacketAvatarLifeStateChangeNotify(avatar));
+                if (entity != null && entity.getScene() != null)
+                    entity.getScene().broadcastPacket(new PacketEntityFightPropUpdateNotify(entity,
+                            updates.keySet().stream().map(FightProperty::getPropById).toList()));
+            }
+        }
+        var current = this.getCurrentAvatarEntity();
+        var scene = this.getPlayer().getScene();
+        if (scene != null && current != null && current.isAlive()
+                && this.getPlayer().getSceneLoadState() == Player.SceneLoadState.LOADED
+                && !scene.isInScene(current)) scene.addEntity(current);
+        return true;
     }
 
     /**
@@ -1324,6 +1601,7 @@ public final class TeamManager extends BasePlayerDataManager {
         avatar.setTrialAvatarInfo(trialAvatarBasicParam.get(1), avatarId, reason, questMainId);
         avatar.equipTrialItems();
         TpsAvatarSystem.onTrialAvatarCreated(avatar);
+        if (TpsAvatarSystem.isTpsAvatar(avatar) && avatar.getTpsWeaponIds().isEmpty()) return false;
 
         avatar.recalcStats();
 
@@ -1380,6 +1658,39 @@ public final class TeamManager extends BasePlayerDataManager {
     }
 
     public void removeTrialAvatar(List<Integer> trialAvatarIds) {
+        if (isQuestPartyLocked() && this.questPartyLock.isTrial()) {
+            var remaining = this.questPartyLock.getAvatarIds().stream()
+                    .filter(id -> !trialAvatarIds.contains(id)).toList();
+            if (remaining.size() != this.questPartyLock.getAvatarIds().size()) {
+                var lock = this.questPartyLock;
+                if (remaining.isEmpty()) {
+                    this.unlockQuestParty(lock.getQuestMainId(), 0);
+                } else {
+                    var removed = getQuestPartyAvatars().stream()
+                            .filter(avatar -> trialAvatarIds.contains(avatar.getTrialAvatarId())).toList();
+                    if (this.getPlayer().getScene() != null) {
+                        this.getActiveTeam().stream()
+                                .filter(entity -> removed.contains(entity.getAvatar()))
+                                .forEach(entity -> this.getPlayer().getScene().removeEntity(
+                                        entity, VisionTypeOuterClass.VisionType.VisionType_VISION_REMOVE));
+                    }
+                    this.getActiveTeam().removeIf(entity -> removed.contains(entity.getAvatar()));
+                    this.questPartyAvatars.values().removeAll(removed);
+                    this.questParty = new TeamInfo(new ArrayList<>(this.questPartyAvatars.keySet()));
+                    this.questPartyLock = new QuestPartyLock(lock.getQuestMainId(), lock.getKind(), remaining,
+                            lock.getPreviousCharacterIndex(), lock.getDungeonId());
+                    if (this.getPlayer().hasSentLoginPackets()) this.getPlayer().sendPacket(new PacketAvatarDelNotify(
+                            removed.stream().map(Avatar::getGuid).toList()));
+                    if (questPartySceneReady()) {
+                        this.currentCharacterIndex = Math.max(0, Math.min(this.currentCharacterIndex, this.questParty.size() - 1));
+                        this.updateTeamProperties();
+                        this.getPlayer().getScene().addEntity(this.getCurrentAvatarEntity());
+                        this.getPlayer().sendPacket(new PacketQuestPartyUpdateNotify(this.getPlayer()));
+                    }
+                    this.getPlayer().save();
+                }
+            }
+        }
         if (!this.isUsingTrialTeam()) return;
         var equippedIds = this.getTrialAvatars().values().stream()
             .map(Avatar::getTrialAvatarId).filter(trialAvatarIds::contains).distinct().toList();

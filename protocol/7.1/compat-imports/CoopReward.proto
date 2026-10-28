@@ -1,0 +1,4 @@
+syntax = "proto3";
+
+// Build-only import stub; canonical CoopReward comes from protocol.desc.
+message CoopReward {}

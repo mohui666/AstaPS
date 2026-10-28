@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "QuestSceneryInfo.proto";
+
+// DHAONOBKEEK, CmdId 20490. Parser A13F0E0 reads nested HHMAMMBMJAC at tag2A.
+message QuestSceneryInfoUpdateNotify {
+  QuestSceneryInfo scenery_info = 5;
+}

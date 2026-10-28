@@ -154,7 +154,14 @@ __pycache__/
 
 # Per-player locations and machine-specific launch instructions.
 /data/assistant-teleports/
+/data/assistant-companions/
 /.env.local
 /Start-AstaPS.cmd
 /Start-AstaPS-Game.cmd
 /本地使用说明.md
+
+# Personal connection packages are assembled from this source template.
+/client/package-template/profile.json
+/client/package-template/game-path.txt
+/client/package-template/ext.dll
+/client/package-template/passport-public.pem

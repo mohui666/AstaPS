@@ -131,6 +131,7 @@ public final class DailyTaskGroupLifecycleTest {
         owner.setWorld(world);
         var scripts = alloc(C.class);
         set(SceneScriptManager.class, scripts, "monsterTides", new ArrayList<>());
+        set(SceneScriptManager.class, scripts, "groupTempValues", new java.util.concurrent.ConcurrentHashMap<>());
         scripts.initialized = true;
         scripts.scene = scene;
         scripts.groups = new LinkedHashMap<>();

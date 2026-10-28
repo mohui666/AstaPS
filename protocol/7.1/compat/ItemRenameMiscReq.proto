@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "MiscRenameInfo.proto";
+
+// PEPNECPPLKF, CmdId 8564; native writer 10BE2410.
+message ItemRenameMiscReq {
+  MiscRenameInfo rename_info = 12;
+}

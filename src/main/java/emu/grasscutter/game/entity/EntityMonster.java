@@ -257,6 +257,12 @@ public class EntityMonster extends GameEntity {
     }
 
     @Override
+    public void onCreate() {
+        super.onCreate();
+        MonsterSkillGadgets.onMonsterCreated(this);
+    }
+
+    @Override
     public void onTick(int sceneTime) {
         super.onTick(sceneTime);
 
@@ -527,7 +533,7 @@ public class EntityMonster extends GameEntity {
 
         var authority =
                 EntityAuthorityInfo.newBuilder()
-                        .setAbilityInfo(AbilitySyncStateInfo.newBuilder())
+                        .setAbilityInfo(runtimeAbilityInfo())
                         .setRendererChangedInfo(EntityRendererChangedInfo.newBuilder())
                         .setAiInfo(aiInfo)
                         .setBornPos(this.getBornPos().toProto())

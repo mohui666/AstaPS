@@ -45,6 +45,11 @@ public class HandlerPostEnterSceneReq extends PacketHandler {
                 var dungeonManager = scene.getDungeonManager();
                 if (dungeonManager != null) dungeonManager.startDungeon();
             }
+            case SCENE_HOME_WORLD, SCENE_HOME_ROOM -> {
+                if (scene.getWorld() instanceof emu.grasscutter.game.home.HomeWorld
+                        && scene.getWorld().getHost() == player)
+                    questManager.queueEvent(QuestContent.QUEST_CONTENT_ENTER_MY_HOME_WORLD, scene.getId());
+            }
         }
         questManager.queueEvent(QuestContent.QUEST_CONTENT_LEAVE_SCENE, scene.getPrevScene());
 

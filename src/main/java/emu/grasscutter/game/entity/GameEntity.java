@@ -121,6 +121,16 @@ public abstract class GameEntity {
 
     public abstract void initAbilities();
 
+    protected emu.grasscutter.net.proto.AbilitySyncStateInfoOuterClass.AbilitySyncStateInfo.Builder
+            runtimeAbilityInfo() {
+        var result = emu.grasscutter.net.proto.AbilitySyncStateInfoOuterClass.AbilitySyncStateInfo.newBuilder();
+        globalAbilityValues.forEach((name, value) -> result.addSgvDynamicValueMap(
+                emu.grasscutter.net.proto.AbilityScalarValueEntryOuterClass.AbilityScalarValueEntry.newBuilder()
+                        .setKey(AbilityString.newBuilder().setHash(emu.grasscutter.utils.Utils.abilityHash(name)).setStr(name))
+                        .setFloatValue(value)));
+        return result;
+    }
+
     public EntityType getEntityType() {
         return EntityIdType.toEntityType(this.getId() >> ENTITY_ID_BIT_SHIFT);
     }
@@ -668,6 +678,11 @@ public abstract class GameEntity {
 
         if (!Float.isFinite(effectiveDamage)) return;
         this.addFightProperty(FightProperty.FIGHT_PROP_CUR_HP, -effectiveDamage);
+        if (effectiveDamage > 0 && this.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP) < curHp
+                && this instanceof EntityAvatar damagedAvatar
+                && damagedAvatar.getPlayer().getTeamManager() != null
+                && damagedAvatar.getPlayer().getTeamManager().getCurrentAvatarEntity() == damagedAvatar)
+            emu.grasscutter.game.quest.delivery.QuestDeliveryRuntime.onAvatarHurt(damagedAvatar.getPlayer());
 
         this.lastAttackType = attackType;
         this.checkIfDead();

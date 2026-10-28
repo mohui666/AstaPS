@@ -12,8 +12,9 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 
-/** Opt-in real hits for UID 1/2 or the owner's registered test bot; it does not change client targeting. */
+/** Opt-in real hits for trusted friends or an owner's registered test bot. */
 public final class PvpDuels {
     private record Duel(Player first, Player second, World world, Scene scene,
                         GameSession firstSession, GameSession secondSession) {}
@@ -23,13 +24,14 @@ public final class PvpDuels {
     private static volatile Duel active;
     private static final Map<AttackResult, Hit> reported = Collections.synchronizedMap(new IdentityHashMap<>());
     private static final ThreadLocal<Hit> currentHit = new ThreadLocal<>();
+    private static final Set<Integer> TRUSTED_UIDS = Set.of(1, 2, 3, 4);
 
     private PvpDuels() {}
 
     public static synchronized String enable(Player first, Player second) {
         if (first == null || second == null || !first.isOnline() || !second.isOnline())
             throw new IllegalArgumentException("对战双方必须同时在线。");
-        if (!isPair(first, second)) throw new IllegalArgumentException("当前仅授权 UID 1/2，或主人与已登记的测试机器人。");
+        if (!isPair(first, second)) throw new IllegalArgumentException("当前仅授权 UID 1–4 中不同的两人，或主人与已登记的测试机器人。");
         var registration = PvpTestBotRoster.entry(first);
         if (registration != null && registration.owner() == second) {
             var bot = first;
@@ -82,19 +84,23 @@ public final class PvpDuels {
         PvpTestBot.onPlayerLeave(player);
     }
 
-    /** -1 rejects a paired hit, 0 preserves ordinary combat, 1 accepts a duel hit. */
+    /** -1 rejects an unauthorized player hit, 0 preserves ordinary combat, 1 accepts a duel hit. */
     public static int checkReportedHit(Player reporter, AttackResult result) {
         var scene = reporter.getScene();
         if (scene == null) return 0;
         var target = scene.getEntityById(result.getDefenseId());
         if (!(target instanceof EntityAvatar defender)) return 0;
-        var source = source(scene, scene.getEntityById(result.getAttackerId()));
+        var attackingEntity = scene.getEntityById(result.getAttackerId());
+        var source = source(scene, attackingEntity);
         if (source == null) {
             // A remote player's HP cannot be attributed to an absent, unowned attacking entity.
-            return isPair(reporter, defender.getPlayer())
-                    && scene.getEntityById(result.getAttackerId()) == null ? -1 : 0;
+            return crossesPlayers(attackingEntity, null, defender.getPlayer())
+                    || crossesPlayers(attackingEntity, null, reporter)
+                    || (attackingEntity == null && reporter != defender.getPlayer()) ? -1 : 0;
         }
-        if (!isPair(source.avatar().getPlayer(), defender.getPlayer())) return 0;
+        if (!crossesPlayers(attackingEntity, source, defender.getPlayer()))
+            return source.avatar().getPlayer() == reporter ? 0 : -1;
+        if (!isPair(source.avatar().getPlayer(), defender.getPlayer())) return -1;
         var duel = activeDuel();
         if (PvpDuelRoster.training()) duel = (Duel) PvpDuelRoster.find(source.avatar().getPlayer(), defender.getPlayer());
         return authorized(duel, reporter, source, defender)
@@ -127,14 +133,15 @@ public final class PvpDuels {
 
     public static void clearReporter() { currentHit.remove(); }
 
-    /** Scene.handleAttack returns immediately when this hook consumes or rejects a paired hit. */
+    /** Scene.handleAttack must never fall through to ordinary damage for a cross-player hit. */
     public static boolean handleAttack(Scene scene, AttackResult result) {
         var hit = currentHit.get();
         if (hit == null || hit.result() != result) {
             var target = scene.getEntityById(result.getDefenseId());
-            var source = source(scene, scene.getEntityById(result.getAttackerId()));
-            return target instanceof EntityAvatar defender && source != null
-                    && isPair(source.avatar().getPlayer(), defender.getPlayer());
+            var attackingEntity = scene.getEntityById(result.getAttackerId());
+            var source = source(scene, attackingEntity);
+            return target instanceof EntityAvatar defender
+                    && crossesPlayers(attackingEntity, source, defender.getPlayer());
         }
         currentHit.remove();
         var duel = activeDuel();
@@ -184,8 +191,20 @@ public final class PvpDuels {
 
     private static boolean isPair(Player first, Player second) {
         return first != null && second != null
-                && (((first.getUid() == 1 && second.getUid() == 2) || (first.getUid() == 2 && second.getUid() == 1))
+                && ((first.getUid() != second.getUid() && TRUSTED_UIDS.contains(first.getUid()) && TRUSTED_UIDS.contains(second.getUid()))
                         || PvpTestBot.isOwnedPair(first, second) || PvpTestBotRoster.isOwnedPair(first, second));
+    }
+
+    /** A retired/missing avatar owner cannot turn a player's gadget into ordinary world damage. */
+    private static boolean crossesPlayers(GameEntity entity, Source source, Player defender) {
+        if (source != null) return source.avatar().getPlayer() != defender || !source.ownerMatches();
+        var seen = new HashSet<Integer>();
+        while (entity != null && seen.add(entity.getId())) {
+            if (entity instanceof EntityClientGadget client) return client.getOwner() != defender;
+            if (entity instanceof EntityGadget gadget) entity = gadget.getOwner();
+            else return false;
+        }
+        return false;
     }
 
     private static boolean valid(Duel duel) {

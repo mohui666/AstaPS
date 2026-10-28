@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import com.google.gson.Gson;
 
+import emu.grasscutter.game.entity.EntityMonster;
 import emu.grasscutter.game.entity.GameEntity;
 import emu.grasscutter.game.world.Position;
+import emu.grasscutter.game.world.Scene;
 import emu.grasscutter.scripts.SceneScriptManager;
+import emu.grasscutter.scripts.constants.EventType;
 import emu.grasscutter.scripts.data.*;
 import emu.grasscutter.scripts.service.ScriptMonsterSpawnService;
 import emu.grasscutter.scripts.service.ScriptMonsterTideService;
@@ -43,6 +46,7 @@ final class DailyTaskTideRestoreTest {
         var scripts = scripts();
         scripts.startMonsterTideInGroup("1", group, new Integer[] {1, 2, 3, 4}, 4, 2);
         var tide = scripts.getMonsterTides(GROUP).get(0);
+        var member = (EntityMonster) scripts.added.get(0);
         assertEquals(2, tide.snapshot().alive);
         assertEquals(2, tide.snapshot().tideCount);
 
@@ -51,8 +55,24 @@ final class DailyTaskTideRestoreTest {
         assertEquals(2, tide.snapshot().alive);
         assertEquals(2, tide.snapshot().tideCount);
 
-        scripts.createMonster(GROUP, 3001, group.monsters.get(3));
-        assertEquals(3, tide.snapshot().alive, "an ordinary spawn is still counted");
+        var ordinary = scripts.createMonster(GROUP, 3001, group.monsters.get(3));
+        scripts.addEntity(ordinary);
+        assertEquals(2, tide.snapshot().alive, "an ordinary spawn is outside this tide");
+        scripts.monsterDied(ordinary);
+        assertEquals(3, scripts.added.size(), "an ordinary death cannot publish a pending wave");
+        assertEquals(2, tide.snapshot().alive);
+        assertEquals(2, tide.snapshot().tideCount);
+        assertEquals(0, tide.snapshot().killCount);
+        assertTrue(scripts.events.isEmpty());
+
+        scripts.added.clear();
+        scripts.monsterDied(member);
+        assertEquals(1, scripts.added.size(), "a tide member's death publishes the next wave");
+        assertEquals(3, scripts.added.get(0).getConfigId());
+        assertEquals(2, tide.snapshot().alive);
+        assertEquals(1, tide.snapshot().tideCount);
+        assertEquals(1, tide.snapshot().killCount);
+        assertEquals(EventType.EVENT_MONSTER_TIDE_DIE, scripts.events.get(0).type);
     }
 
     @Test
@@ -69,8 +89,19 @@ final class DailyTaskTideRestoreTest {
         assertEquals(2, tide.snapshot().alive);
         assertEquals(2, tide.snapshot().tideCount);
 
-        cold.getScriptMonsterSpawnService().onMonsterDead(null);
+        tide.spawnFirstTurn();
+        assertTrue(cold.added.isEmpty(), "a restored first turn is never republished");
+        var member = cold.restoreMonster(GROUP, 3001, group.monsters.get(1));
+        cold.addEntity(member);
+        cold.addEntity(cold.restoreMonster(GROUP, 3001, group.monsters.get(2)));
+        assertEquals(2, tide.snapshot().alive, "restoring survivors does not count new spawns");
+        assertEquals(2, tide.snapshot().tideCount);
+        cold.added.clear();
+        cold.monsterDied(member);
         assertEquals(1, cold.added.size(), "a kill after restore spawns the next pending wave");
+        assertEquals(3, cold.added.get(0).getConfigId());
+        assertEquals(2, tide.snapshot().alive);
+        assertEquals(1, tide.snapshot().tideCount);
         assertEquals(1, tide.snapshot().killCount);
     }
 
@@ -110,17 +141,23 @@ final class DailyTaskTideRestoreTest {
     void detachedTideIgnoresUnrelatedDeathsAndRefusedSpawnsAreSkipped() throws Exception {
         var scripts = scripts();
         scripts.startMonsterTideInGroup("1", group, new Integer[] {1, 2, 3, 4}, 4, 2);
+        var detachedMember = (EntityMonster) scripts.added.get(0);
         scripts.unloadMonsterTides(GROUP);
         scripts.added.clear();
-        scripts.getScriptMonsterSpawnService().onMonsterDead(null);
+        scripts.monsterDied(detachedMember);
         assertTrue(scripts.added.isEmpty(), "a detached tide never reacts to other deaths");
 
         var live = scripts();
         live.startMonsterTideInGroup("1", group, new Integer[] {1, 2, 3, 4}, 4, 2);
+        var member = (EntityMonster) live.added.get(0);
         live.refuseCreation = true;
         live.added.clear();
-        assertDoesNotThrow(() -> live.getScriptMonsterSpawnService().onMonsterDead(null));
+        assertDoesNotThrow(() -> live.monsterDied(member));
         assertTrue(live.added.isEmpty());
+        var tide = live.getMonsterTides(GROUP).get(0);
+        assertEquals(1, tide.snapshot().alive);
+        assertEquals(2, tide.snapshot().tideCount, "a refused spawn is not counted as created");
+        assertEquals(1, tide.snapshot().killCount);
     }
 
     @Test
@@ -235,9 +272,12 @@ final class DailyTaskTideRestoreTest {
     static T scripts() throws Exception {
         var scene = alloc(DailyTaskGroupLifecycleTest.S.class);
         scene.creationSentinel = false;
+        scene.entities = new LinkedHashMap<>();
+        set(Scene.class, scene, "entities", scene.entities);
         var scripts = alloc(T.class);
         scripts.scene = scene;
         scripts.added = new ArrayList<>();
+        scripts.events = new ArrayList<>();
         set(
                 SceneScriptManager.class,
                 scripts,
@@ -250,6 +290,8 @@ final class DailyTaskTideRestoreTest {
     static final class T extends SceneScriptManager {
         DailyTaskGroupLifecycleTest.S scene;
         List<GameEntity> added;
+        List<ScriptArgs> events;
+        int nextEntityId;
         boolean refuseCreation;
         java.util.concurrent.CountDownLatch beforeFirstTurn;
 
@@ -277,6 +319,10 @@ final class DailyTaskTideRestoreTest {
             if (refuseCreation) return null;
             try {
                 var entity = alloc(DailyTaskGroupLifecycleTest.E.class);
+                entity.scene = scene;
+                entity.id = ++nextEntityId;
+                entity.setGroupId(groupId);
+                entity.setBlockId(blockId);
                 entity.setConfigId(meta.config_id);
                 if (!isRestoringMonster())
                     getScriptMonsterSpawnService()
@@ -291,6 +337,19 @@ final class DailyTaskTideRestoreTest {
         @Override
         public void addEntity(GameEntity entity) {
             added.add(entity);
+            scene.entities.put(entity.getId(), entity);
+        }
+
+        void monsterDied(EntityMonster monster) {
+            assertTrue(scene.entities.remove(monster.getId(), monster));
+            getScriptMonsterSpawnService().onMonsterDead(monster);
+        }
+
+        /** Lua dispatch is a transport boundary; the tide's spawn/death listeners remain real. */
+        @Override
+        public java.util.concurrent.Future<?> callEvent(ScriptArgs args) {
+            events.add(args);
+            return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
     }
 }

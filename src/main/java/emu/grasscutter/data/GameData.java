@@ -59,6 +59,10 @@ import lombok.*;
 
 @SuppressWarnings({"unused", "MismatchedQueryAndUpdateOfCollection"})
 public final class GameData {
+    @Getter private static final Int2ObjectMap<LevelTagData> levelTagDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<LevelTagGroupData> levelTagGroupDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<FeatureTagGroupData> featureTagGroupDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<GalleryData> galleryDataMap = new Int2ObjectOpenHashMap<>();
     @Getter private static final Map<String, AbilityData> abilityDataMap = new HashMap<>();
 
     @Getter

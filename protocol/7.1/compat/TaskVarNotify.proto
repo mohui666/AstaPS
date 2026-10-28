@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "TaskVar.proto";
+
+// KIFMLHLBJJI Cmd29103. Native parser C167D00/cctor C167EF0: message tag 0x32.
+// BLMOGIINPEM::LCFNPJDABDF 11793650 replaces each specified key's value list.
+message TaskVarNotify {
+  repeated TaskVar task_var_list = 6;
+}

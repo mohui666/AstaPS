@@ -35,14 +35,12 @@ public class HandlerSceneInitFinishReq extends PacketHandler {
         session.send(new PacketSceneForceUnlockNotify(1, true));
         session.send(new PacketHostPlayerNotify(world));
         session.send(new PacketSceneDataNotify(player));
+        emu.grasscutter.game.quest.world.QuestSceneMechanicsRuntime.notifySceneEntry(player);
 
         session.send(new PacketSceneTimeNotify(player));
         session.send(new PacketPlayerGameTimeNotify(player));
         session.send(new PacketPlayerEnterSceneInfoNotify(player));
-        int moonPhaseCount = (int) player.getTeamManager().getActiveTeam().stream()
-                .filter(e -> PacketPlayerEnterSceneInfoNotify.getMoonphaseIds().contains(e.getAvatar().getAvatarId()))
-                .count();
-        session.send(new PacketTeamMoonPhaseChangeNotify(moonPhaseCount));
+        session.send(new PacketTeamMoonPhaseChangeNotify(player));
         int hexenzirkelCount = (int) player.getTeamManager().getActiveTeam().stream()
                 .filter(e -> PacketPlayerEnterSceneInfoNotify.getHexenzirkelIds().contains(e.getAvatar().getAvatarId()))
                 .count();
@@ -64,6 +62,7 @@ public class HandlerSceneInitFinishReq extends PacketHandler {
         session.send(new PacketWindSeedClientNotify(LuaShell.getLuaShell()));
 
         player.setSceneLoadState(SceneLoadState.INIT);
+        emu.grasscutter.game.quest.QuestClimateAreas.update(player, true);
 
         player.getScene().playerSceneInitialized(player);
     }

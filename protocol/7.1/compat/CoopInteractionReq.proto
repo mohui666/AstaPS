@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// CNKAFPJFLAN, CmdId 7504. Writer RVA 133CA550; BaseActor's coop interaction sender.
+message CoopInteractionReq {
+  uint32 chapter_id = 10;
+  uint32 interaction_id = 13;
+}

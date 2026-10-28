@@ -3,6 +3,7 @@ package emu.grasscutter.game.quest.conditions;
 import emu.grasscutter.data.excels.quest.QuestData;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.quest.QuestValueCond;
+import emu.grasscutter.game.quest.QuestTimeConditions;
 import emu.grasscutter.game.quest.enums.QuestCond;
 import lombok.val;
 
@@ -15,16 +16,6 @@ public class ConditionTimeVarGreaterOrEqual extends BaseCondition {
             QuestData.QuestAcceptCondition condition,
             String paramStr,
             int... params) {
-        val mainQuestId = condition.getParam()[0];
-        val timeVarIndex = condition.getParam()[1];
-        val minTime = condition.getParam()[2];
-
-        val mainQuest = owner.getQuestManager().getMainQuestById(mainQuestId);
-
-        if (mainQuest == null) {
-            return false;
-        }
-
-        return mainQuest.getHoursSinceTimeVar(timeVarIndex) >= minTime;
+        return QuestTimeConditions.matchesAccept(owner, condition);
     }
 }

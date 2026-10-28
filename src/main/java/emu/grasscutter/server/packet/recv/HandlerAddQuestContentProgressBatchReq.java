@@ -22,7 +22,17 @@ public class HandlerAddQuestContentProgressBatchReq extends PacketHandler {
 
         for (var info : req.getProgressInfoListList()) {
             var type = QuestContent.getContentTriggerByValue(info.getContentType());
-            if (type != null) {
+            if (type != null && !type.isServerStatePredicate() && type != QuestContent.QUEST_CONTENT_ENTER_VEHICLE
+                    && type != QuestContent.QUEST_CONTENT_ENTER_FEATURE_TAG_VEHICLE
+                    && type != QuestContent.QUEST_CONTENT_LEAVE_FEATURE_TAG_VEHICLE
+                    && type != QuestContent.QUEST_CONTENT_LEAVE_VEHICLE
+                    && type != QuestContent.QUEST_CONTENT_CALL_PLAYER_TRAIN_IN_RANGE
+                    && type != QuestContent.QUEST_CONTENT_FINISH_ANY_FOOD_COOK
+                    && !emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.isServerOwnedClientProgress(type,info.getParam())
+                    && !emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.isServerOwnedClientProgress(type,info.getParam())
+                    && !(type == QuestContent.QUEST_CONTENT_LUA_NOTIFY
+                            && emu.grasscutter.game.quest.war.ReconstructedWarRuntime.isServerOwnedLuaNotification(
+                                    Integer.toUnsignedString(info.getParam())))) {
                 questManager.queueEvent(type, info.getParam());
             }
         }

@@ -254,6 +254,10 @@ public class Inventory extends BasePlayerManager implements Iterable<GameItem> {
             }
             outcome.add(new InventoryAddResult.Entry(
                     itemId, requested, requested, inserted.status()));
+            emu.grasscutter.game.quest.content.ContentServerState.onInventoryItemChanged(
+                    getPlayer(), itemId, requested);
+            emu.grasscutter.game.tps.TpsAccessorySystem.onItemAdded(getPlayer(), itemId);
+            emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.onItemAdded(getPlayer(), itemId, requested);
             try {
                 this.player.getProgressManager().addItemObtainedHistory(itemId, requested);
             } catch (Exception e) {
@@ -411,6 +415,8 @@ public class Inventory extends BasePlayerManager implements Iterable<GameItem> {
     }
 
     private void triggerRemItemEvents(GameItem item, int removeCount) {
+        emu.grasscutter.game.quest.content.ContentServerState.onInventoryItemChanged(
+                getPlayer(), item.getItemId(), -removeCount);
         try {
             getPlayer()
                     .getBattlePassManager()
@@ -465,6 +471,7 @@ public class Inventory extends BasePlayerManager implements Iterable<GameItem> {
             }
             var params = new UseItemParams(this.player, data.getUseTarget());
             params.usedItemId = data.getId();
+            params.count = item.getCount();
             if (!this.player.getServer().getInventorySystem().useItemDirect(data, params)) {
                 Grasscutter.getLogger()
                         .warn("useOnGain failed for item {} (buff/use action rejected)", data.getId());

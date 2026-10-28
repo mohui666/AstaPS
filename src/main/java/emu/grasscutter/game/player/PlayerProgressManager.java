@@ -1008,6 +1008,8 @@ public final class PlayerProgressManager extends BasePlayerDataManager {
         this.player
                 .getQuestManager()
                 .queueEvent(QuestContent.QUEST_CONTENT_UNLOCK_TRANS_POINT, sceneId, pointId);
+        this.player.getQuestManager()
+                .queueEvent(QuestContent.QUEST_CONTENT_UNLOCK_ANY_TRANS_POINT, sceneId, pointId);
         try {
             if (this.player.getScene() != null) {
                 this.player
@@ -1363,6 +1365,7 @@ public final class PlayerProgressManager extends BasePlayerDataManager {
     }
 
     public boolean checkSceneTag(int sceneId, int sceneTagId) {
-        return player.getSceneTags().get(sceneId).contains(sceneTagId);
+        return emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.effectiveSceneTags(player)
+                .getOrDefault(sceneId, java.util.Set.of()).contains(sceneTagId);
     }
 }

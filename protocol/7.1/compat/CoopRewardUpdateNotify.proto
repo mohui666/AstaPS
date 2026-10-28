@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "CoopReward.proto";
+
+// HDHEBGDMIDB, CmdId 20896. Parser RVA 11C85130; message codec tag 0x3A.
+message CoopRewardUpdateNotify {
+  repeated CoopReward reward_list = 7;
+}

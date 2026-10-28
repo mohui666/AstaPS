@@ -21,6 +21,20 @@ public class HandlerBuyGoodsReq extends PacketHandler {
     public void handle(GameSession session, byte[] header, byte[] payload) throws Exception {
         BuyGoodsReqOuterClass.BuyGoodsReq buyGoodsReq =
                 BuyGoodsReqOuterClass.BuyGoodsReq.parseFrom(payload);
+        if (AssistantShop.isGoodsId(buyGoodsReq.getGoods().getGoodsId())) {
+            try {
+                var result = AssistantShop.buy(session.getPlayer(), buyGoodsReq.getShopType(),
+                        buyGoodsReq.getGoods().getGoodsId(), buyGoodsReq.getBuyCount());
+                session.getPlayer().dropMessage(result.message());
+                session.send(result.accepted()
+                        ? new PacketBuyGoodsRsp(AssistantShop.SHOP_TYPE, 0, result.goods(), 0)
+                        : new PacketBuyGoodsRsp(result.bagFull() ? Retcode.RET_PACK_EXCEED_MAX_WEIGHT : Retcode.RET_SHOP_CONTENT_NOT_MATCH));
+            } catch (IllegalArgumentException | ArithmeticException invalid) {
+                session.getPlayer().dropMessage(invalid instanceof ArithmeticException ? "领取数量超出物品可保存范围。" : invalid.getMessage());
+                session.send(new PacketBuyGoodsRsp(Retcode.RET_SHOP_CONTENT_NOT_MATCH));
+            }
+            return;
+        }
         List<ShopInfo> configShop =
                 session.getServer().getShopSystem().getShopData().get(buyGoodsReq.getShopType());
         if (configShop == null) {
@@ -113,13 +127,7 @@ public class HandlerBuyGoodsReq extends PacketHandler {
             costs.add(new ItemParamData(202, sg.getScoin()));
             costs.add(new ItemParamData(201, sg.getHcoin()));
             costs.add(new ItemParamData(203, sg.getMcoin()));
-            if (!player.getInventory().payItems(costs, buyCount)) {
-                session.send(new PacketBuyGoodsRsp(Retcode.RET_SHOP_CONTENT_NOT_MATCH));
-                continue;
-            }
-
             int nextRefresh = refreshes ? ShopSystem.getShopNextRefreshTime(sg) : 0;
-            player.addShopLimit(sg.getGoodsId(), buyCount, nextRefresh);
             int itemCount;
             try {
                 // A free good passes payItems whatever the count, so this product is the only
@@ -128,6 +136,15 @@ public class HandlerBuyGoodsReq extends PacketHandler {
             } catch (ArithmeticException overflow) {
                 session.send(new PacketBuyGoodsRsp(Retcode.RET_SVR_ERROR));
                 continue;
+            }
+            boolean storyPurchase = piece == null
+                    && emu.grasscutter.game.quest.world.QuestShopProgress.isStoryShop(buyGoodsReq.getShopType());
+            if (!storyPurchase) {
+                if (!player.getInventory().payItems(costs, buyCount)) {
+                    session.send(new PacketBuyGoodsRsp(Retcode.RET_SHOP_CONTENT_NOT_MATCH));
+                    continue;
+                }
+                player.addShopLimit(sg.getGoodsId(), buyCount, nextRefresh);
             }
             if (piece != null) {
                 // An artifact never comes out the same twice, so a batch buy is that many
@@ -139,7 +156,20 @@ public class HandlerBuyGoodsReq extends PacketHandler {
                 player.getInventory().addItems(rolled, ActionReason.Shop);
             } else {
                 GameItem item = new GameItem(itemId, itemCount);
-                player.getInventory().addItem(item, ActionReason.Shop, true);
+                if (storyPurchase) {
+                    var delivered = player.getInventory().addItems(List.of(item),ActionReason.Shop,
+                            InventoryAddPolicy.ALL_OR_NOTHING,
+                            () -> player.getInventory().payItems(costs,buyCount),() -> {});
+                    if (!delivered.allAccepted()) {
+                        boolean full = delivered.entries().stream().anyMatch(entry ->
+                                entry.status() == InventoryAddResult.Status.CAPACITY_FULL
+                                        || entry.status() == InventoryAddResult.Status.STACK_LIMIT);
+                        session.send(new PacketBuyGoodsRsp(full ? Retcode.RET_PACK_EXCEED_MAX_WEIGHT : Retcode.RET_SHOP_CONTENT_NOT_MATCH));
+                        continue;
+                    }
+                    player.addShopLimit(sg.getGoodsId(),buyCount,nextRefresh);
+                    emu.grasscutter.game.quest.world.QuestShopProgress.onAcceptedPurchase(player,buyGoodsReq.getShopType());
+                } else player.getInventory().addItem(item, ActionReason.Shop, true);
             }
 
             // Costume materials use useOnGain; also unlock directly if inventory path skipped it.

@@ -35,7 +35,8 @@ public class HandlerSceneTransToPointReq extends PacketHandler {
                         && player.getSceneId() == req.getSceneId()
                         && dungeonManager.isWayPointActive(req.getPointId());
         if (!dungeonPoint
-                && (!player.getUnlockedScenePoints(req.getSceneId()).contains(req.getPointId())
+                && (!emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.isPointUnlocked(
+                        player, req.getSceneId(), req.getPointId())
                         || player.isScenePointForceLocked(req.getSceneId(), req.getPointId()))) {
             session.send(new PacketSceneTransToPointRsp(
                     Retcode.RET_POINT_NOT_UNLOCKED, req.getPointId(), req.getSceneId()));

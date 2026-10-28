@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 LPIELGNHGGN, CmdId 7734. Parser FD5F040; receiver emits event 1651.
+message SubmitQuestEventsGivingRsp {
+  uint32 giving_id = 4;
+  int32 retcode = 6;
+  uint32 item_id = 13;
+}

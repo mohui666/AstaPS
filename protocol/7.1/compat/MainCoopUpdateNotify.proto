@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "MainCoop.proto";
+
+// Descriptive alias for LIMCEGFAJAP, CmdId 4641. Parser RVA 11434310; codec tag 0x2A.
+// F321F90/F321FF0 pass each full MainCoop to the same model updater as StartCoopPointRsp.
+message MainCoopUpdateNotify {
+  repeated MainCoop main_coop_list = 5;
+}

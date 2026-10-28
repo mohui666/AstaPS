@@ -1,0 +1,15 @@
+{
+  "reconstructed": true,
+  "note": "仅重建未发布的(test)任务804的唯一内容165。没有恢复原Content165服务端桥接；使用已验证的QuestCond113原始状态相等语义。1是UNFINISHED，2是FINISHED，3是REWARD_TAKEN；禁止把1解释成已达成。既不创建成就完成记录，也不发成就奖励。",
+  "rules": [
+    {
+      "quest": 80402,
+      "parent": 804,
+      "achievement": 81233,
+      "rawStatus": 1,
+      "failAchievement": 81230,
+      "source": "原BinOutput/Quest/804.json: finishCond165[81233,1], failCond163[81230,1]；原任务/TextMap标为未发布测试。",
+      "progression": "实际接受或恢复80402后，只有真实成就81233已有UNFINISHED1记录且81230尚未达成时才完成该步骤。81233记录缺失或为2/3时不会完成；81230已达成优先触发原失败条件。普通登录建立未完成成就记录后重查，真实撤销回到1也会重查。"
+    }
+  ]
+}

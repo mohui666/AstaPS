@@ -449,6 +449,8 @@ public final class GameServer extends KcpServer implements Iterable<Player> {
     public void start() {
         // Resource tables are ready here; initialize wishes before accepting clients.
         this.gachaSystem.startHistoricalSelection();
+        emu.grasscutter.game.world.PaimonCompanions.install(this);
+        emu.grasscutter.game.shop.ShopSearch.install();
         this.init(GameSessionManager.getListener(), this.channelConfig, this.address);
 
         if (Grasscutter.getRunMode() == ServerRunMode.GAME_ONLY) {

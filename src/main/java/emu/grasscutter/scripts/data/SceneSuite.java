@@ -9,14 +9,17 @@ public class SceneSuite {
     // make it refer the default empty list to avoid NPE caused by some group
     public List<Integer> monsters = List.of();
     public List<Integer> gadgets = List.of();
+    public List<Integer> npcs = List.of();
     public List<String> triggers = List.of();
     public List<Integer> regions = List.of();
     public int rand_weight;
 
     public boolean ban_refresh = false;
+    public transient SceneFlowSuite flow;
 
     public transient List<SceneMonster> sceneMonsters = List.of();
     public transient List<SceneGadget> sceneGadgets = List.of();
+    public transient List<SceneNPC> sceneNPCs = List.of();
     public transient List<SceneTrigger> sceneTriggers = List.of();
     public transient List<SceneRegion> sceneRegions = List.of();
 
@@ -37,6 +40,11 @@ public class SceneSuite {
                                     .filter(sceneGroup.gadgets::containsKey)
                                     .map(sceneGroup.gadgets::get)
                                     .toList());
+        }
+
+        if (sceneGroup.npcs != null) {
+            this.sceneNPCs = new ArrayList<>(this.npcs.stream()
+                    .filter(sceneGroup.npcs::containsKey).map(sceneGroup.npcs::get).toList());
         }
 
         if (sceneGroup.triggers != null) {

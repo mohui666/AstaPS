@@ -27,6 +27,7 @@ public final class GivingData extends GameResource {
     private int givingGroupCount;
 
     private boolean isRemoveItem;
+    private boolean isRepeatable;
     @SerializedName(value = "givingType", alternate = "giveType")
     private GiveType giveType;
 
@@ -37,7 +38,8 @@ public final class GivingData extends GameResource {
         GIVING_METHOD_GROUP,
         /** One in the group is required to succeed. */
         GIVING_METHOD_VAGUE_GROUP,
-        GIVING_METHOD_ANY_NO_FINISH
+        GIVING_METHOD_ANY_NO_FINISH,
+        GIVING_METHOD_FAST
     }
 
     public enum GiveType {

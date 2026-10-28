@@ -45,12 +45,7 @@ public class PacketVehicleInteractRsp extends BasePacket {
 
             switch (interactType) {
                 case VehicleInteractType_VEHICLE_INTERACT_IN -> {
-                    ((EntityVehicle) vehicle).getVehicleMembers().add(vehicleMember);
-                    player
-                            .getQuestManager()
-                            .queueEvent(
-                                    QuestContent.QUEST_CONTENT_ENTER_VEHICLE,
-                                    ((EntityVehicle) vehicle).getGadgetId());
+                    emu.grasscutter.game.quest.QuestVehicles.board((EntityVehicle) vehicle, vehicleMember);
 
                     // For phlogiston. The gadget row may be absent, and a quarter of the rows
                     // that exist carry no jsonName - either way this falls back to type 1 rather
@@ -68,7 +63,7 @@ public class PacketVehicleInteractRsp extends BasePacket {
                     proto.setVehicleRot(player.getRotation().toProto());
                 }
                 case VehicleInteractType_VEHICLE_INTERACT_OUT -> {
-                    ((EntityVehicle) vehicle).getVehicleMembers().remove(vehicleMember);
+                    emu.grasscutter.game.quest.QuestVehicles.dismount((EntityVehicle) vehicle, vehicleMember);
                 }
                 default -> {}
             }
@@ -88,10 +83,10 @@ public class PacketVehicleInteractRsp extends BasePacket {
 
             switch (interactType) {
                 case VehicleInteractType_VEHICLE_INTERACT_IN -> {
-                    vehicle.getVehicleMembers().add(vehicleMember);
+                    emu.grasscutter.game.quest.QuestVehicles.board(vehicle, vehicleMember);
                 }
                 case VehicleInteractType_VEHICLE_INTERACT_OUT -> {
-                    vehicle.getVehicleMembers().remove(vehicleMember);
+                    emu.grasscutter.game.quest.QuestVehicles.dismount(vehicle, vehicleMember);
                 }
                 default -> {}
             }

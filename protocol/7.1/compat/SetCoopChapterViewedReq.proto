@@ -1,0 +1,7 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// CANHAPAOIAJ, CmdId 3900. Writer RVA 133208C0; current-chapter viewed sender F3217C0.
+message SetCoopChapterViewedReq {
+  uint32 chapter_id = 1;
+}

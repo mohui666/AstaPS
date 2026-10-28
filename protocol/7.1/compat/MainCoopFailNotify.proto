@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// PBEADIEOJKN, CmdId 2441. Parser RVA C674700; string tag 0x2A, chapter tag 0x30.
+message MainCoopFailNotify {
+  string reason = 5;
+  uint32 chapter_id = 6;
+}

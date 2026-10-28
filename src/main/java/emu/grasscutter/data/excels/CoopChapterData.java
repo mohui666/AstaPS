@@ -22,8 +22,8 @@ public class CoopChapterData extends GameResource {
     //    String chapterIcon;
     List<CoopCondition> unlockCond;
     //    int [] unlockCondTips;
-    //    int openMaterialId;
-    //    int openMaterialNum;
+    int openMaterialId;
+    int openMaterialNum;
     //    String beginTimeStr;
     //    int confidenceValue;
     //    String pointGraphPath;
@@ -32,7 +32,7 @@ public class CoopChapterData extends GameResource {
 
     @Data
     @FieldDefaults(level = AccessLevel.PRIVATE)
-    private static class CoopCondition {
+    public static class CoopCondition {
         @SerializedName(
                 value = "_condType",
                 alternate = {"condType"})

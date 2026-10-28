@@ -1,0 +1,14 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// Common fields of 7.1 CEGMJNNJOOH; native writer IENGFLPCLNM at RVA D1FCE80.
+// MP_BLOCK does not populate any gallery-specific oneof.
+message SceneGalleryInfo {
+  uint32 owner_uid = 2;
+  uint32 player_count = 3;
+  uint32 pre_start_end_time = 4;
+  uint32 stage = 6;
+  uint32 start_time = 7;
+  uint32 end_time = 11;
+  uint32 gallery_id = 15;
+}

@@ -134,6 +134,10 @@ public abstract class ActivityHandler {
 
         onProtoBuild(playerActivityData, proto);
 
+        if (playerActivityData != null && playerActivityData.getPlayer() != null)
+            emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.applyConditionOverrides(
+                    playerActivityData.getPlayer(),activityConfigItem.getActivityId(),proto);
+
         return proto.build();
     }
 }

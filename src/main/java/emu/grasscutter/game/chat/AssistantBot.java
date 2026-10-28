@@ -21,6 +21,8 @@ import java.util.*;
 /** A private-chat interface to the existing player's GM tools; never acts as the console. */
 final class AssistantBot {
     static final String MENU = "派蒙助手\n"
+            + "点击领取：派蒙菜单 → 商城 → 礼包商城。物品免费，库存和购买次数不限。角色默认100级并附培养材料；武器默认100级、精炼5。\n"
+            + "发送“商城搜索”获取游戏内搜索框，可按名称或ID查找并点击领取。\n"
             + "直接发“原石 10000”“摩拉 1000000”或物品名即可领取。重名时回复序号选择。\n"
             + "回复分类：常用 / 物品 / 圣遗物 / 传送 / 角色 / 状态 / 世界 / 刷怪 / 命令\n"
             + "常用：回血、复活、回能、无敌、无限体力、无限能量、解除边界\n"
@@ -90,6 +92,11 @@ final class AssistantBot {
             String[] split = text.split("\\s+", 2);
             String verb = split[0], args = split.length == 2 ? split[1].strip() : "";
             switch (verb) {
+                case "商城搜索" -> {
+                    emu.grasscutter.game.shop.ShopSearch.sendEntry(player);
+                    reply(player, "已发送商城搜索邮件。打开游戏邮箱，点击“打开商城搜索”，即可搜索并领取商品。");
+                    return;
+                }
                 case "常用" -> { common(player, session); return; }
                 case "下一页", "下页", "上一页", "上页" -> {
                     if (session.choices.isEmpty()) throw new IllegalArgumentException("先发送物品名或“常用”。");
@@ -303,6 +310,7 @@ final class AssistantBot {
 
     static List<Entry> matches(List<Entry> catalog, String text) {
         String query = normalize(switch (text) {
+            case "木偶" -> "桑多涅";
             case "粉球" -> "纠缠之缘";
             case "蓝球" -> "相遇之缘";
             case "大经验书", "紫书" -> "大英雄的经验";

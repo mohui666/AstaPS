@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+import "TpsGlassesChatTopicInfo.proto";
+
+// 7.1 FPMCAGEOOGI: parser RVA 126B8410, nested codec RVA 126B8720.
+message TpsGlassesChatData {
+  repeated TpsGlassesChatTopicInfo topic_list = 8;
+}

@@ -1,0 +1,7 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// JIEDJKPOMPI, CmdId 4473. Writer RVA B3AE0A0.
+message TakeCoopRewardReq {
+  uint32 reward_id = 3;
+}

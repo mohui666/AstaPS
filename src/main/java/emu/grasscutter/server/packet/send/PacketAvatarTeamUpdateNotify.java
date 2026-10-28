@@ -12,7 +12,7 @@ public class PacketAvatarTeamUpdateNotify extends BasePacket {
         AvatarTeamUpdateNotify.Builder proto = AvatarTeamUpdateNotify.newBuilder();
 
         var teamManager = player.getTeamManager();
-        if (teamManager.isUsingTrialTeam()) {
+        if (teamManager.isUsingTrialTeam() || teamManager.isQuestPartyLocked()) {
             proto.addAllTempAvatarGuidList(
                     teamManager.getActiveTeam().stream()
                             .map(entity -> entity.getAvatar().getGuid())

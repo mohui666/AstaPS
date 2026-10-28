@@ -42,7 +42,7 @@ public class PacketGetScenePointRsp extends BasePacket {
             }
         }
 
-        var unlockedSet = player.getUnlockedScenePoints(sceneId);
+        var unlockedSet = emu.grasscutter.game.quest.world.QuestTemporaryResourceRuntime.effectiveUnlockedPoints(player, sceneId);
         boolean has7 = false;
         int unlockedCount = 0;
         int lockedCount = 0;
@@ -76,6 +76,7 @@ public class PacketGetScenePointRsp extends BasePacket {
                         has7,
                         player.getUid());
 
+        emu.grasscutter.game.quest.world.QuestSceneOverrideRuntime.addPointVisibilitySnapshot(player, sceneId, p);
         this.setData(p);
     }
 }

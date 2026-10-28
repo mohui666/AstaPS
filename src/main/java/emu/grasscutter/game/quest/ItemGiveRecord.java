@@ -10,6 +10,8 @@ import lombok.*;
 @Data
 @Entity
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public final class ItemGiveRecord {
     /**
      * Provides a builder for an item give record. Uses information from game resources.
@@ -26,8 +28,11 @@ public final class ItemGiveRecord {
 
         // Create a map.
         var givenItems = new HashMap<Integer, Integer>();
-        if (givingData.getGivingMethod() == GiveMethod.GIVING_METHOD_EXACT) {
-            givingData.getExactItems().forEach(item -> givenItems.put(item.getItemId(), 0));
+        if (givingData.getGivingMethod() == GiveMethod.GIVING_METHOD_EXACT
+                || givingData.getGivingMethod() == GiveMethod.GIVING_METHOD_FAST) {
+            givingData.getExactItems().stream()
+                    .filter(item -> item.getItemId() > 0 && item.getCount() > 0)
+                    .forEach(item -> givenItems.put(item.getItemId(), 0));
         } else {
             givingData
                     .getGivingGroupIds()

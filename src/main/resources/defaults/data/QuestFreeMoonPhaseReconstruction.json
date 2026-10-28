@@ -1,0 +1,6 @@
+{
+  "reconstructed": true,
+  "missingNativeRefreshPolicyId": 200001,
+  "expiryRule": "NEXT_SERVER_QUEST_DAY",
+  "notice": "AstaPS重建月相规则：本次剧情实际激活少女月相，持续至本服下一个4点日界，随后恢复队伍月相。此有效期替代缺失的200001配置，不代表原版时限。"
+}

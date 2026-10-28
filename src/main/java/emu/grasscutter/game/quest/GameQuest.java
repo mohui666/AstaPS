@@ -33,11 +33,13 @@ public class GameQuest {
     @Getter @Setter private int startTime;
     @Getter @Setter private int acceptTime;
     @Getter @Setter private int finishTime;
+    @Transient @Getter private transient int startSequence;
 
     @Getter @Setter private long startGameDay;
 
     @Getter private int[] finishProgressList;
     @Getter private int[] failProgressList;
+    private Map<String, Integer> obtainedVariousItems;
     @Transient @Getter private Map<String, TriggerExcelConfigData> triggerData;
     @Getter private Map<String, Boolean> triggers;
     private transient Bindings bindings;
@@ -59,10 +61,23 @@ public class GameQuest {
     }
 
     public void start() {
+        if (!emu.grasscutter.game.quest.scenery.QuestSceneryRuntime.mayStart(this)) return;
+        this.startSequence++;
         this.acceptTime = Utils.getCurrentSeconds();
         this.startTime = this.acceptTime;
         this.startGameDay = getOwner().getWorld().getTotalGameTimeDays();
         this.state = QuestState.QUEST_STATE_UNFINISHED;
+        if (this.obtainedVariousItems != null) this.obtainedVariousItems.clear();
+        emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.onQuestStart(this);
+        emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.onQuestStart(this);
+        emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onQuestStart(this);
+        emu.grasscutter.game.quest.coop.CoopSystem.onQuestStarted(this);
+        emu.grasscutter.game.quest.check.QuestCheckRuntime.onQuestStart(this);
+        emu.grasscutter.game.gcg.story.StoryCardRuntime.onQuestStart(this);
+        emu.grasscutter.game.quest.comedy.ComedyVoucherRuntime.onQuestStart(this);
+        emu.grasscutter.game.quest.reconstruction.QuestActivityRuntime.onQuestStart(this);
+        emu.grasscutter.game.quest.field.QuestFieldRuntime.onQuestStarted(this);
+        emu.grasscutter.game.quest.delivery.QuestDeliveryRuntime.onQuestStart(this);
 
         val triggerCond =
                 questData.getFinishCond().stream()
@@ -173,7 +188,35 @@ public class GameQuest {
         failProgressList[index] = value;
     }
 
+    public synchronized int getObtainedVariousItemCount(String itemList) {
+        return obtainedVariousItems == null ? 0 : obtainedVariousItems.getOrDefault(itemList, 0);
+    }
+
+    synchronized boolean hasObtainedVariousItemRound() {
+        return obtainedVariousItems != null && !obtainedVariousItems.isEmpty();
+    }
+
+    synchronized boolean changeObtainedVariousItemCount(String itemList, int delta) {
+        if (obtainedVariousItems == null) obtainedVariousItems = new HashMap<>();
+        int previous = obtainedVariousItems.getOrDefault(itemList, 0);
+        int next = (int) Math.max(0, Math.min(Integer.MAX_VALUE, (long) previous + delta));
+        if (previous == next) return false;
+        obtainedVariousItems.put(itemList, next);
+        return true;
+    }
+
+    public int[] getFinishProgressForNotify() {
+        return QuestInventoryProgress.forNotify(this,
+                questData == null ? null : questData.getFinishCond(), finishProgressList);
+    }
+
+    public int[] getFailProgressForNotify() {
+        return QuestInventoryProgress.forNotify(this,
+                questData == null ? null : questData.getFailCond(), failProgressList);
+    }
+
     public boolean clearProgress(boolean notifyDelete) {
+        if (this.obtainedVariousItems != null) this.obtainedVariousItems.clear();
         LiyueRescuePlotRecovery.clearReportForRollback(this);
         if (getMainQuestId() == 1008 && getSubQuestId() == 100808)
             getMainQuest().setLiyueAmberSuite(0);
@@ -243,15 +286,16 @@ public class GameQuest {
 
         this.getOwner().sendPacket(new PacketQuestListUpdateNotify(this));
 
+        this.getQuestData()
+                .getFinishExec()
+                .forEach(e -> getOwner().getServer().getQuestSystem().triggerExec(this, e, e.getParam()));
+
         if (this.getQuestData().isFinishParent()) {
             // This quest finishes the questline - the main quest will also save the quest to db, so we
             // don't have to call save() here
             this.getMainQuest().finish();
         }
 
-        this.getQuestData()
-                .getFinishExec()
-                .forEach(e -> getOwner().getServer().getQuestSystem().triggerExec(this, e, e.getParam()));
         // Some subQuests have conditions that subQuests are finished (even from different MainQuests)
         this.getOwner()
                 .getQuestManager()
@@ -292,6 +336,7 @@ public class GameQuest {
 
         this.save();
         Grasscutter.getLogger().debug("Quest {} was completed.", subQuestId);
+        emu.grasscutter.game.quest.coop.CoopProgression.onQuestFinished(this);
     }
 
     // TODO
@@ -370,13 +415,13 @@ public class GameQuest {
                         .setAcceptTime(getAcceptTime());
 
         if (getFinishProgressList() != null) {
-            for (int i : getFinishProgressList()) {
+            for (int i : getFinishProgressForNotify()) {
                 proto.addFinishProgressList(i);
             }
         }
 
         if (getFailProgressList() != null) {
-            for (int i : getFailProgressList()) {
+            for (int i : getFailProgressForNotify()) {
                 proto.addFailProgressList(i);
             }
         }

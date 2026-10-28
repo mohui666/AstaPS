@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// NNDIPIDMMGL, CmdId 9135. Native field codec tag 0x1A (RVA 9ED8E70).
+// ENMEKOKKDPM::CHPLCPLKBBD replaces the whole unlocked-scene set, not one entry.
+message SceneMpUnlockNotify {
+  repeated uint32 scene_id_list = 3 [packed = true];
+}

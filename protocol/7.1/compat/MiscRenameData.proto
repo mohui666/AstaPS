@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "MiscRenameInfo.proto";
+
+// EOKDJAPNGFF: parser BB65A20; cctor BB656A0 binds tag 0x1A to IJFNMCLFBFF's slot 57EC2F0.
+message MiscRenameData {
+  repeated MiscRenameInfo rename_list = 3;
+}

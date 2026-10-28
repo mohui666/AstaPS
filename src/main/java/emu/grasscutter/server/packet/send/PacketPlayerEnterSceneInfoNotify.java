@@ -65,9 +65,8 @@ public class PacketPlayerEnterSceneInfoNotify extends BasePacket {
                 .setFloatValue(hexCount)
                 .build();
 
-        long moonPhaseCount = player.getTeamManager().getActiveTeam().stream()
-                .filter(e -> getMoonphaseIds().contains(e.getAvatar().getAvatarId()))
-                .count();
+        var effectiveMoonPhase = emu.grasscutter.game.quest.QuestFreeMoonPhase.current(player);
+        int moonPhaseCount = effectiveMoonPhase.level();
 
         AbilityScalarValueEntry moonPhaseLevel = AbilityScalarValueEntry.newBuilder()
                 .setKey(AbilityString.newBuilder()
@@ -79,7 +78,12 @@ public class PacketPlayerEnterSceneInfoNotify extends BasePacket {
 
         AbilitySyncStateInfo.Builder teamInfo = AbilitySyncStateInfo.newBuilder()
                 .addSgvDynamicValueMap(hexLevel)
-                .addSgvDynamicValueMap(moonPhaseLevel);
+                .addSgvDynamicValueMap(moonPhaseLevel)
+                .addSgvDynamicValueMap(AbilityScalarValueEntry.newBuilder()
+                        .setKey(AbilityString.newBuilder()
+                                .setHash(Utils.abilityHash("SGV_MoonPhaseType"))
+                                .setStr("SGV_MoonPhaseType"))
+                        .setFloatValue(effectiveMoonPhase.type()));
         if (player.isInNatlan()) {
             teamInfo.addSgvDynamicValueMap(AbilityScalarValueEntry.newBuilder()
                     .setKey(AbilityString.newBuilder()

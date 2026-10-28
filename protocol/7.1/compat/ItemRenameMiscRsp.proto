@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "FBBKMKEDGPH.proto";
+
+// FPFILOEAILI, CmdId 22894; parser 126ABB30, receiver LLCGIEDMIIG.GDICMMPFPME C25E580.
+message ItemRenameMiscRsp {
+  FBBKMKEDGPH audit_info = 2;
+  int32 retcode = 3;
+  uint32 rename_id = 13;
+}

@@ -13,6 +13,8 @@ public class PacketDungeonChallengeBeginNotify extends BasePacket {
                 DungeonChallengeBeginNotify.newBuilder()
                         .setChallengeId(challenge.getChallengeId())
                         .setChallengeIndex(challenge.getChallengeIndex())
+                        .setFatherIndex(challenge.getFatherIndex())
+                        .addAllUidList(challenge.getParticipantUids())
                         .setGroupId(challenge.getGroup().id)
                         .addAllParamList(challenge.getParamList())
                         .build();

@@ -123,4 +123,7 @@ public class EventType {
     public static final int EVENT_PLATFORM_ARRIVAL = 2701;
     public static final int EVENT_PLAYER_BACK_GALLERY_REVIVE_POINT = 2800;
     public static final int EVENT_GALLERY_CANNOT_START_AFTER_COUNTDOWN = 2801;
+    // Server-only dispatch keys; these are never serialized as native client protocol enum values.
+    public static final int EVENT_DEATH_ZONE_STATUS_CHANGE = 3000001;
+    public static final int EVENT_DEATH_ZONE_OBSERVE = 3000002;
 }

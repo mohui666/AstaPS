@@ -1,0 +1,9 @@
+{
+  "reconstructed": true,
+  "note": "AstaPS climate meter parameters reconstructed because the installed resources do not contain native ConfigClimate common/templates. Damage amounts and protection markers use the installed ConfigAbility_Climate.json; polygons and teleport destinations remain the original scene climate areas. These meter rates are custom, not recovered official values.",
+  "length": 100,
+  "thresholdRatio": 1,
+  "dampingSeconds": 5,
+  "fadePerSecond": 10,
+  "risePerSecond": { "Cold": 1, "ColdMonster": 2, "HotMonster": 2, "SeaMist": 5, "TatariRegion": 20, "TransClimate": 5, "SeiraiStorm": 20, "TsurumiMist": 5, "TsurumiThunder": 5, "TsurumiRegionalMist": 5 }
+}

@@ -60,6 +60,8 @@ public final class DungeonManager {
     private boolean ended = false;
     private int newestWayPoint = 0;
     @Getter private int startSceneTime = 0;
+    @Getter private boolean started;
+    @Getter private boolean persistentProgressRestored;
     @Setter @Getter private boolean towerDungeon = false;
 
     DungeonTrialTeam trialTeam = null;
@@ -310,7 +312,8 @@ public final class DungeonManager {
     }
 
     public void startDungeon() {
-        this.startSceneTime = scene.getSceneTimeSeconds();
+        if (!persistentProgressRestored) this.startSceneTime = scene.getSceneTimeSeconds();
+        this.started = true;
         scene
                 .getPlayers()
                 .forEach(
@@ -319,6 +322,11 @@ public final class DungeonManager {
                                     .queueEvent(QuestContent.QUEST_CONTENT_ENTER_DUNGEON, dungeonData.getId());
                             applyTrialTeam(p);
                         });
+        emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.onDungeonStarted(scene);
+        emu.grasscutter.game.quest.coop.CoopDungeonRuntime.onDungeonStarted(scene);
+        emu.grasscutter.game.quest.reconstruction.QuestRogueStory.onDungeonStarted(scene);
+        if (persistentProgressRestored && !activeDungeonWayPoints.isEmpty())
+            scene.broadcastPacket(new PacketDungeonWayPointNotify(false, activeDungeonWayPoints));
     }
 
     public void finishDungeon() {
@@ -423,6 +431,48 @@ public final class DungeonManager {
         Arrays.fill(finishedConditions, 0);
         this.ended = false;
         this.activeDungeonWayPoints.clear();
+        this.newestWayPoint = 0;
+        this.started = false;
+        this.persistentProgressRestored = false;
+    }
+
+    public synchronized PersistentDungeonProgress capturePersistentProgress() {
+        return new PersistentDungeonProgress(scene.getWorld().getHost().getUid(), scene.getId(),
+                dungeonData.getId(), dungeonData.getPassCond(), finishedConditions,
+                activeDungeonWayPoints, newestWayPoint,
+                started ? Math.max(0, scene.getSceneTimeSeconds() - startSceneTime) : 0,
+                started, ended, claimRunIdentity.snapshotToken(), rewardedPlayers,
+                scene.getPrevScene(), scene.getPrevScenePoint(), scene.getKilledMonsterCount());
+    }
+
+    /** Validate the complete saved run before mutating the live manager or its claim receipts. */
+    public synchronized boolean restorePersistentProgress(PersistentDungeonProgress saved) {
+        if (saved == null || !saved.matches(scene.getWorld().getHost().getUid(), scene.getId(),
+                dungeonData, finishedConditions.length)) return false;
+        for (int point : saved.getActiveWayPoints())
+            if (GameData.getScenePointEntryById(scene.getId(), point) == null) return false;
+        if (!emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.validRestoreOrigin(
+                dungeonData, saved.getOriginSceneId(), saved.getOriginPointId())
+                || emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime.isCalibertDungeon(dungeonData)
+                        && !saved.isStarted()
+                || emu.grasscutter.game.quest.coop.CoopDungeonRuntime.isDungeon(dungeonData)
+                        && (!saved.isStarted() || !emu.grasscutter.game.quest.coop.CoopDungeonRuntime.ownsRun(
+                                scene.getWorld().getHost(), dungeonData))) return false;
+        System.arraycopy(saved.getFinishedConditions(), 0, finishedConditions, 0, finishedConditions.length);
+        activeDungeonWayPoints.clear();
+        activeDungeonWayPoints.addAll(saved.getActiveWayPoints());
+        newestWayPoint = saved.getNewestWayPoint();
+        started = saved.isStarted();
+        persistentProgressRestored = started;
+        startSceneTime = scene.getSceneTimeSeconds() - saved.getElapsedSeconds();
+        ended = saved.isEnded();
+        claimRunIdentity.restoreToken(saved.getClaimRunToken());
+        rewardedPlayers.clear();
+        rewardedPlayers.addAll(saved.getRewardedPlayers());
+        scene.setPrevScene(saved.getOriginSceneId());
+        scene.setPrevScenePoint(saved.getOriginPointId());
+        scene.setKilledMonsterCount(saved.getKilledMonsterCount());
+        return true;
     }
 
     public void cleanUpScene() {

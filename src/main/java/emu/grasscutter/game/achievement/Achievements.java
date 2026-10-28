@@ -163,6 +163,7 @@ public class Achievements {
             if (achievement == null || this.isInvalid(achievement.getId())) continue;
             if (resetCompletedAchievement(achievement)) {
                 batch.record(achievement, true);
+                emu.grasscutter.game.quest.world.QuestAchievementProgress.onStatusChanged(this.player, achievement.getId());
             }
         }
         return this.finishBulkUpdate(batch);
@@ -248,6 +249,7 @@ public class Achievements {
         if (a.getStatus() == Status.Status_UNFINISHED && a.getCurProgress() >= a.getTotalProgress()) {
             a.setStatus(a.statusOnCompletion());
             a.setFinishTimestampSec(currentTimeSecs.getAsInt());
+            emu.grasscutter.game.quest.world.QuestAchievementProgress.onStatusChanged(this.player, a.getId());
 
             // Call PlayerCompleteAchievementEvent.
             new PlayerCompleteAchievementEvent(this.player, a).call();
@@ -256,6 +258,7 @@ public class Achievements {
         } else if (this.isFinished(a.getId()) && a.getCurProgress() < a.getTotalProgress()) {
             a.setStatus(Status.Status_UNFINISHED);
             a.setFinishTimestampSec(0);
+            emu.grasscutter.game.quest.world.QuestAchievementProgress.onStatusChanged(this.player, a.getId());
             return true;
         }
 
@@ -430,6 +433,7 @@ public class Achievements {
         }
 
         this.registerNewAchievementsIfExist();
+        emu.grasscutter.game.quest.world.QuestAchievementProgress.onLogin(this.player);
         this.player.sendPacket(new PacketAchievementAllDataNotify(this.player));
         AchievementWatchers.sendAll(this.player);
     }

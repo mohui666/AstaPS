@@ -7,6 +7,8 @@ import emu.grasscutter.game.props.EntityType;
 import emu.grasscutter.game.world.Position;
 import emu.grasscutter.game.world.Scene;
 import emu.grasscutter.net.proto.VehicleInteractTypeOuterClass.VehicleInteractType;
+import emu.grasscutter.net.proto.VehicleMemberOuterClass.VehicleMember;
+import emu.grasscutter.game.quest.enums.QuestContent;
 import emu.grasscutter.server.packet.send.PacketVehicleInteractRsp;
 import java.util.List;
 
@@ -48,5 +50,39 @@ public final class QuestVehicles {
             scene.broadcastPacket(new PacketVehicleInteractRsp(vehicle, member,
                     VehicleInteractType.VehicleInteractType_VEHICLE_INTERACT_OUT));
         }
+    }
+
+    public static List<Integer> featureTags(int gadgetId) {
+        var vehicle = GameData.getVehicleDataMap().get(gadgetId);
+        var group = vehicle == null ? null : GameData.getFeatureTagGroupDataMap().get(vehicle.getFeatureTagGroupID());
+        return group == null ? List.of() : group.getTagIDs().stream().filter(id -> id > 0).distinct().toList();
+    }
+
+    public static boolean board(EntityVehicle vehicle, VehicleMember member) {
+        synchronized (vehicle) {
+            if (vehicle.getVehicleMembers().stream().anyMatch(existing -> existing.getUid() == member.getUid()))
+                return false;
+            vehicle.getVehicleMembers().add(member);
+        }
+        for (var player : vehicle.getScene().getPlayers()) {
+            if (player.getUid() != member.getUid()) continue;
+            player.getQuestManager().queueEvent(QuestContent.QUEST_CONTENT_ENTER_VEHICLE, vehicle.getGadgetId());
+            for (int tag : featureTags(vehicle.getGadgetId())) player.getQuestManager().queueEvent(
+                    QuestContent.QUEST_CONTENT_ENTER_FEATURE_TAG_VEHICLE, tag);
+        }
+        return true;
+    }
+
+    public static boolean dismount(EntityVehicle vehicle, VehicleMember member) {
+        synchronized (vehicle) {
+            if (!vehicle.getVehicleMembers().removeIf(existing -> existing.getUid() == member.getUid())) return false;
+        }
+        for (var player : vehicle.getScene().getPlayers()) {
+            if (player.getUid() != member.getUid()) continue;
+            player.getQuestManager().queueEvent(QuestContent.QUEST_CONTENT_LEAVE_VEHICLE, vehicle.getGadgetId());
+            for (int tag : featureTags(vehicle.getGadgetId())) player.getQuestManager().queueEvent(
+                    QuestContent.QUEST_CONTENT_LEAVE_FEATURE_TAG_VEHICLE, tag);
+        }
+        return true;
     }
 }

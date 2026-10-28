@@ -1,0 +1,28 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "Vector.proto";
+
+// 7.1 LDMIAFEJKKP, CmdId 7214; parser AA07980, receiver C226B20,
+// cross-checked against native BaseActor.EnterSceneLookCameraByParam (13AF5310).
+message BeginCameraSceneLookNotify {
+  bool is_allow_input = 1;
+  float duration = 2;
+  Vector follow_pos = 3;
+  float custom_radius = 4;
+  repeated string other_params = 5;
+  uint32 keep_rot_type = 6;
+  bool is_change_play_mode = 7;
+  bool is_set_screen_xy = 8;
+  bool is_set_follow_pos = 9;
+  float screen_y = 10;
+  Vector look_pos = 11;
+  float screen_x = 12;
+  bool is_recover_keep_current = 13;
+  bool is_force = 14;
+  bool is_force_walk = 15;
+  uint32 disable_protect = 115;
+  uint32 blend_type = 242;
+  float blend_duration = 507;
+  bool is_abs_follow_pos = 1095;
+  uint32 entity_id = 1947;
+}

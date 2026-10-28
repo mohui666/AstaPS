@@ -1,0 +1,17 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "Vector.proto";
+
+// 7.1 CHIDCPLLELG, CmdId 4530; native parser D2D7A80 and eye-point receiver E472880.
+message PlayerEyePointStateNotify {
+  bool is_use_eye_point = 1;
+  int32 fix_lod_level = 3;
+  bool is_filter_stream_pos = 4;
+  Vector eye_point_pos = 9;
+  uint32 region_shape = 13;
+  uint32 region_config_id = 14;
+  oneof region_size {
+    Vector cubic_size = 328;
+    float sphere_radius = 955;
+  }
+}

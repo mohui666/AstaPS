@@ -1,0 +1,12 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "FBBKMKEDGPH.proto";
+
+// CDPDDAOIKFD, CmdId 26749; parser 10C42A80, receiver C25E7D0.
+message QuestRenameMiscRsp {
+  FBBKMKEDGPH audit_info = 3;
+  string name = 4;
+  bool is_check_only = 8;
+  uint32 rename_id = 12;
+  int32 retcode = 15;
+}

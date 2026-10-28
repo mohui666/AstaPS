@@ -124,6 +124,7 @@ public final class IceCreatureSystem {
 
         spawn(scene, record);
         records.add(record);
+        emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onBuilt(player,record);
         SnezhnayaFrigid.sendBuildMaterial(player);
         log("built type {} gadget {} guid {} entity {} in area {} for {} material",
                 type, record.getGadgetId(), record.getGuid(), record.getEntityId(), area, cost);
@@ -149,6 +150,36 @@ public final class IceCreatureSystem {
                         PacketOpcodes.IceCreatureGadgetRemoveRsp,
                         IceCreatureGadgetRemoveRsp.newBuilder().setRetcode(retcode).setEntityId(entityId).build()));
         sendData(player);
+    }
+
+    /** A real removable, persisted cube for the authored 701114 obstacle; it does not consume build material. */
+    public static void ensureQuestObstacle(Player player,int questId,int gadgetId,Position position) {
+        if (questId != 701114 || gadgetId != 73094010 || player.getScene() == null
+                || player.getSceneId() != 3 || player.getWorld().getHost() != player) return;
+        synchronized(player) {
+            var records = player.getIceCreatures();
+            var record = records.stream().filter(r -> r.getSourceQuestId() == questId).findFirst().orElse(null);
+            if (record == null) {
+                record = new IceCreatureRecord();
+                record.setGuid(nextGuid(player));
+                record.setGadgetId(gadgetId);
+                record.setType(2);
+                record.setSceneId(3);
+                record.setAreaId(WorldAreaIndex.forScene(3).level1AreaAt(position.getX(),position.getZ()));
+                record.setPos(position);
+                record.setRot(new Position());
+                record.setCreateTime((int)(System.currentTimeMillis()/1000));
+                record.setSourceQuestId(questId);
+                records.add(record);
+            }
+            if (player.getScene().getEntityById(record.getEntityId()) instanceof EntityGadget) return;
+            spawn(player.getScene(),record);
+            player.save();
+            player.sendPacket(new PacketIceCreature(PacketOpcodes.IceCreatureAllGadgetInfoNotify,
+                    IceCreatureAllGadgetInfoNotify.newBuilder().setUid(player.getUid())
+                            .addIceCreatureGadgetInfoList(info(player,record)).build()));
+            sendData(player);
+        }
     }
 
     public static void onLike(Player player, IceCreatureLikeReq req) {
@@ -262,8 +293,10 @@ public final class IceCreatureSystem {
                 .setReason(IceCreatureGadgetDisappearNotify.Reason.REASON_REMOVE);
         for (var record : new ArrayList<>(doomed)) {
             notify.addIceCreatureGadgetInfoList(info(player, record));
+            var standing = player.getScene() == null ? null : player.getScene().getEntityById(record.getEntityId());
             despawn(player, record);
             player.getIceCreatures().remove(record);
+            emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onRemoved(player,record,standing);
             log("removed guid {} (type {}), refunding {}", record.getGuid(), record.getType(), record.getCost());
         }
         SnezhnayaFrigid.sendBuildMaterial(player);

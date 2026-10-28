@@ -50,6 +50,12 @@ public class PacketPlayerEnterSceneNotify extends BasePacket {
                                         + "-"
                                         + 18402);
 
+        if (player.getScene() != null
+                && emu.grasscutter.game.quest.persistent.QuestPersistentDungeonRuntime
+                        .shouldRestoreGroups(player.getScene())) {
+            int dungeonId = player.getScene().getDungeonManager().getDungeonData().getId();
+            proto.setDungeonId((dungeonId ^ 27544) - 17829);
+        }
         addSceneTags(proto, player, clientSceneId);
         this.setData(proto);
     }

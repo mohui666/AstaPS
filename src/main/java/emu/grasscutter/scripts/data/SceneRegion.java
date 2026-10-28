@@ -18,6 +18,7 @@ public class SceneRegion {
     public int area_id;
     public float height;
     public List<Position> point_array;
+    public List<Integer> vision_type_list = List.of();
 
     @EqualsAndHashCode.Exclude public transient SceneGroup group;
 

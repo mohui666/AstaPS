@@ -1,0 +1,40 @@
+{
+  "reconstructed": true,
+  "version": 1,
+  "mainQuest": 77160,
+  "sourceQuest": 7716008,
+  "cleanupQuest": 7716015,
+  "scene": 3,
+  "variable": "Scenevar_GZJR",
+  "value": 0,
+  "weatherArea": 7048,
+  "profileName": "Data/Environment/EnviroSystemProfile/BigWorld/ESP_Zd70_BSH_GZJR02",
+  "rule": "Custom replacement: after the real 7716008 cutscene finishes, enable original GZJR02 battle weather only inside the authored upper-platform and shadow-arena volumes while main quest 77160 runs. Original 7716015 finishExec disables weather area 7048. Rollback, cancellation, completion and leaving either volume stop its visible selection without completing any quest or dialogue.",
+  "semanticDifference": "The original Scenevar_GZJR keyHash and value-0 consumers are unknown. This rule does not equate value 0 with weather, recover the original variable's geometry/animation/light effects, or send a guessed SceneVar notification. It explicitly substitutes a local battle-environment effect using the original GZJR02 profile.",
+  "evidence": [
+    "BinOutput/Quest/77160.json: 7716007 defeats Aksinya, 7716008 enters the Primordial Man sequence, 7716015 ends the battle and disables area 7048.",
+    "Original Lua/Actor/Quest/WQ77160.lua: OnSubStart7716008 plays cutscene 7716008 and reports completion only in its callback.",
+    "Original Cs_Snezhnaya_WQ7710128_Convert timeline: GZJR02 profile at 0..2.1833333333 seconds, then the distinct cutscene GZJR03 profile. This supports the chosen battle setting, not an original value-to-weather mapping.",
+    "WeatherExcelConfigData: 7048 is scene3 GZJR02, CLIMATE_SNOW, priority 300, disabled by default. Native area geometry is absent from the supplied scene3 weather export. All volumes below are explicit custom bounds around original quest guides."
+  ],
+  "volumes": [
+    {
+      "source": "Custom upper-platform bounds around original 7716007 guide (10418.600,790.569,5518.570) and 7716021/7716015 guide (10428.730,790.619,5521.244).",
+      "minX": 10320,
+      "maxX": 10540,
+      "minY": 735,
+      "maxY": 850,
+      "minZ": 5410,
+      "maxZ": 5640
+    },
+    {
+      "source": "Custom shadow-arena bounds around original 7716011 guide (10761.600,-605.418,5584.598) and 7716015 dialogue actor positions near (10738,-608,5635).",
+      "minX": 10620,
+      "maxX": 10900,
+      "minY": -700,
+      "maxY": -500,
+      "minZ": 5440,
+      "maxZ": 5740
+    }
+  ]
+}

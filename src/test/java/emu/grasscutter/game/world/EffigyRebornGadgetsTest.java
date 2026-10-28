@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import emu.grasscutter.data.GameData;
+import emu.grasscutter.data.binout.AbilityData;
 import emu.grasscutter.data.binout.AbilityModifier.AbilityModifierAction;
 import emu.grasscutter.data.binout.AbilityMixinData;
 import emu.grasscutter.data.binout.AbilityModifier;
@@ -53,7 +54,8 @@ final class EffigyRebornGadgetsTest {
     void setup() throws Exception {
         oldConfig = GameData.getGadgetConfigData().get("Effigy_RebornPart");
         for (int id : new int[] {42004010, 42004016, 42004017, 42004018, 42004201, 42004212,
-                42004120, 42004706, 42004604, 42004623, 42004504, 42004507, 42004508, 42004512, 42906123}) {
+                42004120, 42004706, 42004604, 42004623, 42004504, 42004507, 42004508, 42004512,
+                42906123, 42901008}) {
             oldGadgets.put(id, GameData.getGadgetDataMap().get(id));
             String type = id == 42004507 || id == 42004512 ? "Bullet" : "Gadget";
             GameData.getGadgetDataMap().put(id, new Gson().fromJson(
@@ -199,6 +201,99 @@ final class EffigyRebornGadgetsTest {
     }
 
     @Test
+    void nativeFlightCenterUsesItsWorldBornAndNotTheMonsterOrigin() throws Exception {
+        assertTrue(new ActionCreateGadget().execute(ability(boss), dvalinCenterAction(), ByteString.EMPTY, boss));
+        var center = gadgets(42901008).get(0);
+        assertSame(boss, center.getOwner());
+        assertEquals(0f, center.getPosition().getX());
+        assertEquals(50f, center.getPosition().getY());
+        assertEquals(-80f, center.getPosition().getZ());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {29010103, 29010101})
+    void dvalinRegistrationCreatesTheFlightCenterMissedBeforeRegistration(int monsterId) throws Exception {
+        boss.data = new Gson().fromJson("{\"id\":" + monsterId + "}", MonsterData.class);
+        var action = dvalinCenterAction();
+        var ability = ability(boss);
+        var data = new AbilityData();
+        data.abilityName = "Dvalin_S01_Enviroment";
+        data.onAdded = new AbilityModifierAction[] {action, action(42004212)};
+        field(ability, Ability.class, "data", data);
+        boss.getInstancedAbilities().add(ability);
+        scene.entities.remove(boss.getId());
+
+        assertFalse(new ActionCreateGadget().execute(ability, action, ByteString.EMPTY, boss));
+        boss.onCreate();
+        assertTrue(prisms().isEmpty());
+
+        scene.entities.put(boss.getId(), boss);
+        boss.onCreate();
+        assertEquals(1, gadgets(42901008).size());
+        assertEquals(50f, gadgets(42901008).get(0).getPosition().getY());
+        assertTrue(gadgets(42004212).isEmpty(), "Registration only replays the native flight center");
+
+        boss.onCreate();
+        assertEquals(1, gadgets(42901008).size());
+    }
+
+    @Test
+    void flightCenterHonorsClientPositionAndStaysUniqueAfterMoving() throws Exception {
+        var action = dvalinCenterAction();
+        var ability = ability(boss);
+        assertTrue(new ActionCreateGadget().execute(ability, action, request(12), boss));
+        var center = gadgets(42901008).get(0);
+        assertEquals(12f, center.getPosition().getX(), "A real request overrides the configured born point");
+        center.getPosition().set(25, 90, -80);
+
+        assertTrue(new ActionCreateGadget().execute(ability, action, ByteString.EMPTY, boss));
+        assertTrue(new ActionCreateGadget().execute(ability, action, request(18), boss));
+        assertEquals(List.of(center), gadgets(42901008));
+        assertEquals(90f, center.getPosition().getY());
+    }
+
+    @Test
+    void clientFlightCenterTakesOverItsMovedServerCopyAndLeavesOtherBossesAlone() throws Exception {
+        var action = dvalinCenterAction();
+        MonsterSkillGadgets.createFromClientRequest(boss, action, ByteString.EMPTY);
+        var center = gadgets(42901008).get(0);
+        center.getPosition().set(25, 90, -80);
+        var otherBoss = boss(0x400200);
+        MonsterSkillGadgets.createFromClientRequest(otherBoss, action, ByteString.EMPTY);
+
+        var local = client(0x900100, boss, 0, 42901008);
+        MonsterSkillGadgets.onClientGadgetCreated(local);
+        scene.entities.put(local.getId(), local);
+        assertEquals(List.of(center), scene.removed);
+        assertEquals(1, gadgets(42901008).size());
+        assertSame(otherBoss, gadgets(42901008).get(0).getOwner());
+
+        MonsterSkillGadgets.createFromClientRequest(boss, action, ByteString.EMPTY);
+        assertEquals(1, gadgets(42901008).size(), "The local center already owns this boss's anchor");
+        assertSame(local, scene.getEntityById(local.getId()));
+    }
+
+    @Test
+    void unknownWorldBornRulesDoNotCreateAnInventedFlightCenter() throws Exception {
+        var action = dvalinCenterAction();
+        action.born = Map.of("$type", "ConfigBornByTarget", "offset", Map.of("y", 50, "z", -80));
+        assertTrue(new ActionCreateGadget().execute(ability(boss), action, ByteString.EMPTY, boss));
+        action.born = Map.of("$type", "AMOMFFPOKPI");
+        assertTrue(new ActionCreateGadget().execute(ability(boss), action, ByteString.EMPTY, boss));
+        assertTrue(prisms().isEmpty());
+    }
+
+    @Test
+    void nativeFlightCenterRetiresWhenItsOwnerUnloads() {
+        MonsterSkillGadgets.createFromClientRequest(boss, dvalinCenterAction(), ByteString.EMPTY);
+        var center = gadgets(42901008).get(0);
+        scene.entities.remove(boss.getId());
+        center.onTick(100);
+        assertEquals(List.of(center), scene.removed);
+        assertTrue(gadgets(42901008).isEmpty());
+    }
+
+    @Test
     void nestedMonsterControllerKeepsItsChildrenAndAcceptsDirectOrRootLocalOwnership() throws Exception {
         new ActionCreateGadget().execute(ability(boss), action(42004507), request(10), boss);
         var controller = gadgets(42004507).get(0);
@@ -322,6 +417,7 @@ final class EffigyRebornGadgetsTest {
         monster.data = new Gson().fromJson("{\"id\":20040101}", MonsterData.class);
         field(monster, EntityMonster.class, "fightProperties", new Int2FloatOpenHashMap());
         field(monster, GameEntity.class, "globalAbilityValues", new ConcurrentHashMap<String, Float>());
+        field(monster, GameEntity.class, "instancedAbilities", new ArrayList<Ability>());
         field(monster, GameEntity.class, "instancedModifiers", new ConcurrentHashMap<>());
         monster.setFightProperty(FightProperty.FIGHT_PROP_MAX_HP, 100f);
         monster.setFightProperty(FightProperty.FIGHT_PROP_CUR_HP, 4f);
@@ -356,6 +452,14 @@ final class EffigyRebornGadgetsTest {
         action.lifeByOwnerIsAlive = true;
         action.lifeByOwnerV2 = true;
         return action;
+    }
+
+    private static AbilityModifierAction dvalinCenterAction() {
+        return new Gson().fromJson("""
+                {"$type":"CreateGadget", "gadgetID":42901008, "lifeByOwnerV2":true,
+                 "born":{"$type":"AMOMFFPOKPI", "DJPHNHKHNBI":{"z":1},
+                         "NONIAFMFFBP":{"y":50,"z":-80}}}
+                """, AbilityModifierAction.class);
     }
 
     private static ByteString request(float x) {

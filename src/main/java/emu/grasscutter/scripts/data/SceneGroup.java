@@ -6,6 +6,9 @@ import emu.grasscutter.scripts.ScriptLoader;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.nio.file.Files;
+import emu.grasscutter.utils.FileUtils;
 import javax.script.*;
 import lombok.*;
 import org.luaj.vm2.*;
@@ -13,11 +16,36 @@ import org.luaj.vm2.*;
 @ToString
 @Setter
 public final class SceneGroup {
+    private static final Map<Integer,Integer> groupScenes = new ConcurrentHashMap<>();
+
+    /** Group IDs are globally indexed by their authored scene, not decoded from decimal digits. */
+    public static int findSceneId(int groupId) {
+        if (groupId <= 0) return 0;
+        var known = groupScenes.get(groupId);
+        if (known != null) return known;
+        int scene = 0;
+        try (var folders = Files.list(FileUtils.getScriptPath("Scene"))) {
+            for (var folder : folders.filter(Files::isDirectory).toList()) {
+                String id = folder.getFileName().toString();
+                if (!id.matches("[0-9]+")) continue;
+                if (!Files.isRegularFile(folder.resolve("scene"+id+"_group"+groupId+".lua"))) continue;
+                int candidate = Integer.parseInt(id);
+                if (scene != 0 && scene != candidate) {
+                    Grasscutter.getLogger().error("Group {} occurs in scenes {} and {}",groupId,scene,candidate);
+                    return 0;
+                }
+                scene = candidate;
+            }
+        } catch (IOException error) { throw new IllegalStateException("Cannot resolve native scene for group "+groupId,error); }
+        if (scene > 0) groupScenes.putIfAbsent(groupId,scene);
+        return scene;
+    }
     public transient int
             block_id; // Not an actual variable in the scripts but we will keep it here for reference
 
     public int id;
     public int refresh_id;
+    public int vision_type = 1;
     public Position pos;
 
     public Map<Integer, SceneMonster> monsters; // <ConfigId, Monster>
@@ -136,6 +164,14 @@ public final class SceneGroup {
 
             this.suites =
                     ScriptLoader.getSerializer().toList(SceneSuite.class, this.bindings.get("suites"));
+            if (this.suites.isEmpty() && this.bindings.get("suite_disk") instanceof LuaTable disk) {
+                var flowSuites = new ArrayList<SceneSuite>();
+                // Explicit [index] Lua tables may enumerate hash keys in reverse order.
+                // Native suite IDs are their numeric keys, never the table's iteration order.
+                for (int index = 1; index <= disk.length(); index++)
+                    flowSuites.add(ScriptLoader.getSerializer().toObject(SceneFlowSuite.class,disk.get(index).checktable()).toSuite());
+                this.suites = flowSuites;
+            }
             this.regions =
                     ScriptLoader.getSerializer()
                             .toList(SceneRegion.class, this.bindings.get("regions"))

@@ -393,6 +393,7 @@ public class EntityGadget extends EntityBaseGadget {
     @Override
     public void onDeath(int killerId) {
         emu.grasscutter.game.quest.LiyueAmberQuestSupport.onGadgetDeath(this);
+        emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onGadgetDeath(this);
         super.onDeath(killerId); // Invoke super class's onDeath() method.
 
         // Breakable gather ores (incl. Scarlet Quartz): spawn ground drop on death.
@@ -445,6 +446,8 @@ public class EntityGadget extends EntityBaseGadget {
             ElementType attackType,
             PropChangeReasonOuterClass.PropChangeReason propChangeReason,
             ChangHpReasonOuterClass.ChangHpReason changeHpReason) {
+        if (emu.grasscutter.game.quest.reconstruction.SnezhnayaIceQuestReconstruction.onMiningHit(
+                this,amount,killerId,attackType)) return;
         // Sealed bramble/frozen/rock chests clear via EnvironmentalSealHelper; never kill them.
         try {
             boolean isChest =
@@ -762,7 +765,9 @@ public class EntityGadget extends EntityBaseGadget {
      * every value reads 0, so Fire hits shrank the ice by nothing.
      */
     private AbilitySyncStateInfo.Builder initialAbilityInfo() {
-        var info = AbilitySyncStateInfo.newBuilder();
+        var info = runtimeAbilityInfo();
+        var runtimeKeys = new java.util.HashSet<Integer>();
+        getGlobalAbilityValues().keySet().forEach(name -> runtimeKeys.add(emu.grasscutter.utils.Utils.abilityHash(name)));
         var globalValue = this.configGadget == null ? null : this.configGadget.getGlobalValue();
         if (globalValue != null && globalValue.getInitServerGlobalValues() != null) {
             globalValue
@@ -770,7 +775,8 @@ public class EntityGadget extends EntityBaseGadget {
                     .forEach(
                             (key, value) -> {
                                 if (key == null || value == null) return;
-                                if (this.extraGlobalValues.containsKey(emu.grasscutter.utils.Utils.abilityHash(key))) {
+                                if (runtimeKeys.contains(emu.grasscutter.utils.Utils.abilityHash(key))
+                                        || this.extraGlobalValues.containsKey(emu.grasscutter.utils.Utils.abilityHash(key))) {
                                     return;
                                 }
                                 info.addSgvDynamicValueMap(
@@ -782,7 +788,9 @@ public class EntityGadget extends EntityBaseGadget {
                                                 .setFloatValue(value));
                             });
         }
-        this.extraGlobalValues.values().forEach(info::addSgvDynamicValueMap);
+        this.extraGlobalValues.forEach((hash, value) -> {
+            if (!runtimeKeys.contains(hash)) info.addSgvDynamicValueMap(value);
+        });
         return info;
     }
 

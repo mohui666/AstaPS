@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>商城搜索</title>
+  <style>
+    :root{color-scheme:light;font-family:"Microsoft YaHei",system-ui,sans-serif;color:#303a4b;background:#f4f1e9}
+    *{box-sizing:border-box}body{margin:0;padding:24px 20px}main{max-width:960px;margin:auto}
+    header{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:22px}
+    h1{font-size:25px;letter-spacing:2px;margin:0}#player{color:#6c7480;font-size:14px}
+    .intro{color:#6c7480;font-size:14px;margin:0 0 20px;line-height:1.7}
+    form{display:grid;grid-template-columns:minmax(180px,1fr) 130px 108px 76px;gap:10px;align-items:end}
+    label{display:block;font-size:13px;color:#626d7a}input,select,button{font:inherit;border-radius:7px}
+    input,select{width:100%;margin-top:7px;border:1px solid #c8c6bf;background:#fffefa;color:#303a4b;height:43px;padding:0 11px}
+    input:focus,select:focus{outline:2px solid #b19b6d;outline-offset:1px}
+    button{border:0;background:#344663;color:#fff;padding:11px 16px;cursor:pointer;white-space:nowrap}
+    button:hover{background:#455b7e}button:disabled{opacity:.5;cursor:default}
+    #message{min-height:24px;margin:16px 0 4px;white-space:pre-line;font-size:14px;line-height:1.7}
+    #message[data-kind=error]{color:#a73c33}#message[data-kind=success]{color:#317351}
+    #summary{color:#7b817f;font-size:13px;margin:9px 0 13px}
+    #results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    article{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid #dedbd1;border-radius:9px;background:#fffdf7;padding:16px}
+    .info{min-width:0}.name{font-size:16px;font-weight:600;overflow-wrap:anywhere}.meta{color:#7d828b;font-size:12px;line-height:1.8;margin-top:5px}
+    .claim{padding:9px 17px;background:#77654c;font-size:14px}.claim:hover{background:#907a59}
+    nav{display:flex;align-items:center;justify-content:center;gap:20px;margin:23px 0 8px}
+    nav button{padding:8px 15px;background:#e3dfd5;color:#424d60}nav button:hover{background:#d6d0c4}
+    #page{font-size:13px;color:#697281}footer{margin-top:24px;color:#8a8f95;font-size:12px;line-height:1.8}
+    .tabbar{display:flex;gap:8px;margin:0 0 22px;border-bottom:1px solid #ddd7cb;padding-bottom:12px}
+    .tabbar button{background:#e3dfd5;color:#576172}.tabbar button[aria-selected=true]{background:#344663;color:#fff}
+    [hidden]{display:none!important}#artifactForm{display:block}#artifact-fields{padding:0;margin:0;border:0;min-width:0}
+    .artifact-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(230px,1fr);gap:22px}
+    .artifact-layout h2{font-size:18px;margin:0 0 14px}.artifact-basics{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:13px 0}
+    #artifact-set{margin-top:8px}.artifact-sub-head,.artifact-sub-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(95px,1fr) 78px;gap:8px}
+    .artifact-sub-head{margin-top:20px;font-size:12px;color:#7b817f}.artifact-note{font-size:12px;color:#7d828b;line-height:1.7;margin:10px 0}
+    .artifact-preview{background:#fffdf7;border:1px solid #dedbd1;border-radius:9px;padding:20px;align-self:start}
+    #artifact-preview-name{font-size:19px;margin:0 0 8px}#artifact-preview-meta{font-size:12px;color:#92774d;line-height:1.8;margin:0 0 18px}
+    #artifact-preview-main{font-size:14px;color:#717c8b}#artifact-preview-value{font-size:30px;font-weight:600;margin:4px 0 18px}
+    #artifact-preview-subs{list-style:none;padding:0;margin:0;min-height:98px;font-size:14px}
+    #artifact-preview-subs li{display:flex;justify-content:space-between;gap:12px;margin:9px 0}
+    #artifact-status,#artifact-message{font-size:13px;line-height:1.8;white-space:pre-line}#artifact-status{color:#7d828b;min-height:24px;margin:17px 0}
+    #artifact-status[data-kind=error],#artifact-message[data-kind=error]{color:#a73c33}#artifact-message[data-kind=success]{color:#317351}
+    .artifact-lock{display:flex;align-items:center;gap:8px;margin:18px 0 12px}.artifact-lock input{width:auto;height:auto;margin:0}
+    #artifact-claim{width:100%}#artifact-message{margin:12px 0 0}
+    @media(max-width:650px){body{padding:20px 14px}form{grid-template-columns:1fr 105px}form label:first-child{grid-column:1/-1}form button{height:43px}#results{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column;gap:9px}}
+    @media(max-width:730px){.artifact-layout{grid-template-columns:1fr}.artifact-preview{margin-top:4px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><h1>商城搜索</h1><span id="player">个人领取入口</span></header>
+  <p class="intro">免费领取，无限库存。角色附培养材料；角色与武器默认100级，武器精炼5阶。</p>
+  <div class="tabbar" role="tablist" aria-label="领取方式">
+    <button id="goods-tab" type="button" role="tab" aria-controls="goods-panel" aria-selected="true">物品领取</button>
+    <button id="artifact-tab" type="button" role="tab" aria-controls="artifact-panel" aria-selected="false">圣遗物 DIY</button>
+  </div>
+  <section id="goods-panel" role="tabpanel" aria-labelledby="goods-tab">
+  <form id="searchForm">
+    <label>搜索名称 / English / 物品ID<input id="query" type="search" maxlength="120" placeholder="例如：桑多涅、雾切之回光、原石" autocomplete="off"></label>
+    <label>类别<select id="category"><option value="all">全部</option><option value="avatar">角色</option><option value="weapon">武器</option><option value="artifact">圣遗物</option><option value="currency">货币</option><option value="material">材料</option><option value="food">食物</option><option value="furniture">家具</option></select></label>
+    <label>数量（份）<input id="quantity" type="number" min="1" max="2147483647" step="1" value="1" inputmode="numeric"></label>
+    <button type="submit">搜索</button>
+  </form>
+  <div id="message" role="status" aria-live="polite"></div>
+  <p id="summary">打开入口后即可搜索。</p>
+  <section id="results" aria-label="搜索结果"></section>
+  <nav aria-label="翻页"><button id="prev" disabled>上一页</button><span id="page">1 / 1</span><button id="next" disabled>下一页</button></nav>
+  </section>
+  <section id="artifact-panel" role="tabpanel" aria-labelledby="artifact-tab" hidden>
+    <form id="artifactForm">
+      <fieldset id="artifact-fields" disabled>
+        <div class="artifact-layout">
+          <div>
+            <h2>配置圣遗物</h2>
+            <label for="artifact-set-search">套装<input id="artifact-set-search" type="search" placeholder="搜索套装中文名、英文名或ID" autocomplete="off"></label>
+            <select id="artifact-set" aria-label="选择套装" required></select>
+            <div class="artifact-basics">
+              <label>星级<select id="artifact-rank" required></select></label>
+              <label>部位<select id="artifact-slot" required></select></label>
+              <label>等级<input id="artifact-level" type="number" min="0" max="20" step="1" value="20" required></label>
+            </div>
+            <label>主词条<select id="artifact-main" required></select></label>
+            <div class="artifact-sub-head"><span>副词条</span><span>单次档位</span><span>次数</span></div>
+            <div id="artifact-subs"></div>
+            <p class="artifact-note">次数含初始一次，每条1–200次。最多四种副词条，不与主词条重复，不随机补齐。</p>
+          </div>
+          <aside class="artifact-preview" aria-label="实际数值预览">
+            <h2 id="artifact-preview-name">圣遗物预览</h2>
+            <p id="artifact-preview-meta"></p>
+            <div id="artifact-preview-main"></div><div id="artifact-preview-value">—</div>
+            <ul id="artifact-preview-subs"></ul>
+            <p id="artifact-status" role="status" aria-live="polite">打开后载入配置。</p>
+            <label class="artifact-lock"><input id="artifact-lock" type="checkbox" checked>领取时锁定</label>
+            <button id="artifact-claim" type="submit" disabled>领取这件圣遗物</button>
+            <div id="artifact-message" role="status" aria-live="polite"></div>
+          </aside>
+        </div>
+      </fieldset>
+    </form>
+  </section>
+  <footer>每次领取以实际到账结果为准。角色重复领取只补培养材料，命座保持不变。原生礼包商城仍可照常使用。<br>入口失效时，在游戏内向助手发送“商城搜索”，从新邮件打开。</footer>
+</main>
+<script>
+  'use strict';
+  const token=new URLSearchParams(location.hash.slice(1)).get('token');
+  const $=id=>document.getElementById(id);
+  const labels={avatar:'角色',weapon:'武器',artifact:'圣遗物',currency:'货币',material:'材料',food:'食物',furniture:'家具'};
+  let currentPage=1,pageCount=1,version=0,timer,buying=false;
+  function message(text,kind=''){$('message').textContent=text;$('message').dataset.kind=kind;}
+  async function api(path,options={}){
+    const headers={'X-Shop-Token':token||'',...(options.headers||{})};
+    const response=await fetch('/shop-search/api/'+path,{...options,headers,cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||'请求失败，请检查游戏在线状态。');
+    return data;
+  }
+  function render(data){
+    $('player').textContent=data.nickname||'当前玩家';
+    currentPage=data.page;pageCount=Math.max(1,Math.ceil(data.total/data.pageSize));
+    $('summary').textContent=data.total?'找到 '+data.total+' 件商品 · 每页 '+data.pageSize+' 件':'没有找到匹配商品，可以换个名称或物品ID。';
+    $('page').textContent=currentPage+' / '+pageCount;
+    $('prev').disabled=currentPage<=1;$('next').disabled=currentPage>=pageCount;
+    const root=$('results');root.textContent='';
+    for(const row of data.items){
+      const card=document.createElement('article'),info=document.createElement('div'),name=document.createElement('div'),meta=document.createElement('div'),button=document.createElement('button');
+      info.className='info';name.className='name';meta.className='meta';button.className='claim';
+      name.textContent=row.name;
+      meta.textContent=(labels[row.category]||'物品')+' · ID '+row.itemId+' · 每份 ×'+row.unitCount+(row.rank?' · '+row.rank+'星':'');
+      if(row.avatarId)meta.textContent+=' · 角色ID '+row.avatarId;
+      button.type='button';button.textContent='领取';button.disabled=buying;
+      button.addEventListener('click',()=>claim(row));
+      info.append(name,meta);card.append(info,button);root.append(card);
+    }
+  }
+  async function search(page=1){
+    const requested=++version;
+    if(!token){message('请在游戏内向助手发送“商城搜索”，从邮件中的按钮打开。','error');return;}
+    $('summary').textContent='正在搜索…';
+    $('results').textContent='';$('prev').disabled=true;$('next').disabled=true;
+    const params=new URLSearchParams({q:$('query').value,category:$('category').value,page:String(page)});
+    try{const data=await api('items?'+params);if(requested===version)render(data);}
+    catch(error){if(requested===version){$('summary').textContent='搜索未完成。';message(error.message,'error');}}
+  }
+  async function claim(row){
+    if(buying)return;
+    const quantity=Number($('quantity').value);
+    if(!Number.isInteger(quantity)||quantity<1||quantity>2147483647){message('数量必须是正整数。','error');$('quantity').focus();return;}
+    buying=true;document.querySelectorAll('.claim').forEach(button=>button.disabled=true);
+    message('正在领取 '+row.name+'…');
+    try{
+      const data=await api('buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({goodsId:row.goodsId,quantity})});
+      message(data.message,data.accepted?'success':'error');
+    }catch(error){message(error.message,'error');}
+    finally{buying=false;document.querySelectorAll('.claim').forEach(button=>button.disabled=false);}
+  }
+  $('searchForm').addEventListener('submit',event=>{event.preventDefault();clearTimeout(timer);search();});
+  $('query').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(()=>search(),250);});
+  $('category').addEventListener('change',()=>{clearTimeout(timer);search();});
+  $('prev').addEventListener('click',()=>search(currentPage-1));
+  $('next').addEventListener('click',()=>search(currentPage+1));
+
+  const artifactSlots={EQUIP_BRACER:'生之花',EQUIP_NECKLACE:'死之羽',EQUIP_SHOES:'时之沙',EQUIP_RING:'空之杯',EQUIP_DRESS:'理之冠'};
+  let artifactData=null,artifactPiece=null,artifactSetId=15020,artifactRank=5,artifactSlot='EQUIP_BRACER',artifactMainProp=2;
+  let artifactLines=[{prop:20,affixId:0,rolls:1},{prop:22,affixId:0,rolls:6},{prop:6,affixId:0,rolls:1},{prop:23,affixId:0,rolls:1}];
+  let artifactPreview=null,artifactError='',artifactRevision=0,artifactTimer,artifactLoading=false,artifactClaiming=false;
+  const artifactMains=()=>artifactPiece?artifactData.mainProps[artifactPiece.mainDepot]||[]:[];
+  const artifactSubs=()=>artifactPiece?artifactData.subProps[artifactPiece.subDepot]||[]:[];
+  const statValue=stat=>stat.percent?(stat.value*100).toFixed(1)+'%':Math.round(stat.value).toLocaleString();
+  function fillSelect(id,rows,selected){
+    const select=$(id);select.textContent='';
+    for(const row of rows){const option=document.createElement('option');option.value=row.value;option.textContent=row.label;option.selected=String(row.value)===String(selected);select.append(option);}
+  }
+  function renderArtifactControls(){
+    if(!artifactData)return;
+    const items=artifactData.items,query=$('artifact-set-search').value.trim().toLowerCase();
+    const sets=[...new Map(items.map(item=>[item.setId,item])).values()]
+      .filter(item=>(item.setId+' '+item.name+' '+item.en).toLowerCase().includes(query))
+      .sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));
+    if(!sets.some(item=>item.setId===artifactSetId))artifactSetId=sets.length?sets[0].setId:0;
+    fillSelect('artifact-set',sets.map(item=>({value:item.setId,label:item.name})),artifactSetId);
+    const pieces=items.filter(item=>item.setId===artifactSetId),ranks=[...new Set(pieces.map(item=>item.rank))].sort((a,b)=>b-a);
+    if(!ranks.includes(artifactRank))artifactRank=ranks[0]||5;
+    fillSelect('artifact-rank',ranks.map(rank=>({value:rank,label:rank+'星'})),artifactRank);
+    const slots=Object.keys(artifactSlots).filter(slot=>pieces.some(item=>item.rank===artifactRank&&item.slot===slot));
+    if(!slots.includes(artifactSlot))artifactSlot=slots[0]||'EQUIP_BRACER';
+    fillSelect('artifact-slot',slots.map(slot=>({value:slot,label:artifactSlots[slot]})),artifactSlot);
+    artifactPiece=pieces.find(item=>item.rank===artifactRank&&item.slot===artifactSlot)||null;
+    if(artifactPiece){
+      const level=$('artifact-level'),oldMax=Number(level.max);
+      level.max=artifactPiece.maxLevel;
+      if(Number(level.value)===oldMax||Number(level.value)>artifactPiece.maxLevel)level.value=artifactPiece.maxLevel;
+    }
+    const mains=artifactMains();
+    if(!mains.some(stat=>stat.prop===artifactMainProp))artifactMainProp=mains.length?mains[0].prop:0;
+    fillSelect('artifact-main',mains.map(stat=>({value:stat.prop,label:stat.name})),artifactMainProp);
+  }
+  function renderArtifactLines(){
+    const root=$('artifact-subs');root.textContent='';
+    if(!artifactPiece)return;
+    const stats=artifactSubs(),types=[...new Map(stats.map(stat=>[stat.prop,stat])).values()],used=new Set([artifactMainProp]);
+    for(const line of artifactLines){
+      if(!types.some(stat=>stat.prop===line.prop)||used.has(line.prop)){line.prop=0;line.affixId=0;}
+      if(line.prop)used.add(line.prop);
+    }
+    artifactLines.forEach((line,index)=>{
+      const row=document.createElement('div'),type=document.createElement('select'),tier=document.createElement('select'),rolls=document.createElement('input');
+      row.className='artifact-sub-row';type.setAttribute('aria-label','副词条'+(index+1));tier.setAttribute('aria-label','单次档位'+(index+1));rolls.setAttribute('aria-label','次数'+(index+1));
+      for(const stat of [{prop:0,name:'不添加'},...types]){
+        const option=document.createElement('option');option.value=stat.prop;option.textContent=stat.name;
+        option.disabled=!!stat.prop&&(stat.prop===artifactMainProp||artifactLines.some((other,i)=>i!==index&&other.prop===stat.prop));
+        option.selected=stat.prop===line.prop;type.append(option);
+      }
+      const tiers=stats.filter(stat=>stat.prop===line.prop).sort((a,b)=>a.value-b.value);
+      if(!tiers.some(stat=>stat.id===line.affixId))line.affixId=tiers.length?tiers[tiers.length-1].id:0;
+      tiers.forEach((stat,i)=>{const option=document.createElement('option');option.value=stat.id;option.textContent=(i+1)+'档 · '+statValue(stat);option.selected=stat.id===line.affixId;tier.append(option);});
+      rolls.type='number';rolls.min='1';rolls.max='200';rolls.step='1';rolls.value=line.rolls;rolls.required=!!line.prop;
+      tier.disabled=rolls.disabled=!line.prop;
+      type.addEventListener('change',()=>{line.prop=Number(type.value);line.affixId=0;renderArtifactLines();queueArtifactPreview();});
+      tier.addEventListener('change',()=>{line.affixId=Number(tier.value);queueArtifactPreview();});
+      rolls.addEventListener('input',()=>{line.rolls=Number(rolls.value);queueArtifactPreview();});
+      row.append(type,tier,rolls);root.append(row);
+    });
+  }
+  function artifactPayload(){
+    const main=artifactMains().find(stat=>stat.prop===artifactMainProp);
+    return {itemId:artifactPiece.id,level:Number($('artifact-level').value),mainPropId:main?main.id:0,
+      substats:artifactLines.filter(line=>line.prop).map(line=>({affixId:line.affixId,rolls:line.rolls})),locked:$('artifact-lock').checked};
+  }
+  function renderArtifactPreview(){
+    const preview=artifactPreview;
+    $('artifact-preview-name').textContent=preview?preview.artifact.name:'圣遗物预览';
+    $('artifact-preview-meta').textContent=preview?preview.artifact.rank+'星 · '+artifactSlots[preview.artifact.slot]+' · +'+preview.level+' · ID '+preview.artifact.id:'';
+    $('artifact-preview-main').textContent=preview?preview.main.name.replace(/%$/,''):'';
+    $('artifact-preview-value').textContent=preview?statValue(preview.main):'—';
+    const root=$('artifact-preview-subs');root.textContent='';
+    for(const stat of preview?preview.substats:[]){const row=document.createElement('li'),name=document.createElement('span'),value=document.createElement('strong');name.textContent=stat.name.replace(/%$/,'');value.textContent='+'+statValue(stat);row.append(name,value);root.append(row);}
+    $('artifact-status').dataset.kind=artifactError?'error':'';
+    $('artifact-status').textContent=artifactError||(preview?'副词条合计 '+preview.rolls+' 次 · '+(preview.locked?'领取后锁定':'领取后不锁定'):artifactData?'正在计算实际数值…':'正在载入配置…');
+    $('artifact-claim').disabled=artifactClaiming||!preview;
+    $('artifact-claim').textContent=artifactClaiming?'正在领取…':'领取这件圣遗物';
+  }
+  function queueArtifactPreview(){
+    clearTimeout(artifactTimer);const revision=++artifactRevision;
+    artifactPreview=null;artifactError='';$('artifact-message').textContent='';
+    if(!artifactPiece)artifactError='没有匹配的圣遗物套装。';
+    else if(!$('artifact-level').value||!$('artifact-level').checkValidity()||artifactLines.some(line=>line.prop&&(!Number.isInteger(line.rolls)||line.rolls<1||line.rolls>200)))artifactError='请填写有效等级和1–200的整数次数。';
+    renderArtifactPreview();if(artifactError)return;
+    const payload=artifactPayload();
+    artifactTimer=setTimeout(async()=>{
+      try{const preview=await api('artifacts/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(revision===artifactRevision)artifactPreview=preview;}
+      catch(error){if(revision===artifactRevision)artifactError=error.message;}
+      if(revision===artifactRevision)renderArtifactPreview();
+    },200);
+  }
+  function artifactBaseChanged(){renderArtifactControls();renderArtifactLines();queueArtifactPreview();}
+  async function loadArtifacts(){
+    if(artifactLoading||artifactData)return;
+    artifactLoading=true;artifactError='';renderArtifactPreview();
+    try{
+      const data=await api('artifacts');
+      if(!Array.isArray(data.items)||!data.items.length||!data.mainProps||!data.subProps)throw new Error('当前没有可用的圣遗物配置。');
+      artifactData=data;$('artifact-fields').disabled=false;artifactBaseChanged();
+    }catch(error){artifactError=error.message;renderArtifactPreview();}
+    finally{artifactLoading=false;}
+  }
+  function showTab(artifact){
+    $('goods-panel').hidden=artifact;$('artifact-panel').hidden=!artifact;
+    $('goods-tab').setAttribute('aria-selected',String(!artifact));$('artifact-tab').setAttribute('aria-selected',String(artifact));
+    if(artifact)loadArtifacts();
+  }
+  $('goods-tab').addEventListener('click',()=>showTab(false));
+  $('artifact-tab').addEventListener('click',()=>showTab(true));
+  $('artifact-set-search').addEventListener('input',artifactBaseChanged);
+  $('artifact-set').addEventListener('change',()=>{artifactSetId=Number($('artifact-set').value);artifactBaseChanged();});
+  $('artifact-rank').addEventListener('change',()=>{artifactRank=Number($('artifact-rank').value);artifactBaseChanged();});
+  $('artifact-slot').addEventListener('change',()=>{artifactSlot=$('artifact-slot').value;artifactBaseChanged();});
+  $('artifact-main').addEventListener('change',()=>{artifactMainProp=Number($('artifact-main').value);renderArtifactLines();queueArtifactPreview();});
+  $('artifact-level').addEventListener('input',queueArtifactPreview);
+  $('artifact-lock').addEventListener('change',queueArtifactPreview);
+  $('artifactForm').addEventListener('submit',async event=>{
+    event.preventDefault();if(artifactClaiming||!artifactPreview||!$('artifactForm').reportValidity())return;
+    const payload=artifactPayload(),feedback=$('artifact-message');
+    artifactClaiming=true;$('artifact-fields').disabled=true;renderArtifactPreview();feedback.dataset.kind='';feedback.textContent='正在领取…';
+    try{
+      const receipt=await api('artifacts/claim',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!receipt.accepted)throw new Error(receipt.error||'未确认到账，请检查游戏内背包。');
+      artifactPreview=receipt.preview;renderArtifactPreview();feedback.dataset.kind='success';feedback.textContent=receipt.message;
+    }catch(error){feedback.dataset.kind='error';feedback.textContent=error.message;}
+    finally{artifactClaiming=false;$('artifact-fields').disabled=false;renderArtifactPreview();}
+  });
+  search();
+</script>
+</body>
+</html>

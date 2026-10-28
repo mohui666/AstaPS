@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// BFPHJNOJMNH, CmdId 5436. Parser RVA FBF6F50; consumer RVA F321890.
+message CoopProgressUpdateNotify {
+  uint32 cur_coop_point = 7;
+  bool is_have_progress = 15;
+}

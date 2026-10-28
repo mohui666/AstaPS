@@ -1,0 +1,7 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// 7.1 KNPDFPDIJOB, CmdId 5731. Parser 833C0F0; receiver emits event 1665.
+message UnlockQuestEventsItemRsp {
+  int32 retcode = 1;
+}

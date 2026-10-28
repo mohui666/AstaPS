@@ -80,6 +80,8 @@ public class DailyTaskManager {
     private transient Player player;
 
     private List<DailyTask> dailyTasks = new ArrayList<>();
+    /** Native task_var_map_: cross-day commission history, separate from today's board. */
+    private java.util.Map<Integer, List<Integer>> taskVariables = new java.util.HashMap<>();
 
     /*
      * 1 = Mondstadt
@@ -119,6 +121,7 @@ public class DailyTaskManager {
 
     public void setPlayer(Player player) {
         this.player = player;
+        if (this.taskVariables == null) this.taskVariables = new java.util.HashMap<>();
 
         if (this.dailyTasks == null) {
             this.dailyTasks = new ArrayList<>();
@@ -133,6 +136,11 @@ public class DailyTaskManager {
 		if (this.player == null) {
 			return;
 		}
+        synchronized (this) {
+            if (this.taskVariables != null && !this.taskVariables.isEmpty()) {
+                this.player.sendPacket(new emu.grasscutter.server.packet.send.PacketTaskVarNotify(this.taskVariables));
+            }
+        }
 
 		if (this.dailyTasks == null) {
 			this.dailyTasks = new ArrayList<>();
@@ -593,6 +601,47 @@ public class DailyTaskManager {
                 .filter(task -> task.getTaskId() == taskId)
                 .findFirst()
                 .orElse(null);
+    }
+
+    public synchronized int getDailyTaskVar(int taskId, int index) {
+        var values = this.taskVariables == null ? null : this.taskVariables.get(taskId);
+        return values == null || index < 0 || index >= values.size() ? 0 : values.get(index);
+    }
+
+    public synchronized boolean setDailyTaskVar(int taskId, int index, int value) {
+        if (this.player == null || index < 0 || index >= 5
+                || !GameData.getDailyTaskDataMap().containsKey(taskId)) return false;
+        if (this.taskVariables == null) this.taskVariables = new java.util.HashMap<>();
+        var values = this.taskVariables.computeIfAbsent(taskId, ignored -> new ArrayList<>());
+        boolean changed = values.size() <= index;
+        while (values.size() <= index) values.add(0);
+        changed |= values.get(index) != value;
+        values.set(index, value);
+        if (changed) this.save();
+        // The real 7.1 consumer updates its per-task vector, which NPC/talk daily-variable
+        // predicates read. Preserve explicit zero and signed int32 values.
+        this.player.sendPacket(new emu.grasscutter.server.packet.send.PacketTaskVarNotify(
+                java.util.Map.of(taskId, List.copyOf(values))));
+        return true;
+    }
+
+    public synchronized boolean incDailyTaskVar(int taskId, int index) {
+        int previous = getDailyTaskVar(taskId, index);
+        if (previous == Integer.MAX_VALUE) return false;
+        return setDailyTaskVar(taskId, index, previous + 1);
+    }
+
+    /** Native onQuestNotify only completes an actually issued quest commission in its owner's world. */
+    public synchronized boolean onQuestNotify(int taskId, emu.grasscutter.game.quest.enums.QuestState state) {
+        var data = GameData.getDailyTaskDataMap().get(taskId);
+        if (this.player == null || state != emu.grasscutter.game.quest.enums.QuestState.QUEST_STATE_FINISHED
+                || !isUnlocked() || this.lastGenerationDate != getCurrentDateKey()
+                || this.player.getWorld() == null || this.player.getWorld().getHost() != this.player
+                || this.player.getWorld() instanceof emu.grasscutter.game.home.HomeWorld
+                || data == null || data.getQuestId() <= 0
+                || (data.getType() != null && !"DAILY_TASK_QUEST".equals(data.getType()))
+                || getDailyTask(taskId) == null) return false;
+        return finishDailyTask(taskId);
     }
 
     public int getFinishedCount() {

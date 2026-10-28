@@ -14,6 +14,19 @@ public class HandlerSetPlayerPropReq extends PacketHandler {
         var req = SetPlayerPropReq.parseFrom(payload);
         var player = session.getPlayer();
 
+        // Climate and diving unlocks come from server state. Validate the entire batch before
+        // changing any property so a forged climate value cannot leave a partially applied request.
+        for (var p : req.getPropListList()) {
+            switch (PlayerProperty.getPropById(p.getType())) {
+                case PROP_CUR_CLIMATE_METER, PROP_CUR_CLIMATE_TYPE,
+                        PROP_CUR_CLIMATE_AREA_ID, PROP_CUR_CLIMATE_AREA_CLIMATE_TYPE,
+                        PROP_PLAYER_CAN_DIVE -> {
+                    session.send(new PacketSetPlayerPropRsp(1));
+                    return;
+                }
+            }
+        }
+
         for (var p : req.getPropListList()) {
             var prop = PlayerProperty.getPropById(p.getType());
             switch (prop) {

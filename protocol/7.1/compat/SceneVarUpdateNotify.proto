@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "SceneVarInfo.proto";
+
+// KJKHLLHNNPA, CmdId 29407. Parser RVA 13873C20; field codec tag 0x62.
+// The client assigns each absolute value and invokes its scene-variable listeners.
+message SceneVarUpdateNotify {
+  uint32 scene_id = 8;
+  repeated SceneVarInfo scene_var_list = 12;
+}

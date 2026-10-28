@@ -60,6 +60,7 @@ public class ScriptLib {
 
     public void removeSceneScriptManager() {
         this.sceneScriptManager.remove();
+        this.callParams.remove();
     }
 
     public SceneScriptManager getSceneScriptManager() {
@@ -73,6 +74,120 @@ public class ScriptLib {
         DungeonManager dungeonManager = manager.getScene().getDungeonManager();
         if (dungeonManager == null || dungeonManager.getDungeonData() == null) return 0;
         return dungeonManager.getDungeonData().getId();
+    }
+
+    /** These custom 20238 callbacks accept only their actual server Lua event context. */
+    public boolean ReconstructedWarEventAllowed(int group) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var scriptGroup = currentGroup.getIfExists();
+        if (manager == null || args == null || scriptGroup == null || scriptGroup.id != group
+                || args.getGroupId() != group) return false;
+        var scene = manager.getScene();
+        return switch (args.type) {
+            case EventType.EVENT_ANY_MONSTER_DIE -> emu.grasscutter.game.quest.war.ReconstructedWarRuntime
+                    .canRecordDeath(scene,group,args.param1);
+            case EventType.EVENT_SELECT_OPTION -> emu.grasscutter.game.quest.war.ReconstructedWarRuntime
+                    .canSelect(scene,args.uid,group,args.param1,args.param2);
+            case EventType.EVENT_ENTER_REGION -> scene.getEntityById(args.getTargetEntityId()) instanceof EntityAvatar avatar
+                    && emu.grasscutter.game.quest.war.ReconstructedWarRuntime
+                            .canEnter(scene,avatar.getPlayer().getUid(),group,args.param1);
+            default -> false;
+        };
+    }
+
+    public int ReconstructedWarMonsterDied(int group, int config) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        if (manager == null || args == null || args.type != EventType.EVENT_ANY_MONSTER_DIE
+                || args.getGroupId() != group || args.param1 != config) return -1;
+        return emu.grasscutter.game.quest.war.ReconstructedWarRuntime.monsterDied(manager.getScene(),group,config);
+    }
+
+    public int ReconstructedWarSelect(int group, int config, int option) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        if (manager == null || args == null || args.type != EventType.EVENT_SELECT_OPTION
+                || args.getGroupId() != group || args.param1 != config || args.param2 != option || args.uid <= 0) return -1;
+        return emu.grasscutter.game.quest.war.ReconstructedWarRuntime.select(manager.getScene(),args.uid,group,config,option);
+    }
+
+    public int ReconstructedWarEntered(int group, int config) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        if (manager == null || args == null || args.type != EventType.EVENT_ENTER_REGION
+                || args.getGroupId() != group || args.param1 != config) return -1;
+        var target = manager.getScene().getEntityById(args.getTargetEntityId());
+        if (!(target instanceof EntityAvatar avatar)) return -1;
+        return emu.grasscutter.game.quest.war.ReconstructedWarRuntime.entered(
+                manager.getScene(),avatar.getPlayer().getUid(),group,config);
+    }
+
+    /** Explicitly custom Calibert level actions; network script events have group_id=0 and cannot call these. */
+    public int ReconstructionCalibertInteract(int config, int option) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.type != EventType.EVENT_SELECT_OPTION
+                || args.getGroupId() != group.id || args.param1 != config || args.param2 != option || args.uid <= 0) return -1;
+        return emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.interact(
+                manager,args.uid,group.id,config,option);
+    }
+
+    public int ReconstructionCalibertEntered(int config) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.type != EventType.EVENT_ENTER_REGION
+                || args.getGroupId() != group.id || args.param1 != config) return -1;
+        var entity = manager.getScene().getEntityById(args.getTargetEntityId());
+        if (!(entity instanceof EntityAvatar avatar)) return -1;
+        return emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.entered(manager,avatar,group.id,config);
+    }
+
+    public int ReconstructionCalibertMonsterDied(int config) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.type != EventType.EVENT_ANY_MONSTER_DIE
+                || args.getGroupId() != group.id || args.param1 != config) return -1;
+        return emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.monsterDied(manager,group.id,config);
+    }
+
+    public int ReconstructionCalibertProgress(String key) {
+        var manager = sceneScriptManager.getIfExists();
+        return manager == null ? -1 : emu.grasscutter.game.quest.reconstruction.CalibertQuestReconstruction.progress(manager.getScene(),key);
+    }
+
+    /** Only server-owned callbacks from explicitly reconstructed groups may reach these bridges. */
+    public int ReconstructionStoryInteract(int config, int option) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.type != EventType.EVENT_SELECT_OPTION
+                || args.getGroupId() != group.id || args.param1 != config || args.param2 != option || args.uid <= 0)
+            return -1;
+        return emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.interact(
+                manager, args.uid, group.id, config, option);
+    }
+
+    public int ReconstructionStoryMonsterDied(int config) {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.type != EventType.EVENT_ANY_MONSTER_DIE
+                || args.getGroupId() != group.id || args.param1 != config) return -1;
+        return emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.monsterDied(
+                manager, group.id, config);
+    }
+
+    public int ReconstructionStoryGroupLoaded() {
+        var args = callParams.getIfExists();
+        var manager = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        if (manager == null || group == null || args == null || args.getGroupId() != group.id
+                || args.type != EventType.EVENT_GROUP_LOAD && args.type != EventType.EVENT_GADGET_CREATE) return -1;
+        return emu.grasscutter.game.quest.reconstruction.StoryReconstructionRuntime.groupLoaded(manager, group.id);
     }
 
     private String printTable(LuaTable table) {
@@ -91,6 +206,32 @@ public class ScriptLib {
 
     public void setCurrentCallParams(ScriptArgs callArgs) {
         this.callParams.set(callArgs);
+        if (callArgs.uid == 0 && callArgs.type != EventType.EVENT_SELECT_OPTION) callArgs.uid = contextUid();
+    }
+
+    int contextUid() {
+        var manager = sceneScriptManager.getIfExists();
+        if (manager == null) return 0;
+        var actor = currentEntity.getIfExists();
+        if (actor instanceof EntityAvatar avatar) return avatar.getPlayer().getUid();
+        if (actor instanceof EntityClientGadget gadget) return gadget.getOwner().getUid();
+        var args = callParams.getIfExists();
+        if (args != null) {
+            if (args.uid > 0) return args.uid;
+            var source = args.source_eid == 0 ? null : manager.getScene().getEntityById(args.source_eid);
+            if (source instanceof EntityAvatar avatar) return avatar.getPlayer().getUid();
+            if (source instanceof EntityClientGadget gadget) return gadget.getOwner().getUid();
+            var target = args.target_eid == 0 ? null : manager.getScene().getEntityById(args.target_eid);
+            if (target instanceof EntityAvatar avatar) return avatar.getPlayer().getUid();
+            if (target instanceof EntityClientGadget gadget) return gadget.getOwner().getUid();
+        }
+        return GetSceneOwnerUid();
+    }
+
+    public int GetSceneOwnerUid() {
+        var manager = sceneScriptManager.getIfExists();
+        return manager == null || manager.getScene().getWorld().getHost() == null ? 0
+                : manager.getScene().getWorld().getHost().getUid();
     }
 
     public Optional<SceneGroup> getCurrentGroup() {
@@ -126,6 +267,35 @@ public class ScriptLib {
             restoreContext(currentGroup, previousGroup);
             restoreContext(currentEntity, previousEntity);
         }
+    }
+
+    private <T> T withGroupContext(SceneScriptManager manager, SceneGroup group, Supplier<T> callback) {
+        var previousManager = sceneScriptManager.getIfExists();
+        var previousGroup = currentGroup.getIfExists();
+        var previousParams = callParams.getIfExists();
+        int uid = contextUid();
+        sceneScriptManager.set(manager);
+        currentGroup.set(group);
+        callParams.set(new ScriptArgs(group.id, 0).setUid(uid));
+        try {
+            return callback.get();
+        } finally {
+            restoreContext(sceneScriptManager, previousManager);
+            restoreContext(currentGroup, previousGroup);
+            restoreContext(callParams, previousParams);
+        }
+    }
+
+    int contextSourceEntityId() {
+        var args = callParams.getIfExists();
+        if (args != null && args.source_eid != 0) return args.source_eid;
+        var entity = currentEntity.getIfExists();
+        return entity == null ? 0 : entity.getId();
+    }
+
+    int contextTargetEntityId() {
+        var args = callParams.getIfExists();
+        return args == null ? 0 : args.target_eid;
     }
 
     private static <T> void restoreContext(FastThreadLocal<T> context, T previous) {
@@ -319,10 +489,34 @@ public class ScriptLib {
         return 0;
     }
 
-    public int AddPlayerGroupVisionType(int[] uids, int[] var2) {
-        logger.warn("[LUA] Call unimplemented AddPlayerGroupVisionType with {} {}", uids, var2);
+    public int AddPlayerGroupVisionType(int[] uids, int[] types) {
+        return getSceneScriptManager().getScene().getScriptVision().change(uids, types, ScriptVisionManager.Operation.ADD);
+    }
 
-        return 0;
+    public int SetPlayerGroupVisionType(int[] uids, int[] types) {
+        return getSceneScriptManager().getScene().getScriptVision().change(uids, types, ScriptVisionManager.Operation.SET);
+    }
+
+    public LuaTable GetPlayerGroupVisionType(int uid) {
+        var result = new LuaTable();
+        int index = 1;
+        for (int type : new TreeSet<>(getSceneScriptManager().getScene().getScriptVision().manualTypes(uid)))
+            result.set(index++, LuaValue.valueOf(type));
+        return result;
+    }
+
+    public int ForbidPlayerRegionVision(int uid) {
+        return getSceneScriptManager().getScene().getScriptVision().setRegionActive(uid, false);
+    }
+
+    public int RevertPlayerRegionVision(int uid) {
+        return getSceneScriptManager().getScene().getScriptVision().setRegionActive(uid, true);
+    }
+
+    public boolean IsPlayerTransmittable(int uid) {
+        return getSceneScriptManager().getScene().getPlayers().stream()
+                .anyMatch(player -> player.getUid() == uid && player.getScene() == getSceneScriptManager().getScene()
+                        && player.getSceneLoadState() == Player.SceneLoadState.LOADED);
     }
 
     public int AddQuestProgress(String var1) {
@@ -350,9 +544,8 @@ public class ScriptLib {
         return 0;
     }
 
-    public int AddTeamEntityGlobalFloatValue(int[] sceneUidList, String var2, int var3) {
-        logger.warn("[LUA] Call unimplemented AddTeamEntityGlobalFloatValue with {} {} {}", sceneUidList, var2, var3);
-
+    public int AddTeamEntityGlobalFloatValue(int[] sceneUidList, String key, float value) {
+        for (int uid : sceneUidList) if (changeTeamGlobalValue(uid, key, value, true) != 0) return -1;
         return 0;
     }
 
@@ -362,10 +555,25 @@ public class ScriptLib {
         return 0;
     }
 
-    public int AttachChildChallenge(int var1, int var2, int var3, int[] var4, LuaTable var5, LuaTable var6) {
-        logger.warn("[LUA] Call unimplemented AttachChildChallenge with {} {} {} {} {} {}", var1, var2, var3, var4, var5, var6);
-
-        return 0;
+    public int AttachChildChallenge(int fatherIndex, int childIndex, int challengeId, int[] params,
+            LuaTable uids, LuaTable weights) {
+        var scene = getSceneScriptManager().getScene();
+        if (!(scene.getChallenge() instanceof emu.grasscutter.game.dungeons.challenge.FatherChallenge father)
+                || father.getChallengeIndex() != fatherIndex || childIndex == fatherIndex
+                || params.length != 4 || !GameData.getDungeonChallengeConfigDataMap().containsKey(challengeId)) return -1;
+        int success = weights.get("success").optint(0), fail = weights.get("fail").optint(0);
+        if (success < 0 || fail < 0) return -1;
+        var child = ChallengeFactory.getChallenge(childIndex, challengeId, params[0], params[1], params[2], params[3],
+                scene, currentGroup.getIfExists());
+        if (child == null) return -1;
+        var participants = new ArrayList<Integer>();
+        for (int i = 1; i <= uids.length(); i++) {
+            int uid = uids.get(i).toint();
+            if (scene.getPlayers().stream().noneMatch(player -> player.getUid() == uid)) return -1;
+            participants.add(uid);
+        }
+        child.setParticipantUids(participants);
+        return father.attach(child, success, fail) ? 0 : -1;
     }
 
     public int AutoMonsterTide(int sourceId, int groupId, Integer[] ordersConfigId, int tideCount, int sceneLimit, int param6) {
@@ -380,9 +588,16 @@ public class ScriptLib {
     }
 
     public int BeginCameraSceneLook(LuaTable sceneLookParams) {
-        logger.warn("[LUA] Call unimplemented BeginCameraSceneLook with {}", printTable(sceneLookParams));
+        var scripts = sceneScriptManager.getIfExists();
+        return scripts == null ? -1 : scripts.getScene().getScriptCameraLook()
+                .begin(currentGroup.getIfExists(), contextUid(), sceneLookParams);
+    }
 
-        return 0;
+    public int KillMonsterTide(int groupId, int tideIndex) {
+        var group = currentGroup.getIfExists();
+        int targetGroup = groupId == 0 && group != null ? group.id : groupId;
+        return emu.grasscutter.scripts.service.ScriptMonsterTideActions.kill(
+                sceneScriptManager.getIfExists(), targetGroup, tideIndex);
     }
 
     public int CancelGroupTimerEvent(int groupID, String source) {
@@ -463,9 +678,22 @@ public class ScriptLib {
         return 0;
     }
 
-    public int ChangeToTargetLevelTag(int var1) {
-        logger.warn("[LUA] Call unimplemented ChangeToTargetLevelTag with {}", var1);
-        return 0;
+    public int ChangeToTargetLevelTag(int tagId) {
+        return emu.grasscutter.game.quest.QuestSceneTags.change(
+                getSceneScriptManager().getScene().getWorld().getHost(), tagId) ? 0 : -1;
+    }
+
+    public LuaTable GetCurrentLevelTagVec(int groupId) {
+        var result = new LuaTable();
+        var current = emu.grasscutter.game.quest.QuestSceneTags.current(
+                getSceneScriptManager().getScene().getWorld().getHost(), groupId);
+        for (int i = 0; i < current.size(); i++) result.set(i + 1, LuaValue.valueOf(current.get(i)));
+        return result;
+    }
+
+    public String GetLevelTagNameById(int tagId) {
+        var data = GameData.getLevelTagDataMap().get(tagId);
+        return data == null ? "" : data.getLevelTagName();
     }
 
     public boolean CheckIsInMpMode() {
@@ -500,9 +728,30 @@ public class ScriptLib {
         return getSceneScriptManager().getScene().getHost().getProgressManager().checkSceneTag(sceneId, sceneTagId);
     }
 
-    public int ClearPlayerEyePoint(int var1) {
-        // No-op stub: Cryo Regisvine (and similar) scripts spam this every tick.
-        return 0;
+    public int SetPlayerEyePoint(int targetRegionId, int relatedBigRegionId) {
+        return SetPlayerEyePointStream(targetRegionId, relatedBigRegionId, true);
+    }
+
+    public int SetPlayerEyePointStream(int targetRegionId, int relatedBigRegionId, boolean stream) {
+        return setPlayerEyePoint(targetRegionId, relatedBigRegionId, stream, -1);
+    }
+
+    public int SetPlayerEyePointLOD(int targetRegionId, int relatedBigRegionId, int lod) {
+        return setPlayerEyePoint(targetRegionId, relatedBigRegionId, true, lod);
+    }
+
+    private int setPlayerEyePoint(int targetRegionId, int relatedBigRegionId, boolean stream, int lod) {
+        var scripts = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        return scripts == null || group == null ? -1 : scripts.getScene().getScriptEyePoints()
+                .set(contextUid(), group, targetRegionId, relatedBigRegionId, stream, lod);
+    }
+
+    public int ClearPlayerEyePoint(int targetRegionId) {
+        var scripts = sceneScriptManager.getIfExists();
+        var group = currentGroup.getIfExists();
+        return scripts == null || group == null ? -1 : scripts.getScene().getScriptEyePoints()
+                .clear(contextUid(), group.id, targetRegionId);
     }
 
     public int CreateBlossomChestByGroupId(int groupId, int var2) {
@@ -529,9 +778,17 @@ public class ScriptLib {
         return 0;
     }
 
-    public int CreateFatherChallenge(int var1, int var2, int var3, LuaTable var4) {
-        logger.warn("[LUA] Call unimplemented CreateFatherChallenge with {} {} {} {}", var1, var2, var3, var4);
-
+    public int CreateFatherChallenge(int challengeId, int fatherIndex, int duration, LuaTable thresholds) {
+        var scene = getSceneScriptManager().getScene();
+        var group = currentGroup.getIfExists();
+        var config = GameData.getDungeonChallengeConfigDataMap().get(challengeId);
+        if (group == null || config == null || fatherIndex <= 0 || duration < 0
+                || config.getChallengeType() != emu.grasscutter.game.dungeons.challenge.enums.ChallengeType.CHALLENGE_FATHER_SUCC_IN_TIME
+                || (scene.getChallenge() != null && scene.getChallenge().inProgress())) return -1;
+        int success = thresholds.get("success").optint(0), fail = thresholds.get("fail").optint(0);
+        if (success < 0 || fail < 0) return -1;
+        scene.setChallenge(new emu.grasscutter.game.dungeons.challenge.FatherChallenge(
+                scene, group, fatherIndex, challengeId, duration, success, fail));
         return 0;
     }
 
@@ -552,6 +809,46 @@ public class ScriptLib {
         createGadget(configId, group.get());
 
         return 0;
+    }
+
+    public int CreateGadgetByConfigIdByPos(int configId, LuaTable bornPos, LuaTable face) {
+        var group = currentGroup.getIfExists();
+        if (group == null || group.gadgets == null) return -1;
+        var config = group.gadgets.get(configId);
+        if (config == null) return -1;
+        var manager = getSceneScriptManager();
+        var entity = manager.createGadget(group.id, group.block_id, config, config.state,
+                luaTablePosition(bornPos), luaTablePosition(face));
+        if (entity == null) return -1;
+        manager.addEntity(entity);
+        return 0;
+    }
+
+    public int ExecuteGroupLua(int groupId, String function, LuaTable args) {
+        return executeGroupLua(groupId, function, args, false);
+    }
+
+    public int ExecuteActiveGroupLua(int groupId, String function, LuaTable args) {
+        return executeGroupLua(groupId, function, args, true);
+    }
+
+    private int executeGroupLua(int groupId, String function, LuaTable args, boolean activeOnly) {
+        if (groupId <= 0 || function == null || function.isBlank()) return -1;
+        var manager = getSceneScriptManager();
+        var instance = manager.getGroupInstanceById(groupId);
+        var group = instance == null ? (activeOnly ? null : manager.getGroupById(groupId))
+                : instance.getLuaGroup();
+        if (group == null || group.getBindings() == null) return -1;
+        var candidate = group.getBindings().get(function);
+        if (!(candidate instanceof LuaValue callback) || !callback.isfunction()) return -1;
+        var result = withGroupContext(manager, group,
+                () -> manager.safetyCall(function, callback, args, group));
+        return result.isint() ? result.toint() : -1;
+    }
+
+    public int GetGadgetConfigId(LuaTable options) {
+        var entity = getSceneScriptManager().getScene().getEntityById(options.get("gadget_eid").toint());
+        return entity instanceof EntityBaseGadget ? entity.getConfigId() : 0;
     }
 
     public int CreateGroupTimerEvent(int groupID, String source, double time) {
@@ -618,10 +915,8 @@ public class ScriptLib {
         return 0;
     }
 
-    public int DelPlayerGroupVisionType(int[] uids, int[] var2) {
-        logger.warn("[LUA] Call unimplemented DelPlayerGroupVisionType with {} {}", uids, var2);
-
-        return 0;
+    public int DelPlayerGroupVisionType(int[] uids, int[] types) {
+        return getSceneScriptManager().getScene().getScriptVision().change(uids, types, ScriptVisionManager.Operation.REMOVE);
     }
 
     public int DelSceneTag(int sceneId, int sceneTagId) {
@@ -681,10 +976,10 @@ public class ScriptLib {
         return 0;
     }
 
-    public int EnterWeatherArea(int var1) {
-        logger.warn("[LUA] Call unimplemented EnterWeatherArea with {}", var1);
-
-        return 0;
+    public int EnterWeatherArea(int weatherAreaId) {
+        var manager = sceneScriptManager.getIfExists();
+        return manager == null ? -1 : emu.grasscutter.game.quest.QuestWeatherAreas.enter(
+                manager.getScene(), contextUid(), weatherAreaId);
     }
 
     public int ExpeditionChallengeEnterRegion(boolean var1) {
@@ -817,6 +1112,30 @@ public class ScriptLib {
         return getSceneScriptManager().getGroupTempValue(tempValueGroup(var2, currentGroup.get().id), name);
     }
 
+    public int ChangeGroupTempValue(String name, int delta, LuaTable options) {
+        return getSceneScriptManager().changeGroupTempValue(
+                tempValueGroup(options, currentGroup.get().id), name, delta) ? 0 : -1;
+    }
+
+    public LuaTable GetGroupAliveMonsterList(int groupId) {
+        int resolved = groupId == 0 ? currentGroup.get().id : groupId;
+        var result = new LuaTable();
+        int index = 1;
+        for (var entity : getSceneScriptManager().getScene().getEntities().values()) {
+            if (entity instanceof EntityMonster && entity.getGroupId() == resolved && entity.isAlive())
+                result.set(index++, LuaValue.valueOf(entity.getConfigId()));
+        }
+        return result;
+    }
+
+    public LuaTable GetGameTimePassed() {
+        var result = new LuaTable();
+        var world = getSceneScriptManager().getScene().getWorld();
+        result.set(1, LuaValue.valueOf(world.getGameTimeHours()));
+        result.set(2, LuaValue.valueOf(world.getGameTime()));
+        return result;
+    }
+
     static int tempValueGroup(LuaTable options, int currentGroupId) {
         if (!options.get("group_id").isnil()) return options.get("group_id").toint();
         if (!options.get(1).isnil()) return options.get(1).toint();
@@ -929,7 +1248,7 @@ public class ScriptLib {
         var players = scriptManager.getScene().getPlayers();
         var result = new LuaTable();
         for (int i = 0; i < players.size(); i++) {
-            result.set(Integer.toString(i + 1), players.get(i).getUid());
+            result.set(i + 1, LuaValue.valueOf(players.get(i).getUid()));
         }
         return result;
     }
@@ -1074,10 +1393,11 @@ public class ScriptLib {
     }
 
     public int ModifyFatherChallengeProperty(int challengeId, int propertyTypeIndex, int value) {
-        val propertyType = FatherChallengeProperty.values()[propertyTypeIndex];
-        logger.warn("[LUA] Call unimplemented ModifyFatherChallengeProperty with {} {} {}", challengeId, propertyType.name(), value);
-
-        return 0;
+        var active = getSceneScriptManager().getScene().getChallenge();
+        if (!(active instanceof emu.grasscutter.game.dungeons.challenge.FatherChallenge father)
+                || father.getChallengeIndex() != challengeId || propertyTypeIndex < 0
+                || propertyTypeIndex >= FatherChallengeProperty.values().length) return -1;
+        return father.modify(FatherChallengeProperty.values()[propertyTypeIndex], value) ? 0 : -1;
     }
 
     public int MoveAvatarByPointArray(int uid, int targetId, LuaTable var3, String var4) {
@@ -1098,25 +1418,14 @@ public class ScriptLib {
         return TransPlayerToPos(var1);
     }
 
-    public int PlayCutScene(int cutsceneId, int var2) {
-        logger.debug("[LUA] Call PlayCutScene with {} {}", cutsceneId, var2);
-        var scriptManager = getSceneScriptManager();
-        getCurrentGroup().ifPresent(group -> scriptManager.registerCutscene(cutsceneId, group.id));
-        if (emu.grasscutter.config.Configuration.GAME_OPTIONS.disableCutscenes) {
-            logger.debug("Cutscene {} suppressed by game.disableCutscenes.", cutsceneId);
-            scriptManager.finishCutscene(cutsceneId);
-            return 0;
-        }
-        // Scene triggers need the client's finish acknowledgement to resume after the movie.
-        scriptManager.getScene().broadcastPacket(new PacketCutsceneBeginNotify(cutsceneId, true));
-
-        return 0;
+    public int PlayCutScene(int cutsceneId, int waitSeconds) {
+        return ScriptCutsceneActions.play(sceneScriptManager.getIfExists(),
+                currentGroup.getIfExists(), cutsceneId, waitSeconds);
     }
 
-    public int PlayCutSceneWithParam(int cutsceneId, int var2, LuaTable var3) {
-        logger.warn("[LUA] Call unimplemented PlayCutScene with {} {} {}", cutsceneId, var2, var3);
-
-        return 0;
+    public int PlayCutSceneWithParam(int cutsceneId, int waitSeconds, LuaTable parameters) {
+        return ScriptCutsceneActions.playWithParameters(sceneScriptManager.getIfExists(),
+                currentGroup.getIfExists(), cutsceneId, waitSeconds, parameters);
     }
 
     public void PrintContextLog(String msg) {
@@ -1137,6 +1446,10 @@ public class ScriptLib {
         logger.warn("[LUA] Call unimplemented RefreshBlossomGroup with {}", printTable(var1));
 
         return 0;
+    }
+
+    public int GoToFlowSuite(int groupId, int suiteId) {
+        return SceneFlowSuites.goTo(getSceneScriptManager(),groupId,suiteId);
     }
 
     public int RefreshGroup(LuaTable table) {
@@ -1181,6 +1494,14 @@ public class ScriptLib {
             return 1;
         }
         getSceneScriptManager().getScene().removeEntity(entity, VisionType.VisionType_VISION_REMOVE);
+        if (entity instanceof EntityNPC) {
+            var instance = getSceneScriptManager().getGroupInstanceById(groupId);
+            boolean changed = false;
+            if (instance != null) synchronized (instance) {
+                changed = instance.getFlowNpcConfigs().remove(configId);
+            }
+            if (changed) getSceneScriptManager().getScene().saveGroups();
+        }
         return 0;
     }
 
@@ -1242,23 +1563,33 @@ public class ScriptLib {
         return 0;
     }
 
-    public int SetEntityServerGlobalValueByConfigId(int cfgId, String sgvName, int value) {
+    public int SetEntityServerGlobalValueByConfigId(int cfgId, String sgvName, float value) {
         logger.debug("[LUA] Call SetEntityServerGlobalValueByConfigId with {}, {}, {}", cfgId, sgvName, value);
         var scriptManager = this.getSceneScriptManager();
         if (scriptManager == null) return 1;
         var scene = scriptManager.getScene();
         var entity = scene.getEntityByConfigId(cfgId, getCurrentGroup().get().id);
         if (entity == null) return 2;
+        if (sgvName == null || sgvName.isBlank() || !Float.isFinite(value)) return -1;
+        entity.getGlobalAbilityValues().put(sgvName, value);
         scene.runWhenHostInitialized(() -> scene.broadcastPacket(
                 new PacketServerGlobalValueChangeNotify(entity, sgvName, value)));
         return 0;
     }
 
-    public int SetEntityServerGlobalValueByEntityId(int entityId, String sgvName, int value) {
+    public int SetEntityServerGlobalValueByEntityId(int entityId, String sgvName, float value) {
         logger.debug("[LUA] Call SetEntityServerGlobalValueByEntityId with {}, {}, {}", entityId, sgvName, value);
         var scriptManager = this.getSceneScriptManager();
         if (scriptManager == null) return 1;
         var scene = scriptManager.getScene();
+        GameEntity entity = scene.getEntityById(entityId);
+        if (entity == null) {
+            entity = scene.getPlayers().stream().map(player -> player.getTeamManager().getEntity())
+                    .filter(team -> team != null && team.getId() == entityId).findFirst().orElse(null);
+        }
+        if (entity == null) return 2;
+        if (sgvName == null || sgvName.isBlank() || !Float.isFinite(value)) return -1;
+        entity.getGlobalAbilityValues().put(sgvName, value);
         scene.runWhenHostInitialized(() -> scene.broadcastPacket(
                 new PacketServerGlobalValueChangeNotify(entityId, sgvName, value)));
         return 0;
@@ -1369,6 +1700,37 @@ public class ScriptLib {
         variables.put(var, value);
         getSceneScriptManager().callEvent(new ScriptArgs(groupId, EventType.EVENT_VARIABLE_CHANGE, value, old).setEventSource(var));
         return 0;
+    }
+
+    public int SetGroupLogicStateValue(String name, int value) {
+        return getSceneScriptManager().setGroupLogicState(currentGroup.getIfExists(), name, value);
+    }
+
+    public int GetAranaraCollectableCountByTypeAndState(int type, int state) {
+        return emu.grasscutter.game.quest.aranara.AranaraCollectionRuntime.getCount(
+                getSceneScriptManager().getScene(), type, state);
+    }
+
+    public int RecieveAllAranaraCollectionByType(int type) {
+        var group = currentGroup.getIfExists();
+        return group == null ? -1 : emu.grasscutter.game.quest.aranara.AranaraCollectionRuntime.receiveAll(
+                getSceneScriptManager().getScene(), group.id, type);
+    }
+
+    public int GetDeathZoneStatus(int zoneId) {
+        var group = currentGroup.getIfExists();
+        return group == null ? -1 : emu.grasscutter.game.quest.deathzone.DeathZoneRuntime.getStatus(
+                getSceneScriptManager().getScene(), group.id, zoneId);
+    }
+
+    public int ChangeDeathZone(int zoneId, LuaTable options) {
+        var group = currentGroup.getIfExists();
+        if (group == null || !options.get("is_open").isboolean()) return -1;
+        return emu.grasscutter.game.quest.deathzone.DeathZoneRuntime.change(
+                getSceneScriptManager().getScene(), group.id, zoneId,
+                options.get("is_open").toboolean(), (scene, groupId, id, state, uid) ->
+                        scene.getScriptManager().callEvent(new ScriptArgs(groupId,
+                                EventType.EVENT_DEATH_ZONE_STATUS_CHANGE, id, state).setUid(uid)));
     }
 
     public int SetGroupVariableValueByGroup(String var, int value, int groupId) {
@@ -1497,15 +1859,46 @@ public class ScriptLib {
         return 0;
     }
 
-    public int SetTeamEntityGlobalFloatValue(int[] sceneUidList, String var2, int var3) {
-        logger.warn("[LUA] Call unimplemented SetTeamEntityGlobalFloatValue with {} {} {}", sceneUidList, var2, var3);
-
+    public int SetTeamEntityGlobalFloatValue(int[] sceneUidList, String key, float value) {
+        for (int uid : sceneUidList) if (changeTeamGlobalValue(uid, key, value, false) != 0) return -1;
         return 0;
     }
 
-    public int SetTeamServerGlobalValue(int sceneUid, String var2, int var3) {
-        logger.warn("[LUA] Call unimplemented SetTeamServerGlobalValue with {} {} {}", sceneUid, var2, var3);
+    public int SetTeamServerGlobalValue(int uid, String key, float value) {
+        return changeTeamGlobalValue(uid, key, value, false);
+    }
 
+    public int AddTeamServerGlobalValue(int uid, String key, float value) {
+        return changeTeamGlobalValue(uid, key, value, true);
+    }
+
+    public float GetTeamServerGlobalValue(int uid, String key) {
+        var player = scenePlayer(uid);
+        var team = player == null ? null : player.getTeamManager().getEntity();
+        return team == null ? 0 : team.getGlobalAbilityValues().getOrDefault(key, 0f);
+    }
+
+    public float GetTeamAbilityFloatValue(int uid, String key) {
+        return GetTeamServerGlobalValue(uid, key);
+    }
+
+    private Player scenePlayer(int uid) {
+        var manager = sceneScriptManager.getIfExists();
+        if (manager == null) return null;
+        return manager.getScene().getPlayers().stream().filter(player -> player.getUid() == uid)
+                .findFirst().orElse(null);
+    }
+
+    private int changeTeamGlobalValue(int uid, String key, float value, boolean add) {
+        if (key == null || key.isBlank() || !Float.isFinite(value)) return -1;
+        var player = scenePlayer(uid);
+        var team = player == null ? null : player.getTeamManager().getEntity();
+        if (team == null) return -1;
+        float updated = team.getGlobalAbilityValues().compute(key,
+                (ignored, previous) -> add ? (previous == null ? 0 : previous) + value : value);
+        var scene = getSceneScriptManager().getScene();
+        scene.runWhenHostInitialized(() -> scene.broadcastPacket(
+                new PacketServerGlobalValueChangeNotify(team, key, updated)));
         return 0;
     }
 
@@ -1518,25 +1911,9 @@ public class ScriptLib {
      * {@code ESP_Monster_LupiBoreas} (cyan fog / silhouette open-world).
      */
     public int SetWeatherAreaState(int weatherAreaId, int state) {
-        logger.debug("[LUA] Call SetWeatherAreaState with {} {}", weatherAreaId, state);
-        var scene = this.getSceneScriptManager().getScene();
-        if (scene == null) {
-            return 0;
-        }
-        if (state != 0) {
-            // Enable: apply this weather area; climate comes from WeatherExcel defaultClimate.
-            scene.getPlayers().forEach(p -> p.setWeather(weatherAreaId, ClimateType.CLIMATE_NONE));
-        } else {
-            // Disable: only clear players still holding this area, restore open-world sunny.
-            scene.getPlayers()
-                    .forEach(
-                            p -> {
-                                if (p.getWeatherId() == weatherAreaId) {
-                                    p.setWeather(1, ClimateType.CLIMATE_SUNNY);
-                                }
-                            });
-        }
-        return 0;
+        var manager = sceneScriptManager.getIfExists();
+        return manager == null ? -1 : emu.grasscutter.game.quest.QuestWeatherAreas.setState(
+                manager.getScene(), weatherAreaId, state);
     }
 
     public int SetWorktopOptions(LuaTable table) {
@@ -1619,16 +1996,33 @@ public class ScriptLib {
         return 0;
     }
 
-    public int StartFatherChallenge(int var1) {
-        logger.warn("[LUA] Call unimplemented StartFatherChallenge with {}", var1);
+    public int StartFatherChallenge(int index) {
+        var active = getSceneScriptManager().getScene().getChallenge();
+        if (!(active instanceof emu.grasscutter.game.dungeons.challenge.FatherChallenge father)
+                || father.getChallengeIndex() != index) return -1;
+        father.start();
+        return father.inProgress() ? 0 : -1;
+    }
 
-        return 0;
+    private emu.grasscutter.game.dungeons.challenge.WorldChallenge challengeByIndex(int index) {
+        var active = getSceneScriptManager().getScene().getChallenge();
+        if (active != null && active.getChallengeIndex() == index) return active;
+        return active instanceof emu.grasscutter.game.dungeons.challenge.FatherChallenge father
+                ? father.child(index) : null;
+    }
+
+    public int SetChallengeDuration(int index, int seconds) {
+        var challenge = challengeByIndex(index);
+        return challenge != null && challenge.setRemainingDuration(seconds) ? 0 : -1;
+    }
+
+    public int AddChallengeDuration(int index, int seconds, boolean canExceedLimit) {
+        var challenge = challengeByIndex(index);
+        return challenge != null && challenge.addDuration(seconds, canExceedLimit) ? 0 : -1;
     }
 
     public int StartGallery(int galleryId) {
-        logger.warn("[LUA] Call unimplemented StartGallery with {}", galleryId);
-
-        return 0;
+        return getSceneScriptManager().getScene().getScriptGalleries().start(currentGroup.get().id, galleryId);
     }
 
     public int StartHomeGallery(int galleryId, int uid) {
@@ -1660,15 +2054,15 @@ public class ScriptLib {
         var scene = getSceneScriptManager().getScene();
         if (LiyueCloudDungeonSupport.isTargetScene(scene) && var1 >= 100 && var1 <= 102)
             return LiyueCloudDungeonSupport.stopFireChallenge(scene, var1, var2);
-        logger.warn("[LUA] Call unimplemented StopChallenge with {} {}", var1, var2);
-
+        var challenge = challengeByIndex(var1);
+        if (challenge == null || !challenge.inProgress() || (var2 != 0 && var2 != 1)) return -1;
+        if (var2 == 1) challenge.done();
+        else challenge.fail();
         return 0;
     }
 
     public int StopGallery(int galleryId, boolean var2) {
-        logger.warn("[LUA] Call unimplemented StopGallery with {} {}", galleryId, var2);
-
-        return 0;
+        return getSceneScriptManager().getScene().getScriptGalleries().stop(currentGroup.get().id, galleryId, var2);
     }
 
     public int StopPlatform(int configId) {

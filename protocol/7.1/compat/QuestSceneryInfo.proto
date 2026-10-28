@@ -1,0 +1,9 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "QuestScenery.proto";
+
+// HHMAMMBMJAC. Parser 1057E820 recognizes message-list tag42.
+// A5CFD10 enumerates references, reads each FDFGHCOBFFF and updates its dictionary.
+message QuestSceneryInfo {
+  repeated QuestScenery scenery_list = 8;
+}

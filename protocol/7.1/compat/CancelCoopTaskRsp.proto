@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// AABHBHPPDDH, CmdId 20629. Parser RVA 11B1F220; F322210 clears current progress.
+message CancelCoopTaskRsp {
+  int32 retcode = 9;
+  uint32 chapter_id = 14;
+}

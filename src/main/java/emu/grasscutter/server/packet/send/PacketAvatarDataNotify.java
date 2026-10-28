@@ -19,6 +19,7 @@ public class PacketAvatarDataNotify extends BasePacket {
                         .addAllOwnedTraceEffectList(player.getTraceEffectList());
 
         player.getAvatars().forEach(avatar -> proto.addAvatarList(avatar.toProto()));
+        player.getTeamManager().getQuestPartyAvatars().forEach(avatar -> proto.addAvatarList(avatar.toProto()));
 
         player
                 .getTeamManager()

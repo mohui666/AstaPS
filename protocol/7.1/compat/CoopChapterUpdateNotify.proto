@@ -1,0 +1,8 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "CoopChapter.proto";
+
+// NCEPMPPLJCN, CmdId 6477. Parser RVA 92BAB20; message codec tag 0x42.
+message CoopChapterUpdateNotify {
+  repeated CoopChapter chapter_list = 8;
+}

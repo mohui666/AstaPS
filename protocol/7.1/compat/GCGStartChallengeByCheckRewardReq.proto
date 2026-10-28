@@ -1,0 +1,10 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+
+// NIPEKIEGKFC, CmdId 3010. Writer RVA 92EAF20.
+// Sent by LEJNNHDEGKK::JMMNAEBOEPH (782A7B0).
+message GCGStartChallengeByCheckRewardReq {
+  uint32 level_type = 1;
+  uint32 level_id = 5;
+  uint32 config_id = 14;
+}

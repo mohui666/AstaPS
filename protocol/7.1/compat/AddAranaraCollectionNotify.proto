@@ -1,0 +1,11 @@
+syntax = "proto3";
+option java_package = "emu.grasscutter.net.proto";
+import "AranaraCollectionState.proto";
+
+// 7.1 JJJGHNOLJHI, CmdId 25348; receiver F178D50 verifies the four logical field meanings.
+message AddAranaraCollectionNotify {
+  AranaraCollectionState from_state = 9;
+  AranaraCollectionState target_state = 12;
+  uint32 collection_id = 13;
+  uint32 collection_type = 14;
+}
