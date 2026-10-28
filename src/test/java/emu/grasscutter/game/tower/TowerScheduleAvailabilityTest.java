@@ -28,13 +28,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.io.TempDir;
 
 @ExtendWith(ServerResourceFixture.class)
 @ResourceLock("GameData")
@@ -253,6 +258,84 @@ public final class TowerScheduleAvailabilityTest {
 
         assertEquals(true, isPlayable.invoke(system, schedule("schedules")));
         assertEquals(false, isPlayable.invoke(system, empty));
+    }
+
+    @Test
+    void officialSeasonIsSelectedByDateEvenWhenOnlyOldSeasonsHaveScripts() throws Exception {
+        GAME_OPTIONS.tower.scheduleId = 0;
+        var old = datedSchedule(123, "2026-09-16 04:00:00", "2026-10-16 03:59:59");
+        var current = datedSchedule(124, "2026-10-16 04:00:00", "2026-11-16 03:59:59");
+        var system = system(old);
+        GameData.getTowerScheduleDataMap().put(124, current);
+
+        assertSame(current, system.getCurrentTowerScheduleData(localDate("2026-10-28T12:00:00")));
+        assertSame(old, system.getCurrentTowerScheduleData(localDate("2026-10-16T03:59:59")));
+        assertSame(current, system.getCurrentTowerScheduleData(localDate("2026-10-16T04:00:00")));
+        assertFalse(system.isFloorPlayable(2009));
+        var window = system.getScheduleWindow(localDate("2026-10-28T12:00:00"));
+        assertEquals(localDate("2026-10-16T04:00:00"), window.startTime());
+        assertEquals(localDate("2026-11-16T04:00:00"), window.endTime());
+        assertEquals(Date.from(Instant.parse("2026-10-15T20:00:00Z")), window.startTime());
+        assertEquals(Date.from(Instant.parse("2026-11-15T20:00:00Z")), window.endTime());
+    }
+
+    @Test
+    void datedPackDoesNotSubstituteAnExpiredSeason() {
+        GAME_OPTIONS.tower.scheduleId = 0;
+        var old = datedSchedule(45, "2022-06-01 04:00:00", "2022-06-16 03:59:59");
+        var system = system(old);
+
+        assertNull(system.getCurrentTowerScheduleData(localDate("2026-10-28T12:00:00")));
+    }
+
+    @Test
+    void reportsMissingMoonBattleScenesWithoutTreatingEntranceScriptsAsEnough() throws Exception {
+        var system = system(schedule("schedules"));
+        @SuppressWarnings("unchecked")
+        var scenes = (Map<Integer, Boolean>) field(TowerSystem.class, "scriptedScenes").get(system);
+        for (int index = 1; index <= 8; index++) scenes.put(5000 + index, true);
+        for (int index = 9; index <= 12; index++) scenes.put(5000 + index, false);
+
+        assertEquals(List.of(5009, 5010, 5011, 5012), system.getMissingBattleScenes(schedule("schedules")));
+        assertFalse(system.isDungeonPlayable(4009));
+        assertFalse(system.isFloorPlayable(2009));
+        scenes.put(5009, true);
+        assertTrue(system.isFloorPlayable(2009));
+        GameData.getTowerLevelDataMap().remove(903);
+        assertFalse(system.isFloorPlayable(2009));
+    }
+
+    @Test
+    void absentSeasonReturnsAnErrorResponseInsteadOfThrowing() throws Exception {
+        GAME_OPTIONS.tower.scheduleId = 0;
+        var system = system(datedSchedule(45, "2022-06-01 04:00:00", "2022-06-16 03:59:59"));
+
+        var response = TowerAllDataRsp.parseFrom(new PacketTowerAllDataRsp(system, null).getData());
+
+        assertNotEquals(0, response.getRetcode());
+    }
+
+    @Test
+    void sceneStubDoesNotPassTheBattleResourceCheck(@TempDir Path directory) throws Exception {
+        Files.writeString(directory.resolve("scene33899.lua"), "scene_config = {}");
+        assertFalse(TowerSystem.hasBattleScripts(directory, 33899));
+        Files.writeString(directory.resolve("scene33899_group233899001.lua"), "monsters = {}");
+        assertFalse(TowerSystem.hasBattleScripts(directory, 33899));
+        Files.writeString(directory.resolve("scene33899_block33899.lua"), "groups = {}");
+        assertTrue(TowerSystem.hasBattleScripts(directory, 33899));
+    }
+
+    private static TowerScheduleData datedSchedule(int id, String open, String close) {
+        var data = JsonUtils.decode("""
+                {"scheduleId":%d,"entranceFloorId":[1001,1002,1003,1004,1005,1006,1007,1008],
+                 "closeTime":"%s","LHOGNLPBILP":[{"openTime":"%s","floorList":[2009,2010,2011,2012]}]}
+                """.formatted(id, close, open), TowerScheduleData.class);
+        data.onLoad();
+        return data;
+    }
+
+    private static Date localDate(String time) {
+        return Date.from(LocalDateTime.parse(time).toInstant(ZoneOffset.ofHours(8)));
     }
 
     private static TowerScheduleData schedule(String key) {

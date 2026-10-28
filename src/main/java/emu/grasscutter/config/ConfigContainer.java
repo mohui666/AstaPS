@@ -539,23 +539,21 @@ public class ConfigContainer {
         /** Spiral Abyss. */
         public static class TowerOptions {
             /**
-             * Which rotation to serve, or 0 to rotate on the 1st and the 16th like the game does.
+             * Which rotation to serve, or 0 to follow the official resource open/close times.
              *
-             * <p>Only rotations this server can actually build are ever chosen: a rotation whose
-             * floors point at dungeon scenes with no group scripts would open onto empty rooms, so
-             * those are skipped. Setting an id here serves it whether or not it passes that check.
+             * <p>Missing battle scripts reject entry instead of silently selecting an old season.
+             * An explicit id selects that season, subject to the same entry resource checks.
              */
             public int scheduleId = 0;
 
             /**
-             * Cycle through rotations on the 1st and the 16th instead of always serving the newest.
+             * Cycle through historical rotations daily at 04:00 instead of following official dates.
              *
-             * <p>Off by default: the newest rotation this server can build is the closest it gets to
-             * the live game, and rotating only ever moves backwards from it.
+             * <p>Off by default. This is an operator option for historical seasons.
              */
             public boolean rotate = false;
 
-            /** How many of the newest playable rotations to cycle through. 0 uses every one. */
+            /** How many of the newest resource rotations to cycle through. 0 uses every one. */
             public int rotationPool = 12;
 
             /** Hand floors 1-8 over already cleared. Off plays the corridor for real. */

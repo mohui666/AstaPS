@@ -93,6 +93,9 @@ public final class DungeonSystem extends BaseGameSystem {
     }
 
     public boolean enterDungeon(Player player, int pointId, int dungeonId, boolean savePrevious) {
+        if (emu.grasscutter.game.activity.ActivityAvailability.isRemovedEventDungeon(dungeonId)) {
+            return false;
+        }
         DungeonData data = GameData.getDungeonDataMap().get(dungeonId);
 
         if (data == null) {
@@ -146,6 +149,9 @@ public final class DungeonSystem extends BaseGameSystem {
     /** used in tower dungeons handoff */
     public boolean handoffDungeon(
             Player player, int dungeonId, List<DungeonSettleListener> dungeonSettleListeners) {
+        if (emu.grasscutter.game.activity.ActivityAvailability.isRemovedEventDungeon(dungeonId)) {
+            return false;
+        }
         DungeonData data = GameData.getDungeonDataMap().get(dungeonId);
 
         if (data == null) {

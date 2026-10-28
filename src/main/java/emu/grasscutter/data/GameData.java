@@ -16,6 +16,7 @@ import emu.grasscutter.data.excels.activity.ActivityWatcherData;
 import emu.grasscutter.data.excels.avatar.*;
 import emu.grasscutter.data.excels.codex.*;
 import emu.grasscutter.data.excels.dungeon.*;
+import emu.grasscutter.data.excels.leylinechallenge.*;
 import emu.grasscutter.data.excels.giving.GivingData;
 import emu.grasscutter.data.excels.giving.GivingGroupData;
 import emu.grasscutter.data.excels.monster.MonsterCurveData;
@@ -59,6 +60,11 @@ import lombok.*;
 
 @SuppressWarnings({"unused", "MismatchedQueryAndUpdateOfCollection"})
 public final class GameData {
+    @Getter private static final Int2ObjectMap<LeyLineChallengeData> leyLineChallengeDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<LeyLineDifficultyData> leyLineDifficultyDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<LeyLineLevelData> leyLineLevelDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<LeyLineLevelConfigData> leyLineLevelConfigDataMap = new Int2ObjectOpenHashMap<>();
+    @Getter private static final Int2ObjectMap<LeyLineDungeonData> leyLineDungeonDataMap = new Int2ObjectOpenHashMap<>();
     @Getter private static final Int2ObjectMap<LevelTagData> levelTagDataMap = new Int2ObjectOpenHashMap<>();
     @Getter private static final Int2ObjectMap<LevelTagGroupData> levelTagGroupDataMap = new Int2ObjectOpenHashMap<>();
     @Getter private static final Int2ObjectMap<FeatureTagGroupData> featureTagGroupDataMap = new Int2ObjectOpenHashMap<>();
@@ -77,6 +83,9 @@ public final class GameData {
     @Getter private static final Int2ObjectMap<String> abilityHashes = new Int2ObjectOpenHashMap<>();
 
     @Getter private static final Map<String, List<TalentData>> talents = new HashMap<>();
+    @Getter
+    private static final Map<String, Map<Integer, MonsterPreviewData>> monsterPreviewDataMap =
+            new HashMap<>();
     @Getter private static final Map<String, ConfigEntityAvatar> avatarConfigData = new HashMap<>();
     @Getter
     private static final Int2ObjectMap<AvatarTraceEffectData> avatarTraceEffectDataMap = new Int2ObjectLinkedOpenHashMap<AvatarTraceEffectData>();

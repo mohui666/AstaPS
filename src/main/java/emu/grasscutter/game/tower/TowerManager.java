@@ -11,6 +11,7 @@ import emu.grasscutter.game.dungeons.*;
 import emu.grasscutter.game.player.*;
 import emu.grasscutter.game.props.FightProperty;
 import emu.grasscutter.game.world.Position;
+import emu.grasscutter.game.world.Scene;
 import emu.grasscutter.net.proto.PropChangeReasonOuterClass.PropChangeReason;
 import emu.grasscutter.net.proto.VisionTypeOuterClass.VisionType;
 import emu.grasscutter.scripts.ScriptLoader;
@@ -19,21 +20,8 @@ import java.util.*;
 import lombok.*;
 
 public class TowerManager extends BasePlayerManager {
-    /**
-     * Mid-half transition cutscene: {@code Cs_TowerV2_Stands_Down_Convert}. It used to be 59, which
-     * is an Enkanomiya cutscene, together with a ShowLoadingScreen whose random LoadingTips text
-     * (including client test strings) showed up between the halves. The official mid-level notify
-     * that shows the proper text has no known 7.1 CmdId.
-     */
-    private static final int MID_HALF_CUTSCENE_ID = 150;
-    /**
-     * Minimum real-time seconds before the team swap. The swap normally happens when the cutscene
-     * finishes; {@link #MID_HALF_FALLBACK_SECONDS} covers a cutscene that never reports back.
-     * {@link emu.grasscutter.server.scheduler.ServerTaskScheduler} delays are in <b>seconds</b>
-     * (one scheduler tick ≈ one wall-clock second), not {@code tickRateMs} game-loop ticks.
-     */
+    /** Server scheduler delays are real seconds; the swap stays in the current dungeon scene. */
     private static final int MID_HALF_TRANSITION_SECONDS = 1;
-    private static final int MID_HALF_FALLBACK_SECONDS = 10;
 
     private static final List<DungeonSettleListener> towerDungeonSettleListener =
             List.of(new TowerDungeonSettleListener());
@@ -50,12 +38,15 @@ public class TowerManager extends BasePlayerManager {
     /** Last chamber star count computed while a challenge was still available. */
     private int lastSettledStars = 0;
 
-    /** Pending lower-half swap while cutscene 59 / loading tip is showing. */
+    /** Pending lower-half swap in the current dungeon instance. */
     @Getter private boolean midHalfCutscenePending;
     private int pendingMidHalfTeamId = -1;
     private Position pendingMidHalfPos;
     private Position pendingMidHalfRot;
-    /** Wall-clock earliest time the mid-half swap may run (CutSceneFinish is often instant). */
+    private Scene pendingMidHalfScene;
+    private int pendingMidHalfFloorId;
+    private int pendingMidHalfChamber;
+    /** Minimum wall-clock hold before changing the active party. */
     private long midHalfEarliestSwapMs;
     /**
      * Snapshot of abyss team GUIDs at mid-half start. {@link TowerData#abyssTeamGuids} can be
@@ -262,6 +253,9 @@ public class TowerManager extends BasePlayerManager {
         pendingMidHalfRot = null;
         midHalfEarliestSwapMs = 0;
         pendingMidHalfTeamGuids = null;
+        pendingMidHalfScene = null;
+        pendingMidHalfFloorId = 0;
+        pendingMidHalfChamber = 0;
         abyssCarryRemainingSeconds = 0;
         inProgress = false;
         currentTimeLimit = 0;
@@ -333,7 +327,7 @@ public class TowerManager extends BasePlayerManager {
     }
 
     /**
-     * When the daily/pinned rotation advances, clear stars and chest claims on floors 9-12. Floors
+     * When the official season or operator-selected rotation advances, clear stars and chest claims on floors 9-12. Floors
      * 9-10 often keep the same floorId across rotations, so without this wipe the client still shows
      * yesterday's checkmarks while monsters already changed.
      *
@@ -655,11 +649,14 @@ public class TowerManager extends BasePlayerManager {
     }
 
     public void clearAbyssResume() {
+        boolean pendingSwap = midHalfCutscenePending;
+        clearPendingMidHalfSwap();
         var data = getTowerData();
         data.abyssTeamGuids = new ArrayList<>();
         data.abyssTempTeamIndex = -1;
         data.resumeAbyssOnLogin = false;
         abyssCarryRemainingSeconds = 0;
+        if (pendingSwap) player.sendPacket(new PacketCanUseSkillNotify(true));
     }
 
     public void rememberAbyssCarryRemaining(int remainingSeconds) {
@@ -828,7 +825,11 @@ public class TowerManager extends BasePlayerManager {
         }
 
         var dungeonId = levelData.getDungeonId();
-        if (GameData.getDungeonDataMap().get(dungeonId) == null) {
+        if (!player.getServer().getTowerSystem().isDungeonPlayable(dungeonId)) {
+            Grasscutter.getLogger().warn(
+                    "Tower entry rejected: dungeon {} is missing scene battle scripts", dungeonId);
+            emu.grasscutter.command.CommandHandler.sendMessage(
+                    player, "当期深境螺旋战斗资源不完整，暂无法进入。");
             restoreLevel(previousFloorId, previousLevel, previousLevelId);
             return false;
         }
@@ -1138,6 +1139,9 @@ public class TowerManager extends BasePlayerManager {
     }
 
     public void mirrorTeamSetUp(int teamId) {
+        var originScene = player.getScene();
+        if (originScene == null || originScene.getDungeonManager() == null
+                || !originScene.getDungeonManager().isTowerDungeon()) return;
         getTowerData().abyssTempTeamIndex = teamId;
         getTowerData().resumeAbyssOnLogin = true;
 
@@ -1147,6 +1151,9 @@ public class TowerManager extends BasePlayerManager {
         pendingMidHalfTeamId = teamId;
         pendingMidHalfPos = new Position(bornPos);
         pendingMidHalfRot = new Position(bornRot);
+        pendingMidHalfScene = originScene;
+        pendingMidHalfFloorId = getTowerData().currentFloorId;
+        pendingMidHalfChamber = getCurrentLevel();
         midHalfCutscenePending = true;
         midHalfEarliestSwapMs =
                 System.currentTimeMillis() + MID_HALF_TRANSITION_SECONDS * 1000L;
@@ -1181,13 +1188,13 @@ public class TowerManager extends BasePlayerManager {
                     .warn("Tower mid-half end upper challenge uid={}: {}", player.getUid(), t.toString());
         }
 
-        int delayTicks = secondsToSchedulerDelay(MID_HALF_FALLBACK_SECONDS);
+        int delayTicks = secondsToSchedulerDelay(MID_HALF_TRANSITION_SECONDS);
         Grasscutter.getLogger()
                 .info(
-                        "Tower mid-half uid={} teamId={} fallback={}s (schedulerDelay={}) pos={}",
+                        "Tower mid-half uid={} teamId={} transition={}s (schedulerDelay={}) pos={}",
                         player.getUid(),
                         teamId,
-                        MID_HALF_FALLBACK_SECONDS,
+                        MID_HALF_TRANSITION_SECONDS,
                         delayTicks,
                         bornPos);
 
@@ -1198,65 +1205,59 @@ public class TowerManager extends BasePlayerManager {
                         new PacketTowerCurLevelRecordChangeNotify(
                                 getTowerData().currentFloorId, getCurrentLevel(), false, player));
 
-        player.sendPacket(new PacketTowerMiddleLevelChangeTeamNotify());
-        player.sendPacket(new PacketCutsceneBeginNotify(MID_HALF_CUTSCENE_ID));
-        Grasscutter.getLogger()
-                .info("Tower mid-half uid={} cutscene={}", player.getUid(), MID_HALF_CUTSCENE_ID);
+        player.sendPacket(new PacketCanUseSkillNotify(false));
 
         final int applyTeamId = teamId;
+        final Position transitionPosition = pendingMidHalfPos;
         player
                 .getServer()
                 .getScheduler()
                 .scheduleDelayedTask(
                         () -> {
-                            if (!midHalfCutscenePending || pendingMidHalfTeamId != applyTeamId) {
+                            if (!midHalfCutscenePending || pendingMidHalfTeamId != applyTeamId
+                                    || pendingMidHalfPos != transitionPosition) {
                                 return;
                             }
-                            Grasscutter.getLogger()
-                                    .info(
-                                            "Tower mid-half fallback swap uid={} after {}s",
-                                            player.getUid(),
-                                            MID_HALF_FALLBACK_SECONDS);
-                            completeMidHalfSwap();
+                            completeMidHalfSwap(transitionPosition);
                         },
                         delayTicks);
     }
 
-    /** Prevent GM playback of the cutscene ID while a lower-half swap is pending. */
-    public boolean isAwaitingCutsceneFinish(int cutsceneId) {
-        return cutsceneId == MID_HALF_CUTSCENE_ID && midHalfCutscenePending;
-    }
-
-    /** The mid-half cutscene finished → swap once the minimum hold has passed. */
-    public void onMidHalfCutsceneFinished(int cutsceneId) {
-        if (cutsceneId != MID_HALF_CUTSCENE_ID) return;
-        if (!midHalfCutscenePending) return;
-        Grasscutter.getLogger()
-                .info("Tower mid-half CutSceneFinish uid={} → swap", player.getUid());
-        completeMidHalfSwap();
-    }
-
-    private void completeMidHalfSwap() {
-        if (!midHalfCutscenePending) return;
+    private void completeMidHalfSwap(Position expectedPosition) {
+        if (!midHalfCutscenePending || pendingMidHalfPos != expectedPosition) return;
+        if (player.getScene() != pendingMidHalfScene
+                || getTowerData().currentFloorId != pendingMidHalfFloorId
+                || getCurrentLevel() != pendingMidHalfChamber) {
+            clearPendingMidHalfSwap();
+            return;
+        }
         long now = System.currentTimeMillis();
         if (now < midHalfEarliestSwapMs) {
             int remainMs = (int) (midHalfEarliestSwapMs - now);
             int delay = Math.max(1, (remainMs + 999) / 1000);
-            player.getServer().getScheduler().scheduleDelayedTask(this::completeMidHalfSwap, delay);
+            player.getServer().getScheduler().scheduleDelayedTask(
+                    () -> completeMidHalfSwap(expectedPosition), delay);
             return;
         }
         int teamId = pendingMidHalfTeamId;
         Position bornPos = pendingMidHalfPos;
         Position bornRot = pendingMidHalfRot;
+        List<List<Long>> midHalfGuids = pendingMidHalfTeamGuids;
+        clearPendingMidHalfSwap();
+        if (teamId < 0 || bornPos == null || bornRot == null) return;
+        applyMidHalfTeamSwap(teamId, bornPos, bornRot, midHalfGuids);
+    }
+
+    private void clearPendingMidHalfSwap() {
         midHalfCutscenePending = false;
         pendingMidHalfTeamId = -1;
         pendingMidHalfPos = null;
         pendingMidHalfRot = null;
         midHalfEarliestSwapMs = 0;
-        List<List<Long>> midHalfGuids = pendingMidHalfTeamGuids;
         pendingMidHalfTeamGuids = null;
-        if (teamId < 0 || bornPos == null || bornRot == null) return;
-        applyMidHalfTeamSwap(teamId, bornPos, bornRot, midHalfGuids);
+        pendingMidHalfScene = null;
+        pendingMidHalfFloorId = 0;
+        pendingMidHalfChamber = 0;
     }
 
     private static List<List<Long>> copyTeamGuids(List<List<Long>> teams) {
@@ -1347,6 +1348,8 @@ public class TowerManager extends BasePlayerManager {
 
         // teamId 0 = the upper half, 1+ = the lower half — force is_upper_part=false onto the wire (proto3 omits false).
         boolean isUpper = teamId <= 0;
+        int swapFloorId = getTowerData().currentFloorId;
+        int swapChamber = getCurrentLevel();
         player.sendPacket(PacketTowerCurLevelRecordChangeNotify.empty());
         player
                 .getSession()
@@ -1373,6 +1376,9 @@ public class TowerManager extends BasePlayerManager {
                             () -> {
                                 if (player.getSession() == null || !player.getSession().isActive()) return;
                                 if (getTowerData().abyssTempTeamIndex != teamId) return;
+                                if (player.getScene() != scene
+                                        || getTowerData().currentFloorId != swapFloorId
+                                        || getCurrentLevel() != swapChamber) return;
                                 player
                                         .getSession()
                                         .send(

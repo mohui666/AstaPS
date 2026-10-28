@@ -140,7 +140,13 @@ public class EntityGadget extends EntityBaseGadget {
         // TODO: find out how its fight props are actually scaled
         // Constant first: 7345 of the 30557 gadget rows omit jsonName, so this is null for 24% of
         // gadgets, and the throw escapes into the tick that was spawning one.
-        if ("SceneObj_Gear_Operator_Mamolu_Entity".equals(gadgetData.getJsonName())) {
+        if (gadgetData != null
+                && "SceneObj_Gear_Operator_Mamolu_Entity".equals(gadgetData.getJsonName())) {
+            // This defense objective has a real HP pool even though its native gadget config is
+            // marked invincible. The generic fill uses infinite current HP for that flag; leaving
+            // it here makes both the guard HUD and star condition overflow to Integer.MAX_VALUE.
+            setFightProperty(FightProperty.FIGHT_PROP_CUR_HP,
+                    getFightProperty(FightProperty.FIGHT_PROP_MAX_HP));
             MonsterCurveData curve = GameData.getMonsterCurveDataMap().get(11);
             if (curve != null) {
                 FightProperty[] hpProps = {

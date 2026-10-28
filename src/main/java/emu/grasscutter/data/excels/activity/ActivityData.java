@@ -13,6 +13,7 @@ import lombok.experimental.FieldDefaults;
 public class ActivityData extends GameResource {
     int activityId;
     String activityType;
+    List<Integer> dungeonIdList = List.of();
     List<Integer> condGroupId;
     List<Integer> watcherId;
     List<ActivityWatcherData> watcherDataList;

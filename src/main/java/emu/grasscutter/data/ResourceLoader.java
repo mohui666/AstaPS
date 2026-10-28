@@ -92,6 +92,7 @@ public final class ResourceLoader {
         mergeDynamicAbilitiesIntoEmbryos();
 
         loadResources(true);
+        loadMonsterPreviews();
         buildAbilityTalentVarMaps();
 
         GameDepot.load();
@@ -128,6 +129,33 @@ public final class ResourceLoader {
 
     public static void loadResources() {
         loadResources(false);
+    }
+
+    /** Load only the preview files referenced by tower resources; missing files remain unavailable. */
+    public static void loadMonsterPreviews() {
+        var previews = GameData.getMonsterPreviewDataMap();
+        previews.clear();
+        var names = GameData.getTowerLevelDataMap().values().stream()
+                .map(level -> level.getTowerMonsterPreview())
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
+        for (var name : names) {
+            var path = getResourcePath("BinOutput/MonsterPreview/MonsterPreview_" + name + ".json");
+            if (!Files.isRegularFile(path)) {
+                Grasscutter.getLogger().warn("Tower enemy preview is not provided: {}", path);
+                continue;
+            }
+            try {
+                var rows = JsonUtils.loadToList(path, MonsterPreviewData.class);
+                var entries = rows.stream()
+                        .collect(Collectors.toUnmodifiableMap(MonsterPreviewData::getId, row -> row));
+                previews.put(name, entries);
+            } catch (IOException | com.google.gson.JsonParseException exception) {
+                Grasscutter.getLogger().error("Unable to load tower enemy preview {}", path, exception);
+            }
+        }
     }
 
     public static void loadResources(boolean doReload) {

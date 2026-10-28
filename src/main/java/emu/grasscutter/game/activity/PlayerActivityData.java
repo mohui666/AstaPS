@@ -43,6 +43,7 @@ public class PlayerActivityData {
     }
 
     public synchronized void addWatcherProgress(int watcherId, int delta) {
+        if (!ActivityAvailability.isRetained(activityId)) return;
         var watcherInfo = watcherInfoMap.get(watcherId);
         if (watcherInfo == null) {
             return;
@@ -66,6 +67,7 @@ public class PlayerActivityData {
     }
 
     public void takeWatcherReward(int watcherId) {
+        if (!ActivityAvailability.isRetained(activityId)) return;
         var watcher = watcherInfoMap.get(watcherId);
         if (watcher == null || watcher.isTakenReward()) {
             return;
