@@ -70,3 +70,8 @@ PVP 模块支持已核对的国服 Windows 7.1 客户端，只放行服务端标
 当前补丁只接受 `http://IPv4:port`。远程映射需要同一节点上的 HTTP API TCP 入口与游戏 UDP 入口。若公网 UDP 端口与本地不同，设置 `server.game.accessPort` 为公网 UDP 端口，并将 `server.game.accessAddress`、`server.http.accessAddress` 留空：直接访问 bindAddress、127.0.0.1 或 localhost 时返回本地游戏端口，其他 Host 返回公网游戏端口。显式配置 accessAddress 或多个 regions 时保留原有端口优先规则。
 
 保持 HTTP 的 `bindLoopback` 和控制台的 `webConsole.localOnly` 开启；隧道指向服务器实际 LAN 监听地址，控制台仍通过本机回环地址操作。个人账号密码、映射密钥和运行配置不随公开源码发布。
+### 商城搜索邮件的公网入口
+
+邮件生成时没有 HTTP 请求上下文。若公网映射的主机或端口与 LAN 监听地址不同，启动服务端时在 `-jar` 前指定 `-Dastaps.shopSearchUrl=http://203.0.113.10:52286`，将示例替换为实际公网 HTTP 源地址。该设置只控制商城搜索邮件的浏览器入口，不改变原有 LAN/公网游戏地址选择。未指定时沿用现有 HTTP accessAddress/accessPort 配置。
+
+地址只包含 HTTP(S) 协议、主机和端口；个人令牌仍位于 `#token=...` 片段，页面通过原有请求头鉴权。更新配置后由玩家重新向助手发送“商城搜索”获取新邮件，旧邮件不会自动改写。

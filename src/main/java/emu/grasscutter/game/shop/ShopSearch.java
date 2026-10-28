@@ -16,7 +16,6 @@ import emu.grasscutter.server.http.Router;
 import emu.grasscutter.utils.JsonUtils;
 import io.javalin.Javalin;
 import io.javalin.http.*;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.*;
@@ -86,13 +85,10 @@ public final class ShopSearch implements Router {
         if (server == null || server.getHandle() == null)
             throw new IllegalArgumentException("当前未开启HTTP服务，暂时无法打开商城搜索。");
         String token = issue(player);
-        String host = HTTP_INFO.accessAddress == null || HTTP_INFO.accessAddress.isBlank()
-                ? HTTP_INFO.bindAddress : HTTP_INFO.accessAddress;
-        int port = HTTP_INFO.accessPort > 0 ? HTTP_INFO.accessPort : HTTP_INFO.bindPort;
         final String url;
         try {
-            url = new URI(HTTP_ENCRYPTION.useInRouting ? "https" : "http", null, host, port,
-                    "/shop-search", null, "token=" + token).toASCIIString();
+            url = ShopSearchEntryAddress.url(token, HTTP_INFO, HTTP_ENCRYPTION.useInRouting,
+                    System.getProperty(ShopSearchEntryAddress.PUBLIC_ORIGIN_PROPERTY));
         } catch (java.net.URISyntaxException invalid) {
             revoke(player.getUid());
             throw new IllegalStateException("商城搜索的HTTP访问地址无效。", invalid);
