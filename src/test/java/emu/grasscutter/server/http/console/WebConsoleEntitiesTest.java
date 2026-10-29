@@ -13,6 +13,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(ServerResourceFixture.class)
 class WebConsoleEntitiesTest {
+    @Test void chineseEntityNamesReadOnlyRequestedHashesIncludingUnsignedIds() throws Exception {
+        var names = WebConsoleEntities.readChineseNames(new java.io.StringReader(
+                "{\"12\":\"冒险家\",\"13\":\"无关文本\",\"4294967295\":\"机关\"}"), Set.of(12, -1, 99));
+        assertEquals(Map.of(12, "冒险家", -1, "机关"), names);
+    }
+
     @Test void missingTextHashesKeepNpcAndGadgetCatalogsReadable() {
         int npc = 1900000011, gadget = 1900000012;
         var previousNpc = GameData.getNpcDataMap().put(npc, JsonUtils.decode("{\"id\":"+npc+"}", NpcData.class));

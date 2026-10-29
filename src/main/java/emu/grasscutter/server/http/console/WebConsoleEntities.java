@@ -1,14 +1,16 @@
 package emu.grasscutter.server.http.console;
 
 import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
 import emu.grasscutter.data.*;
 import emu.grasscutter.game.entity.*;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.props.*;
 import emu.grasscutter.game.world.Position;
-import emu.grasscutter.utils.lang.Language;
+import emu.grasscutter.utils.FileUtils;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.*;
 import static emu.grasscutter.config.Configuration.GAME_OPTIONS;
 import static emu.grasscutter.server.http.console.WebConsoleItems.Grant.integer;
@@ -39,8 +41,35 @@ final class WebConsoleEntities {
 
     private static String chinese(long hash) {
         if (hash == 0) return null;
-        var text = Language.getTextMapKey(hash);
-        return text == null ? null : text.get("CHS");
+        return ChineseNames.VALUES.get((int)hash);
+    }
+
+    private static final class ChineseNames {
+        static final Map<Integer, String> VALUES = load();
+        private static Map<Integer, String> load() {
+            var hashes = new HashSet<Integer>();
+            GameData.getNpcDataMap().values().forEach(d -> hashes.add((int)d.getNameTextMapHash()));
+            GameData.getGadgetDataMap().values().forEach(d -> hashes.add((int)d.getNameTextMapHash()));
+            hashes.remove(0);
+            if (hashes.isEmpty()) return Map.of();
+            try (var reader = Files.newBufferedReader(FileUtils.getResourcePath("TextMap/TextMapCHS.json"), StandardCharsets.UTF_8)) {
+                return readChineseNames(reader, hashes);
+            } catch (IOException e) { throw new IllegalStateException("角色模型与装置的中文名称读取失败。", e); }
+        }
+    }
+
+    /** Read the requested NPC/gadget names once; misses must not reload the global text cache. */
+    static Map<Integer, String> readChineseNames(Reader source, Set<Integer> hashes) throws IOException {
+        var names = new HashMap<Integer, String>();
+        var reader = new JsonReader(source);
+        reader.beginObject();
+        while (reader.hasNext()) {
+            int hash = (int)Long.parseLong(reader.nextName());
+            if (hashes.contains(hash)) names.put(hash, reader.nextString());
+            else reader.skipValue();
+        }
+        reader.endObject();
+        return Map.copyOf(names);
     }
 
     static List<Entry> catalog() {
