@@ -411,7 +411,7 @@
         <div class="gm-row"><label for="monster-type">实体类型</label><select id="monster-type" aria-label="实体类型"></select></div>
         <div class="item-common" id="monster-common"></div><div class="item-results" id="monster-results" aria-label="实体搜索结果"></div>
         <div class="item-pager"><span id="monster-count" aria-live="polite"></span><button type="button" id="monster-prev" aria-label="上一页">←</button><span id="monster-page"></span><button type="button" id="monster-next" aria-label="下一页">→</button></div>
-        <p class="gm-note">支持怪物、角色模型、装置、载具与掉落物。角色模型仅展示模型；装置交互和首领特殊机制仍需要对应场景脚本。未收录中文名的实体按编号显示。</p>
+        <p class="gm-note">支持怪物、角色模型、装置、载具与掉落物。资源没有名称的条目显示中文类型和编号；效果区域等逻辑实体可能没有可见模型。角色模型仅展示模型，装置交互和首领特殊机制需要对应场景脚本。</p>
       </div><form id="monster-form" class="give-form">
         <div class="selected-item"><span class="item-mark" aria-hidden="true">✦</span><div><h3 id="monster-selected-name"></h3><p id="monster-selected-meta"></p></div></div>
         <fieldset id="monster-fields">
@@ -427,7 +427,7 @@
             <div id="entity-properties" class="give-pair" style="max-height:360px;overflow:auto;margin-top:12px;padding:2px"></div>
           </details>
           <div class="amount-presets" id="monster-amount-presets"><button type="button" data-monster-amount="1">1</button><button type="button" data-monster-amount="5">5</button><button type="button" data-monster-amount="10">10</button><button type="button" data-monster-amount="50">50</button></div>
-          <button type="submit" class="primary" id="monster-spawn" disabled>生成实体</button><p class="give-hint" id="monster-hint" aria-live="polite"></p>
+          <button type="submit" class="primary" id="monster-spawn" disabled>生成实体</button><button type="submit" id="entity-force-spawn" disabled>强制生成（忽略场景数量上限）</button><p class="give-hint" id="monster-hint" aria-live="polite"></p>
         </fieldset><p class="gm-feedback" id="monster-feedback" role="status" aria-live="polite"></p>
       </form></div>
     </section>
@@ -1684,7 +1684,7 @@
   function renderMonsterPlayers(){playerOptions("monster-player");updateMonsterAvailability();}
   function updateMonsterAvailability(){
     const online=playersReady&&onlinePlayers.some(p=>p.uid===Number($("monster-player").value));
-    $("monster-fields").disabled=monsterBusy||!monsterLoaded;$("monster-reload").disabled=monsterBusy||monsterLoading;$("monster-spawn").disabled=monsterBusy||!monsterLoaded||!monsterSelected||!online;
+    $("monster-fields").disabled=monsterBusy||!monsterLoaded;$("monster-reload").disabled=monsterBusy||monsterLoading;$("monster-spawn").disabled=monsterBusy||!monsterLoaded||!monsterSelected||!online;$("entity-force-spawn").disabled=$("monster-spawn").disabled;
     $("monster-hint").textContent=!monsterSelected?"选择实体类型、条目和数量后生成。":!online?"需要选择在线且已进入世界的玩家。":`场景实体上限 ${monsterEntityLimit}；结果显示实际生成数量。`;
   }
   function entityNumberField(container,id,label,min=null,step="any"){
@@ -1719,7 +1719,7 @@
   document.querySelectorAll("[data-monster-amount]").forEach(b=>b.onclick=()=>{$("monster-amount").value=b.dataset.monsterAmount;});
   $("monster-form").onsubmit=async event=>{
     event.preventDefault();const entity=monsterSelected,uid=Number($("monster-player").value);if(monsterBusy||!entity||!onlinePlayers.some(p=>p.uid===uid))return;
-    const request={uid,kind:entity.kind,id:entity.id,amount:Number($("monster-amount").value),level:Number($("monster-level").value),distance:Number($("monster-distance").value)};
+    const request={uid,kind:entity.kind,id:entity.id,amount:Number($("monster-amount").value),level:Number($("monster-level").value),distance:Number($("monster-distance").value),force:event.submitter?.id==="entity-force-spawn"};
     if(!Number.isSafeInteger(request.amount)||request.amount<1||request.amount>2147483647||!Number.isFinite(request.distance)||request.distance<0||request.distance>100||(entity.kind==="monster"&&!monsterLevels.has(request.level))){message("monster-feedback","请填写有效的数量、怪物等级和生成距离。",true);return;}
     try{
       for(const key of ["position","rotation"]){const values=["x","y","z"].map(a=>$("entity-"+key+"-"+a).value);if(values.some(v=>v!=="")){if(values.some(v=>v===""))throw Error("坐标或朝向须完整填写三项，或全部留空。");request[key]=Object.fromEntries(["x","y","z"].map((a,i)=>[a,Number(values[i])]));}}

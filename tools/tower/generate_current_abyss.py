@@ -286,7 +286,7 @@ def main():
                     describe_id = spec[0]
                     if describe_id not in confirmed: raise ValueError(f'Wiki kind {describe_id} not in client preview')
                     row, reason = select_monster(describe_id, monsters, describes)
-                    if len(spec) > 2:
+                    if len(spec) > 2 and spec[2] is not None:
                         row, reason = monsters[spec[2]], 'Explicit native variant from wiki battle plan'
                         if row.get('describeId') != describe_id: raise ValueError('Variant describes a different enemy')
                     config = (3001 + index if half == 1 else 3101 + index) if guard else half * 1000 + 3001 + index

@@ -419,7 +419,7 @@ public final class DungeonManager {
             scene.getDungeonSettleListeners().forEach(o -> o.onDungeonSettle(this, endReason));
         }
         if (isTowerDungeon()) {
-            scene.getPlayers().get(0).getTowerManager().onEnd();
+            scene.getPlayers().forEach(player -> player.getTowerManager().onEnd());
         }
         ended = true;
     }

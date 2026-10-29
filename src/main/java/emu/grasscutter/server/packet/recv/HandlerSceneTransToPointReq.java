@@ -19,6 +19,11 @@ public class HandlerSceneTransToPointReq extends PacketHandler {
 
         ScenePointEntry scenePointEntry =
                 GameData.getScenePointEntryById(req.getSceneId(), req.getPointId());
+        emu.grasscutter.Grasscutter.getLogger().info(
+                "传送点请求 uid={} 源场景={} 目标场景={} 点={} 落点={}", player.getUid(),
+                player.getSceneId(), req.getSceneId(), req.getPointId(),
+                scenePointEntry == null || scenePointEntry.getPointData() == null
+                        ? null : scenePointEntry.getPointData().getTranPos());
         if (scenePointEntry == null || scenePointEntry.getPointData() == null
                 || scenePointEntry.getPointData().getTranPos() == null) {
             session.send(new PacketSceneTransToPointRsp(

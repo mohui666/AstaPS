@@ -3,8 +3,15 @@
   "period": "2026-10-16/2026-11-16 (7.1)",
   "source": "https://wiki.biligame.com/ys/index.php?title=渊月螺旋&oldid=689651",
   "attribution": "原神 BWIKI contributors, CC BY-NC-SA 4.0; factual counts and wave limits cross-checked with installed client previews. Coordinates and unspecified replacement order authored by MGC.",
-  "format": "Each wave has maxAlive and enemies [describeId,count,optional monsterId,optional maxHp]. Replenish vacancies immediately within a wave; finish the wave before starting the next.",
-  "healthSource": {"12-1-1": "https://alioth.wiki/gi/monster/51338 ; 12-1 HP 5535346, checked 2026-10-29. Native dungeon variant 25133802 at level 95: 348.4567565917969 * 3344.277099609375 * 4.75 = 5535345.768551996."},
+  "format": "Each wave has maxAlive and enemies [describeId,count,optional monsterId (null keeps selection),optional maxHp]. Replenish vacancies immediately within a wave; finish the wave before starting the next.",
+  "healthSource": {
+    "12-1-1": "https://alioth.wiki/gi/monster/51338 ; 12-1 HP 5535346, checked 2026-10-29. Native dungeon variant 25133802 at level 95: 348.4567565917969 * 3344.277099609375 * 4.75 = 5535345.768551996.",
+    "12-1-2": "https://alioth.wiki/gi/monster/21003 ; 12-1 Baptist HP 2157861, checked 2026-10-29; adds retain their existing native growth.",
+    "12-2-1": "https://alioth.wiki/gi/monster/63011 ; 12-2 HP 3914045, checked 2026-10-29.",
+    "12-2-2": "https://alioth.wiki/gi/monster/56001 ; 12-2 HP 6487530, checked 2026-10-29. Native variant 25600104 at level 98 with 4.75 multiplier gives 6487529.59210363; excludes local-legend affix 2101.",
+    "12-3-1": "https://alioth.wiki/gi/monster/63105 ; 12-3 HP 5742885, checked 2026-10-29.",
+    "12-3-2": "https://alioth.wiki/gi/monster/40905 ; 12-3 HP 5690198, checked 2026-10-29."
+  },
   "halves": {
     "9-1-1": [{"maxAlive":3,"enemies":[[51301,5],[51302,10]]}],
     "9-1-2": [{"maxAlive":1,"enemies":[[30851,1]]}],
@@ -25,10 +32,10 @@
     "11-3-1": [{"maxAlive":1,"enemies":[[30793,1]]},{"maxAlive":1,"enemies":[[30791,1]]},{"maxAlive":1,"enemies":[[63001,1]]}],
     "11-3-2": [{"maxAlive":1,"enemies":[[61801,1]]}],
     "12-1-1": [{"maxAlive":1,"enemies":[[51338,1,25133802,5535346]]}],
-    "12-1-2": [{"maxAlive":1,"enemies":[[21003,1]]},{"maxAlive":2,"enemies":[[20701,1],[20703,1]]}],
-    "12-2-1": [{"maxAlive":1,"enemies":[[63011,1]]}],
-    "12-2-2": [{"maxAlive":1,"enemies":[[56001,1]]}],
-    "12-3-1": [{"maxAlive":1,"enemies":[[63105,1]]}],
-    "12-3-2": [{"maxAlive":1,"enemies":[[40905,1]]}]
+    "12-1-2": [{"maxAlive":1,"enemies":[[21003,1,null,2157861]]},{"maxAlive":2,"enemies":[[20701,1],[20703,1]]}],
+    "12-2-1": [{"maxAlive":1,"enemies":[[63011,1,null,3914045]]}],
+    "12-2-2": [{"maxAlive":1,"enemies":[[56001,1,25600104,6487530]]}],
+    "12-3-1": [{"maxAlive":1,"enemies":[[63105,1,null,5742885]]}],
+    "12-3-2": [{"maxAlive":1,"enemies":[[40905,1,null,5690198]]}]
   }
 }

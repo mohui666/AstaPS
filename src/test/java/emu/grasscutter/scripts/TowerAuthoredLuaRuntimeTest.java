@@ -344,11 +344,33 @@ final class TowerAuthoredLuaRuntimeTest {
                 .map(e -> (EntityMonster)e).toList();
     }
 
+    @Test void settlingAnEmptyTowerSceneDoesNotIndexTheDepartedPlayer() throws Exception {
+        var owner = new BattlePlayer();
+        scene = new BattleScene(TestWorld.create(owner), 33902);
+        var manager = new DungeonManager(scene, GameData.getDungeonDataMap().get(3686));
+        manager.setTowerDungeon(true);
+        assertTrue(scene.getPlayers().isEmpty());
+        assertDoesNotThrow(() -> manager.endDungeon(DungeonEndReason.COMPLETED));
+    }
+
     private void defeatHalf() throws Exception {
         int killedAtStart = scene.getKilledMonsterCount();
         if (scene.getId() == 33899) assertEquals(3, monsters().size());
         for (int round = 0; round < 20 && !monsters().isEmpty(); round++) {
             for (var monster : monsters()) {
+                Float wikiHp = switch (monster.getEntityTypeId()) {
+                    case 25133802 -> 5_535_346f;
+                    case 22100301 -> 2_157_861f;
+                    case 26301101 -> 3_914_045f;
+                    case 25600104 -> 6_487_530f;
+                    case 26310501 -> 5_742_885f;
+                    case 24090501 -> 5_690_198f;
+                    default -> null;
+                };
+                if (scene.getId() >= 33902 && scene.getId() <= 33904 && wikiHp != null) {
+                    assertEquals(wikiHp, monster.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP));
+                    assertTrue(monster.toProto().getMonster().getIsElite());
+                }
                 float hp = monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
                 assertTrue(Float.isFinite(hp) && hp > 0, "unusable HP for monster " + monster.getEntityTypeId());
                 monster.damage(hp * .1f, 0, ElementType.None);

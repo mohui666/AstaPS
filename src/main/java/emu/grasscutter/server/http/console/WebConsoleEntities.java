@@ -50,11 +50,12 @@ final class WebConsoleEntities {
             var hashes = new HashSet<Integer>();
             GameData.getNpcDataMap().values().forEach(d -> hashes.add((int)d.getNameTextMapHash()));
             GameData.getGadgetDataMap().values().forEach(d -> hashes.add((int)d.getNameTextMapHash()));
+            GameData.getMonsterDescribeDataMap().values().forEach(d -> hashes.add((int)d.getNameTextMapHash()));
             hashes.remove(0);
             if (hashes.isEmpty()) return Map.of();
             try (var reader = Files.newBufferedReader(FileUtils.getResourcePath("TextMap/TextMapCHS.json"), StandardCharsets.UTF_8)) {
                 return readChineseNames(reader, hashes);
-            } catch (IOException e) { throw new IllegalStateException("角色模型与装置的中文名称读取失败。", e); }
+            } catch (IOException e) { throw new IllegalStateException("实体中文名称读取失败。", e); }
         }
     }
 
@@ -76,7 +77,12 @@ final class WebConsoleEntities {
         var entries = new ArrayList<Entry>();
         for (var data : GameData.getMonsterDataMap().values()) {
             var m = MonsterCatalog.entry(data);
-            String display = name(m.name(), "未命名怪物", m.id());
+            String displayName = m.name();
+            if (!displayName.matches("(?s).*[\\p{IsHan}].*")) {
+                var describe = data.getDescribeData();
+                displayName = describe == null ? null : chinese(describe.getNameTextMapHash());
+            }
+            String display = name(displayName, "未命名怪物", m.id());
             entries.add(new Entry(m.id(), "monster", switch (m.type()) {
                 case "MONSTER_BOSS" -> "首领"; case "MONSTER_ENV_ANIMAL" -> "动物";
                 case "MONSTER_FISH" -> "鱼类"; case "MONSTER_LITTLE_MONSTER" -> "小型怪物";
@@ -84,13 +90,23 @@ final class WebConsoleEntities {
             }, display, !display.startsWith("未命名")));
         }
         for (var data : GameData.getNpcDataMap().values()) {
-            var text = name(chinese(data.getNameTextMapHash()), "未命名角色模型", data.getId());
-            entries.add(new Entry(data.getId(), "npc", "角色模型", text, !text.startsWith("未命名")));
+            var nativeName = chinese(data.getNameTextMapHash());
+            var text = name(nativeName, "角色模型", data.getId());
+            entries.add(new Entry(data.getId(), "npc", "角色模型", text, nativeName != null));
         }
         for (var data : GameData.getGadgetDataMap().values()) {
             boolean vehicle = data.getType() == EntityType.Vehicle;
-            var text = name(chinese(data.getNameTextMapHash()), vehicle ? "载具" : "未命名装置", data.getId());
-            entries.add(new Entry(data.getId(), vehicle ? "vehicle" : "gadget", vehicle ? "载具" : "装置", text, !text.contains("编号 ")));
+            String type = vehicle ? "载具" : switch (data.getType() == null ? EntityType.Gadget : data.getType()) {
+                case Chest -> "宝箱"; case Worktop, SealGadget -> "交互机关";
+                case Gear, QuestGadget -> "场景机关"; case Field, AOE -> "效果区域";
+                case Bullet -> "弹射物"; case Equip, MonsterEquip -> "武器模型";
+                case GatherPoint -> "采集点"; case GatherObject -> "采集物";
+                case Platform -> "移动平台"; case Tree, Bush -> "植物模型";
+                default -> "装置";
+            };
+            var nativeName = chinese(data.getNameTextMapHash());
+            var text = name(nativeName, type, data.getId());
+            entries.add(new Entry(data.getId(), vehicle ? "vehicle" : "gadget", type, text, nativeName != null));
         }
         for (var data : GameData.getItemDataMap().values()) {
             if (data.getGadgetId() <= 0 || !ItemCatalog.supported(data.getItemType())) continue;
@@ -104,7 +120,7 @@ final class WebConsoleEntities {
 
     record Request(int uid, String kind, int id, int amount, int level, double distance,
                    Position position, Position rotation, Integer ai, Integer pose, Integer camp, Integer state,
-                   Boolean invincible, Boolean lockHp, Map<FightProperty, Float> properties) {
+                   Boolean invincible, Boolean lockHp, boolean force, Map<FightProperty, Float> properties) {
         static Request parse(String body) {
             var json = JsonParser.parseString(body).getAsJsonObject();
             int uid = positive(json, "uid", "玩家编号", null), id = positive(json, "id", "实体编号", null);
@@ -139,7 +155,8 @@ final class WebConsoleEntities {
                 throw new IllegalArgumentException("怪物属性只能用于怪物类型。");
             if (state != null && !kind.equals("gadget")) throw new IllegalArgumentException("装置状态只能用于装置类型。");
             return new Request(uid, kind, id, amount, level, distance, vector(json, "position"), vector(json, "rotation"),
-                    ai, pose, camp, state, invincible, lockHp, Map.copyOf(properties));
+                    ai, pose, camp, state, invincible, lockHp,
+                    json.has("force") && WebConsolePlayerTools.bool(json, "force"), Map.copyOf(properties));
         }
     }
 
@@ -181,7 +198,7 @@ final class WebConsoleEntities {
         if (!exists) throw new IllegalArgumentException("当前资源中没有此类型的实体编号。");
         if (request.kind().equals("monster") && !GameData.getMonsterCurveDataMap().containsKey(request.level()))
             throw new IllegalArgumentException("当前资源没有该怪物等级数据。");
-        int allowed = (int)Math.min(request.amount(), Math.max(0L, (long)GAME_OPTIONS.sceneEntityLimit - scene.getEntities().size()));
+        int allowed = allowedAmount(request.amount(), scene.getEntities().size(), GAME_OPTIONS.sceneEntityLimit, request.force());
         var ids = new ArrayList<Integer>();
         var origin = request.position() == null ? player.getPosition().clone() : request.position().clone();
         var rotation = request.rotation() == null ? player.getRotation().clone() : request.rotation().clone();
@@ -216,6 +233,10 @@ final class WebConsoleEntities {
             if (scene.getEntityById(entity.getId()) == entity) ids.add(entity.getId());
         }
         return new Receipt(request.amount(), ids.size(), scene.getId(), List.copyOf(ids), allowed < request.amount()
-                ? List.of("场景实体数量达到上限，本次最多允许生成 " + allowed + " 个。") : List.of());
+                ? List.of((request.force() ? "单次生成数量达到上限" : "场景实体数量达到上限") + "，本次最多允许生成 " + allowed + " 个。") : List.of());
+    }
+
+    static int allowedAmount(int requested, int existing, int limit, boolean force) {
+        return (int)Math.min(requested, Math.max(0L, (long)limit - (force ? 0 : existing)));
     }
 }

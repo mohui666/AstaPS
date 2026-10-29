@@ -25,8 +25,8 @@ class WebConsoleEntitiesTest {
         var previousGadget = GameData.getGadgetDataMap().put(gadget, JsonUtils.decode("{\"id\":"+gadget+",\"type\":\"Gadget\"}", GadgetData.class));
         try {
             var catalog = WebConsoleEntities.catalog();
-            assertTrue(catalog.stream().anyMatch(e -> e.id() == npc && e.name().contains("未命名角色模型")));
-            assertTrue(catalog.stream().anyMatch(e -> e.id() == gadget && e.name().contains("未命名装置")));
+            assertTrue(catalog.stream().anyMatch(e -> e.id() == npc && e.name().equals("角色模型（编号 " + npc + "）") && !e.named()));
+            assertTrue(catalog.stream().anyMatch(e -> e.id() == gadget && e.name().equals("装置（编号 " + gadget + "）") && !e.named()));
         } finally {
             if (previousNpc == null) GameData.getNpcDataMap().remove(npc); else GameData.getNpcDataMap().put(npc, previousNpc);
             if (previousGadget == null) GameData.getGadgetDataMap().remove(gadget); else GameData.getGadgetDataMap().put(gadget, previousGadget);
@@ -77,5 +77,14 @@ class WebConsoleEntitiesTest {
             assertEquals(kind, request.kind());
             assertTrue(request.properties().isEmpty());
         }
+    }
+
+    @Test void explicitForceBypassesSceneOccupancyWhileKeepingTheSingleBatchLimit() {
+        assertEquals(0, WebConsoleEntities.allowedAmount(2, 100, 100, false));
+        assertEquals(2, WebConsoleEntities.allowedAmount(2, 100, 100, true));
+        assertEquals(100, WebConsoleEntities.allowedAmount(Integer.MAX_VALUE, 150, 100, true));
+        assertEquals(0, WebConsoleEntities.allowedAmount(1, 150, 0, true));
+        assertTrue(WebConsoleEntities.Request.parse("{\"uid\":2,\"kind\":\"monster\",\"id\":1,\"force\":true}").force());
+        assertFalse(WebConsoleEntities.Request.parse("{\"uid\":2,\"kind\":\"monster\",\"id\":1}").force());
     }
 }
