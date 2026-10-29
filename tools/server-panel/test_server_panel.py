@@ -250,15 +250,18 @@ class PanelTests(unittest.TestCase):
             server.server_close()
             worker.join(2)
 
-    def test_entry_navigates_to_http_ui_without_exposing_its_session_in_served_template(self):
-        template = '<!doctype html><title>MGC fixture</title><p>HTTP UI</p>'
+    def test_entry_contains_full_ui_and_local_connection_without_redirect_or_public_token(self):
+        placeholder = '<script id="panel-config" type="application/json">{}</script>'
+        template = '<!doctype html><title>MGC fixture</title><p>Full local UI</p>' + placeholder
         (self.folder / ".panel-ui.template").write_text(template, encoding="utf-8")
         server = panel.ThreadingHTTPServer(("127.0.0.1", 0), panel.make_handler(self.controller))
         self.controller.port = server.server_port
         self.controller.write_entry()
         entry = (self.folder / "MGC服务器面板.html").read_text(encoding="utf-8")
-        target = f"http://127.0.0.1:{server.server_port}/#token={self.controller.token}"
-        self.assertIn(f"location.replace({json.dumps(target)})", entry)
+        config = json.loads(entry.split('type="application/json">', 1)[1].split('</script>', 1)[0])
+        self.assertEqual({"apiBase": f"http://127.0.0.1:{server.server_port}", "token": self.controller.token}, config)
+        self.assertEqual(template.replace(placeholder, ''), entry.split('<script', 1)[0])
+        self.assertNotIn('location.replace', entry)
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
         try:
@@ -274,6 +277,92 @@ class PanelTests(unittest.TestCase):
             self.assertEqual(404, response.status)
             self.assertNotIn(self.controller.token.encode(), response.read())
             connection.close()
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(2)
+
+    def test_file_origin_preflight_and_authenticated_api_preserve_process_controls(self):
+        server = panel.ThreadingHTTPServer(("127.0.0.1", 0), panel.make_handler(self.controller))
+        self.controller.port = server.server_port
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        file_headers = {"Origin": "null", "Sec-Fetch-Site": "cross-site",
+                        "Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "empty"}
+        try:
+            def request(path, method="GET", headers=None, body=None):
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+                connection.request(method, path, body=body, headers={**file_headers, **(headers or {})})
+                response = connection.getresponse()
+                result = response.status, dict(response.getheaders()), response.read()
+                connection.close()
+                return result
+
+            for path, method in (("/api/status", "GET"), ("/api/logs?lines=100", "GET"),
+                                 ("/api/start", "POST"), ("/api/stop", "POST"), ("/api/restart", "POST")):
+                code, headers, body = request(path, "OPTIONS", {
+                    "Access-Control-Request-Method": method,
+                    "Access-Control-Request-Headers": "content-type,x-panel-token"})
+                self.assertEqual(204, code)
+                self.assertEqual("null", headers.get("Access-Control-Allow-Origin"))
+                self.assertEqual(method, headers.get("Access-Control-Allow-Methods"))
+                self.assertNotIn("Access-Control-Allow-Credentials", headers)
+                self.assertEqual(b"", body)
+
+            valid = {"X-Panel-Token": self.controller.token}
+            code, headers, body = request("/api/status", headers=valid)
+            self.assertEqual(200, code)
+            self.assertEqual("null", headers.get("Access-Control-Allow-Origin"))
+            self.assertEqual("stopped", json.loads(body)["server"]["state"])
+            (self.project / "logs" / "latest.log").write_text("local UI log fixture", encoding="utf-8")
+            self.assertEqual(["local UI log fixture"], json.loads(request("/api/logs", headers=valid)[2])["lines"])
+
+            self.processes.running = True
+            self.console.metrics["game"]["players"] = 1
+            code, headers, body = request("/api/stop", "POST", valid, "{}")
+            self.assertEqual(409, code)
+            self.assertEqual("null", headers.get("Access-Control-Allow-Origin"))
+            self.assertIn("1 名玩家在线", json.loads(body)["error"])
+            self.assertEqual([], self.console.calls)
+            self.console.metrics["game"]["players"] = 0
+            self.assertEqual(202, request("/api/restart", "POST", valid, "{}")[0])
+            self.wait_worker()
+            self.assertEqual(["login", "stop"], [row[0] for row in self.console.calls])
+            self.assertTrue(self.processes.running)
+
+            for invalid in ({}, {"X-Panel-Token": "wrong"}, {**valid, "Host": "attacker.invalid"},
+                            {**valid, "Origin": "https://attacker.invalid"},
+                            {**valid, "Sec-Fetch-Mode": "no-cors"}, {**valid, "Sec-Fetch-Dest": "iframe"}):
+                self.assertEqual(403, request("/api/status", headers=invalid)[0])
+                self.assertEqual(403, request("/api/stop", "POST", invalid, "{}")[0])
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(2)
+
+    def test_file_preflight_refuses_foreign_origins_and_unexpected_headers_or_routes(self):
+        server = panel.ThreadingHTTPServer(("127.0.0.1", 0), panel.make_handler(self.controller))
+        self.controller.port = server.server_port
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        base = {"Origin": "null", "Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Dest": "empty", "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type,x-panel-token"}
+        try:
+            for path, changes in (("/api/stop", {"Origin": "https://attacker.invalid"}),
+                                  ("/api/stop", {"Host": "attacker.invalid"}),
+                                  ("/api/stop", {"Access-Control-Request-Method": "DELETE"}),
+                                  ("/api/stop", {"Access-Control-Request-Headers": "content-type"}),
+                                  ("/api/stop", {"Access-Control-Request-Headers": "x-panel-token,x-unexpected"}),
+                                  ("/.panel-state.json", {}), ("/", {})):
+                connection = http.client.HTTPConnection("127.0.0.1", server.server_port, timeout=2)
+                connection.request("OPTIONS", path, headers={**base, **changes})
+                response = connection.getresponse()
+                self.assertEqual(403, response.status)
+                self.assertIsNone(response.getheader("Access-Control-Allow-Methods"))
+                self.assertNotIn(self.controller.token.encode(), response.read())
+                connection.close()
+            self.assertEqual([], self.console.calls)
         finally:
             server.shutdown()
             server.server_close()

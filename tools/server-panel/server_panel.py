@@ -174,12 +174,12 @@ class PanelController:
         self.console_token = None
 
     def write_entry(self):
-        target = f"http://{LOOPBACK}:{self.port}/#token={self.token}"
-        html = ('<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
-                '<meta name="referrer" content="no-referrer"><title>MGC 服务器面板</title>'
-                '<p>正在打开 MGC 服务器面板…</p>'
-                f'<p><a href="{target}">点击打开面板</a></p>'
-                f'<script>location.replace({json.dumps(target)});</script></html>')
+        template = (self.folder / ".panel-ui.template").read_text(encoding="utf-8")
+        placeholder = '<script id="panel-config" type="application/json">{}</script>'
+        if template.count(placeholder) != 1:
+            raise PanelError("面板页面缺少本机连接配置。", 500)
+        config = json.dumps({"apiBase": f"http://{LOOPBACK}:{self.port}", "token": self.token})
+        html = template.replace(placeholder, f'<script id="panel-config" type="application/json">{config}</script>')
         (self.folder / "MGC服务器面板.html").write_text(html, encoding="utf-8")
 
     def settings(self):
@@ -424,22 +424,58 @@ def make_handler(controller: PanelController):
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            self.file_cors_headers()
             self.end_headers()
             self.wfile.write(body)
 
-        def same_origin(self):
+        def local_host(self):
             host = self.headers.get("Host", "").lower()
             allowed = {f"127.0.0.1:{controller.port}", f"localhost:{controller.port}"}
-            if self.client_address[0] not in {"127.0.0.1", "::1"} or host not in allowed:
+            return self.client_address[0] in {"127.0.0.1", "::1"} and host in allowed
+
+        def same_origin(self):
+            if not self.local_host():
                 return False
+            host = self.headers.get("Host", "").lower()
             origin = self.headers.get("Origin")
             if origin is not None and origin != "http://" + host:
                 return False
             return self.headers.get("Sec-Fetch-Site", "same-origin") in {"same-origin", "none"}
 
+        def file_request(self):
+            # file:// has an opaque Origin. Every API call still needs the private token.
+            return (self.local_host() and self.headers.get("Origin") == "null"
+                    and self.headers.get("Sec-Fetch-Mode") == "cors"
+                    and self.headers.get("Sec-Fetch-Dest") == "empty"
+                    and self.headers.get("Sec-Fetch-Site") in {"cross-site", "none"})
+
+        def file_cors_headers(self):
+            if self.file_request():
+                self.send_header("Access-Control-Allow-Origin", "null")
+                self.send_header("Vary", "Origin")
+
         def authorized(self):
-            return self.same_origin() and hmac.compare_digest(
+            return (self.same_origin() or self.file_request()) and hmac.compare_digest(
                 self.headers.get("X-Panel-Token", "").encode("utf-8"), controller.token.encode("utf-8"))
+
+        def do_OPTIONS(self):
+            path = urlsplit(self.path).path
+            method = self.headers.get("Access-Control-Request-Method")
+            headers = {item.strip().lower() for item in self.headers.get("Access-Control-Request-Headers", "").split(",")}
+            route = ((method == "GET" and path in {"/api/status", "/api/logs"})
+                     or (method == "POST" and path in {"/api/start", "/api/stop", "/api/restart"}))
+            # Browser preflights omit the token; require it on the following actual request.
+            if not (self.file_request() and route and "x-panel-token" in headers
+                    and headers <= {"x-panel-token", "content-type"}):
+                self.send_json(403, {"error": "不允许此跨来源请求。"})
+                return
+            self.send_response(204)
+            self.file_cors_headers()
+            self.send_header("Access-Control-Allow-Methods", method)
+            self.send_header("Access-Control-Allow-Headers", "X-Panel-Token, Content-Type")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
 
         def public_navigation(self):
             host = self.headers.get("Host", "").lower()

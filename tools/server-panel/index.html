@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
   <title>MGC · 服务器面板</title>
   <style>
     :root{--bg:#0d1115;--surface:#151b21;--raised:#1b232c;--line:#28323d;--text:#e8edf2;--muted:#8c9aa9;--green:#8bd17c;--red:#ed9292;--amber:#e3bd78;--blue:#8fb9e4}
@@ -39,16 +40,20 @@
     <footer class="footer"><span>本机控制面板 <code>127.0.0.1:17966</code></span><span id="updated">尚未同步</span></footer>
   </main>
 </div>
+<script id="panel-config" type="application/json">{}</script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
+const localPage = location.protocol === 'file:';
+const config = JSON.parse($('panel-config').textContent);
+const apiBase = localPage ? config.apiBase : location.origin;
 const TOKEN_KEY = 'mgc-panel-token';
 const tokenFromLink = new URLSearchParams(location.hash.slice(1)).get('token');
-if (tokenFromLink) {
+if (!localPage && tokenFromLink) {
   sessionStorage.setItem(TOKEN_KEY, tokenFromLink);
   history.replaceState(null, '', location.pathname + location.search);
 }
-let token = sessionStorage.getItem(TOKEN_KEY) || '';
+let token = localPage ? config.token || '' : sessionStorage.getItem(TOKEN_KEY) || '';
 let status = null;
 let busy = false;
 let connected = false;
@@ -122,11 +127,11 @@ function render(data) {
   controls();
 }
 async function api(path, method = 'GET') {
-  const response = await fetch(path, {method, headers:{'X-Panel-Token':token, ...(method === 'POST' ? {'Content-Type':'application/json'} : {})}, ...(method === 'POST' ? {body:'{}'} : {}), cache:'no-store', signal:AbortSignal.timeout(20000)});
+  const response = await fetch(new URL(path, apiBase), {method, credentials:'omit', redirect:'error', headers:{'X-Panel-Token':token, ...(method === 'POST' ? {'Content-Type':'application/json'} : {})}, ...(method === 'POST' ? {body:'{}'} : {}), cache:'no-store', signal:AbortSignal.timeout(20000)});
   const data = await response.json();
   if (!response.ok) {
-    const message = response.status === 401 || response.status === 403 ? '面板会话已失效，请重新双击桌面上的 MGC 面板入口。' : data.message || data.error || `请求失败（${response.status}）`;
-    if (response.status === 401 || response.status === 403) { token = ''; sessionStorage.removeItem(TOKEN_KEY); }
+    const message = response.status === 401 || response.status === 403 ? '面板会话已失效，请刷新页面或重新双击桌面 HTML。' : data.message || data.error || `请求失败（${response.status}）`;
+    if (response.status === 401 || response.status === 403) { token = ''; if (!localPage) sessionStorage.removeItem(TOKEN_KEY); }
     throw new Error(message);
   }
   return data;
@@ -155,7 +160,7 @@ async function refreshNow() {
     connected = false;
     $('status-title').textContent = '面板连接不可用';
     $('status-light').className = 'status-light error';
-    $('status-message').textContent = error.message;
+    $('status-message').textContent = error instanceof TypeError ? '无法连接本机管理后台，请确认后台已启动；如果浏览器询问本地网络访问权限，请允许此面板访问。' : error.message;
     $('updated').textContent = '连接中断，请检查面板是否仍在运行。';
     controls();
   } finally { $('refresh').textContent = '刷新'; }
@@ -200,7 +205,7 @@ function clock() { $('clock').textContent = new Date().toLocaleString('zh-CN', {
 clock(); setInterval(clock, 1000);
 if (!token) {
   $('status-title').textContent = '请通过桌面入口打开面板';
-  $('status-message').textContent = '双击“MGC 服务器面板”快捷方式会建立本机面板会话。';
+  $('status-message').textContent = '请打开安装后生成的“MGC服务器面板.html”；管理后台启动时会更新其中的本机会话。';
   $('log-lines').textContent = '尚未建立面板会话。';
   controls();
 } else { poll(); }
