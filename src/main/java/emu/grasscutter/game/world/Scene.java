@@ -501,7 +501,33 @@ public class Scene {
         player.sendPacket(new PacketSceneEntityAppearNotify(entities, VisionType.VisionType_VISION_MEET));
     }
 
+    private int combatDebugHits;
+    private boolean combatDebugEnabled;
+
+    public void setCombatDebug(boolean enabled) {
+        combatDebugEnabled = enabled;
+        combatDebugHits = 0;
+    }
+
     public void handleAttack(AttackResult result) {
+        var target = getEntityById(result.getDefenseId());
+        float before = target == null ? 0 : target.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
+        try {
+            applyAttack(result);
+        } finally {
+            if (combatDebugEnabled && combatDebugHits++ < 32) {
+                Grasscutter.getLogger().info("Combat diagnostic scene={} attacker={} defender={} reported={} HP={} -> {} lock={} invincible={} modifiers={} unknown={}",
+                        getId(), result.getAttackerId(), result.getDefenseId(), result.getDamage(), before,
+                        target == null ? 0 : target.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP),
+                        target != null && target.isLockHP(), target != null && target.isModifierInvincible(),
+                        target == null ? "absent" : target.getInstancedModifiers().values().stream()
+                                .filter(java.util.Objects::nonNull).map(c -> c.getModifierData().state).toList(),
+                        result.getUnknownFields().toString().replaceAll("\\s+", " "));
+            }
+        }
+    }
+
+    private void applyAttack(AttackResult result) {
         // Remap OSREL defenseId + clamp ore/breakable damage (multi-hit HP).
         try {
             result = emu.grasscutter.game.entity.gadget.OreMiningHelper.fixAttackResult(this, result);

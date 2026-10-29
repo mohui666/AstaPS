@@ -231,6 +231,9 @@ public final class ActivityArchive {
         var c = saved.config();
         if (c == null) return;
         var expected = ORIGINALS.getOrDefault(saved.activityId(), createConfig(saved.activityId()));
+        // Earlier MGC builds saved this retained activity as NONE before its native enum was known.
+        if (saved.activityId() == 5269 && c.getActivityType() == 0)
+            c.setActivityType(ActivityType.NEW_ACTIVITY_LEY_LINE_CHALLENGE.getValue());
         if (c.getActivityId() != saved.activityId() || c.getScheduleId() != expected.getScheduleId()
                 || c.getActivityType() != expected.getActivityType())
             throw new IllegalArgumentException("不能变更活动 ID、协议类型或排期 ID。");

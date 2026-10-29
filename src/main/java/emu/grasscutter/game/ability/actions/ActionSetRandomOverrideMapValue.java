@@ -5,34 +5,46 @@ import emu.grasscutter.Grasscutter;
 import emu.grasscutter.data.binout.AbilityModifier.AbilityModifierAction;
 import emu.grasscutter.game.ability.Ability;
 import emu.grasscutter.game.entity.GameEntity;
-import emu.grasscutter.net.proto.AbilityActionSetRandomOverrideMapValueOuterClass.AbilityActionSetRandomOverrideMapValue;
 
 @AbilityAction(AbilityModifierAction.Type.SetRandomOverrideMapValue)
 public class ActionSetRandomOverrideMapValue extends AbilityActionHandler {
     @Override
     public boolean execute(
             Ability ability, AbilityModifierAction action, ByteString abilityData, GameEntity target) {
-        AbilityActionSetRandomOverrideMapValue valueProto;
+        Float received;
         try {
-            valueProto = AbilityActionSetRandomOverrideMapValue.parseFrom(abilityData);
-        } catch (InvalidProtocolBufferException e) {
+            received = readClientRoll(abilityData);
+        } catch (java.io.IOException e) {
             return false;
         }
-
-        float value = valueProto.getRandomValue();
+        // The modifier's server-side onAdded also reaches this action with no client roll.
+        // Leave the value alone until the actual action invoke arrives.
+        if (received == null) return false;
+        float value = received;
         if (!isWithinRange(ability, action, value)) {
             Grasscutter.getLogger()
                     .warn(
-                            "Tried setting value out of range: {} inside [{}, {}]",
+                            "技能随机参数超出范围：{}，允许 [{}, {}]；技能={}，参数={}",
                             value,
                             action.valueRangeMin.get(ability),
-                            action.valueRangeMax.get(ability));
+                            action.valueRangeMax.get(ability), ability.getData().abilityName, action.overrideMapKey);
             return true;
         }
 
         ability.getAbilitySpecials().put(action.overrideMapKey, value);
 
         return true;
+    }
+
+    /** 7.1 C2S Diona rolls captured on 2026-10-29 use fixed32 field 13, not generated field 4. */
+    static Float readClientRoll(ByteString payload) throws java.io.IOException {
+        var input = payload.newCodedInput();
+        Float value = null;
+        for (int tag; (tag = input.readTag()) != 0;) {
+            if (tag == (13 << 3 | 5)) value = input.readFloat();
+            else if (!input.skipField(tag)) break;
+        }
+        return value;
     }
 
     /**
@@ -44,6 +56,7 @@ public class ActionSetRandomOverrideMapValue extends AbilityActionHandler {
      * without its random value, which is the same visible bug without the stack trace.
      */
     static boolean isWithinRange(Ability ability, AbilityModifierAction action, float value) {
+        if (!Float.isFinite(value)) return false;
         if (action.valueRangeMin == null || action.valueRangeMax == null) {
             return true;
         }

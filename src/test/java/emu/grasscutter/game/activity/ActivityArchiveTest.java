@@ -47,6 +47,24 @@ class ActivityArchiveTest {
         assertEquals("keep progress", restored.get("note").getAsString());
     }
 
+    @Test void stygianSavedAsNoneIsCorrectedWithoutLosingTheOperatorSchedule() throws Exception {
+        var opened = ActivityArchive.update(5269, "open", 30, true, true, "native entry", null, null);
+        assertEquals(5701, opened.config().getActivityType());
+        long end = opened.config().getEndTime().getTime();
+        var pack = JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+        for (var row : pack.getAsJsonArray("activities")) {
+            var saved = row.getAsJsonObject();
+            if (saved.get("activityId").getAsInt() == 5269)
+                saved.getAsJsonObject("config").addProperty("activityType", 0);
+        }
+        Files.writeString(file, pack.toString());
+        ActivityArchive.load(bundled, file);
+        var restored = ActivityArchive.detail(5269).getAsJsonObject("saved").getAsJsonObject("config");
+        assertEquals(5701, restored.get("activityType").getAsInt());
+        assertFalse(restored.get("disabled").getAsBoolean());
+        assertEquals(end, java.time.OffsetDateTime.parse(restored.get("endTime").getAsString()).toInstant().toEpochMilli());
+    }
+
     @Test void limitedEventsCannotBeReopenedEvenWithEntryOnlySelected() throws Exception {
         var before = Files.readString(file);
         assertThrows(IllegalArgumentException.class, () -> ActivityArchive.update(5344, "open", 7, false, false, "", null, null));

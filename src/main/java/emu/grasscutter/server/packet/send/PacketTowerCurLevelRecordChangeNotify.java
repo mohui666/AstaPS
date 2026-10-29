@@ -11,7 +11,10 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 
 public class PacketTowerCurLevelRecordChangeNotify extends BasePacket {
-    // Written by hand to force default values onto the wire; the numbers are the generated 7.1 ones.
+    // 7.1 IDPGHBEGBBG parser: wire 9 -> +0x28 -> TowerModule +0x120 (floor lookup),
+    // wire 10 -> +0x2c -> TowerModule +0xec (chamber). Generated names reverse these two.
+    private static final int NATIVE_FLOOR = 9;
+    private static final int NATIVE_CHAMBER = 10;
     private static final int CUR_LEVEL_RECORD =
             TowerCurLevelRecordChangeNotify.CUR_LEVEL_RECORD_FIELD_NUMBER;
 
@@ -63,7 +66,7 @@ public class PacketTowerCurLevelRecordChangeNotify extends BasePacket {
             }
         }
 
-        ProtoWire.writeUint32Force(record, TowerCurLevelRecord.CUR_LEVEL_INDEX_FIELD_NUMBER, curLevelIndex);
+        ProtoWire.writeUint32Force(record, NATIVE_CHAMBER, curLevelIndex);
 
         if (player != null) {
             TowerManager tower = player.getTowerManager();
@@ -85,7 +88,7 @@ public class PacketTowerCurLevelRecordChangeNotify extends BasePacket {
         ProtoWire.writeTag(record, TowerCurLevelRecord.IS_UPPER_PART_FIELD_NUMBER, 0);
         ProtoWire.writeVarint(record, isUpperPart ? 1 : 0);
 
-        ProtoWire.writeUint32Force(record, TowerCurLevelRecord.CUR_FLOOR_ID_FIELD_NUMBER, curFloorId);
+        ProtoWire.writeUint32Force(record, NATIVE_FLOOR, curFloorId);
 
         // is_empty — force false so the client treats the record as active
         ProtoWire.writeTag(record, TowerCurLevelRecord.IS_EMPTY_FIELD_NUMBER, 0);

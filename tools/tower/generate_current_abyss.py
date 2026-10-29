@@ -106,7 +106,9 @@ function action_MGC_LOWER_2004(context, evt) return start_half(context, 176, {lo
 
 def monster_row(entry):
     p = entry['position']
-    return f'{{ config_id = {entry["configId"]}, monster_id = {entry["monsterId"]}, level = {entry["level"]}, pos = {{ x = {p["x"]:.3f}, y = {p["y"]:.3f}, z = {p["z"]:.3f} }}, rot = {{ x = 0, y = {entry["yaw"]:.3f}, z = 0 }}, disableWander = true }}'
+    health = f', max_hp = {entry["maxHp"]}' if 'maxHp' in entry else ''
+    if entry.get('showBossBar'): health += ', show_boss_bar = true'
+    return f'{{ config_id = {entry["configId"]}, monster_id = {entry["monsterId"]}, level = {entry["level"]}{health}, pos = {{ x = {p["x"]:.3f}, y = {p["y"]:.3f}, z = {p["z"]:.3f} }}, rot = {{ x = 0, y = {entry["yaw"]:.3f}, z = 0 }}, disableWander = true }}'
 
 
 def combat_group(group_id, halves, state_id, wall_id, start_id, start_config, guard=False):
@@ -285,7 +287,7 @@ def main():
                     if describe_id not in confirmed: raise ValueError(f'Wiki kind {describe_id} not in client preview')
                     row, reason = select_monster(describe_id, monsters, describes)
                     if len(spec) > 2:
-                        row, reason = monsters[spec[2]], 'Explicit elemental variant from wiki battle plan'
+                        row, reason = monsters[spec[2]], 'Explicit native variant from wiki battle plan'
                         if row.get('describeId') != describe_id: raise ValueError('Variant describes a different enemy')
                     config = (3001 + index if half == 1 else 3101 + index) if guard else half * 1000 + 3001 + index
                     if guard and half == 1 and config >= 3024: config += 1  # reserved defense objective
@@ -294,7 +296,15 @@ def main():
                     entries.append({'configId': config, 'describeId': describe_id, 'monsterId': row['id'],
                                     'monsterName': row['monsterName'], 'variantReason': reason, 'level': confirmed[describe_id],
                                     'position': {'x': x, 'y': -0.102, 'z': z}, 'yaw': round(math.degrees(math.atan2(-x, -z)), 3)})
+                    if len(spec) > 3:
+                        if type(spec[3]) is not int or spec[3] <= 0: raise ValueError('Invalid authored HP')
+                        entries[-1]['maxHp'] = spec[3]
                 if not entries: raise ValueError(f'Empty confirmed preview {scene}/{half}')
+                if floor['floorIndex'] == 12:
+                    for wave in wave_specs:
+                        first, last = wave['entryRange']
+                        if wave['maxAlive'] == 1 and last - first == 1:
+                            entries[first]['showBossBar'] = True
                 for wave in wave_specs:
                     first, last = wave['entryRange']
                     if not 1 <= wave['maxAlive'] <= last - first: raise ValueError('Invalid concurrent enemy limit')

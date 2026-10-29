@@ -59,11 +59,15 @@ public class EntityMonster extends GameEntity {
     @Getter @Setter private int aiId = -1;
 
     @Getter private List<Player> playerOnBattle;
-    @Nullable @Getter @Setter private SceneMonster metaMonster;
+    @Nullable @Getter private SceneMonster metaMonster;
     /** Set when gather reward was already granted via interact (avoid double drop on killEntity). */
     @Getter @Setter private boolean envGatherRewarded;
     private boolean commissionDeathReported;
     @Getter @Setter private boolean goldenHousePhaseTransitionPending;
+    private final VolkodlakBlinkState volkodlakBlinkState = new VolkodlakBlinkState();
+    @Getter @Setter private boolean spawnInvincible;
+    @Getter @Setter private boolean spawnLockHp;
+    @Getter @Setter private boolean showBossBar;
 
     public EntityMonster(
             Scene scene, MonsterData monsterData, Position pos, Position rot, int level) {
@@ -265,6 +269,7 @@ public class EntityMonster extends GameEntity {
     @Override
     public void onTick(int sceneTime) {
         super.onTick(sceneTime);
+        volkodlakBlinkState.tick(this, sceneTime);
 
         try {
             emu.grasscutter.game.world.SignoraCombatStartHelper.onMonsterTick(this);
@@ -289,6 +294,7 @@ public class EntityMonster extends GameEntity {
 
     @Override
     public void damage(float amount, int killerId, ElementType attackType) {
+        if (spawnInvincible || spawnLockHp) return;
         // Get HP before damage.
         float hpBeforeDamage = this.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
 
@@ -452,6 +458,28 @@ public class EntityMonster extends GameEntity {
         }
     }
 
+    private java.util.Map<FightProperty, Float> spawnFightProperties = java.util.Map.of();
+
+    public void setMetaMonster(SceneMonster monster) {
+        this.metaMonster = monster;
+        if (monster != null && monster.max_hp != 0) {
+            if (!Float.isFinite(monster.max_hp) || monster.max_hp <= 0)
+                throw new IllegalArgumentException("脚本怪物的生命值上限必须是有限正数。");
+            setSpawnFightProperties(java.util.Map.of(FightProperty.FIGHT_PROP_MAX_HP, monster.max_hp));
+        }
+    }
+
+    public void setSpawnFightProperties(java.util.Map<FightProperty, Float> properties) {
+        var copy = new java.util.HashMap<>(properties);
+        Float currentHp = copy.remove(FightProperty.FIGHT_PROP_CUR_HP);
+        spawnFightProperties = java.util.Map.copyOf(copy);
+        recalcStats();
+        float max = getFightProperty(FightProperty.FIGHT_PROP_MAX_HP);
+        if (currentHp != null && (currentHp <= 0 || currentHp > max))
+            throw new IllegalArgumentException("当前生命值须大于零，且不能超过生命值上限。");
+        setFightProperty(FightProperty.FIGHT_PROP_CUR_HP, currentHp == null ? max : currentHp);
+    }
+
     public void recalcStats() {
         // Monster data
         MonsterData data = this.getMonsterData();
@@ -515,6 +543,8 @@ public class EntityMonster extends GameEntity {
                     this.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP) * (1 + additionalScaleFactor));
         }
 
+        if (!spawnFightProperties.isEmpty()) MonsterSpawnProperties.apply(this, spawnFightProperties);
+
         // Set current hp
         this.setFightProperty(
                 FightProperty.FIGHT_PROP_CUR_HP,
@@ -561,6 +591,7 @@ public class EntityMonster extends GameEntity {
         var monsterInfo =
                 SceneMonsterInfo.newBuilder()
                         .setMonsterId(getMonsterId())
+                        .setIsElite(showBossBar || (metaMonster != null && (metaMonster.isElite || metaMonster.show_boss_bar)))
                         .setGroupId(this.getGroupId())
                         .setConfigId(this.getConfigId())
                         .addAllAffixList(data.getAffix())

@@ -74,6 +74,8 @@ public final class WebConsoleHandler implements Router {
         javalin.post("/console/api/items/give", this::giveItem);
         javalin.get("/console/api/monsters", this::monsters);
         javalin.post("/console/api/monsters/spawn", this::spawnMonster);
+        javalin.get("/console/api/entities", this::entities);
+        javalin.post("/console/api/entities/spawn", this::spawnEntity);
         javalin.get("/console/api/artifacts", this::artifacts);
         javalin.post("/console/api/artifacts/preview", ctx -> artifactAction(ctx, false));
         javalin.post("/console/api/artifacts/give", ctx -> artifactAction(ctx, true));
@@ -235,6 +237,23 @@ public final class WebConsoleHandler implements Router {
     private void items(Context ctx) {
         if (!authorized(ctx)) return;
         json(ctx, 200, Map.of("version", GameConstants.VERSION, "items", WebConsoleItems.catalog()));
+    }
+
+    private void entities(Context ctx) {
+        if (!authorized(ctx)) return;
+        json(ctx, 200, Map.of("version", GameConstants.VERSION, "entities", WebConsoleEntities.catalog(),
+                "properties", WebConsoleEntities.PROPERTIES, "levels", MonsterCatalog.levels(),
+                "entityLimit", emu.grasscutter.config.Configuration.GAME_OPTIONS.sceneEntityLimit));
+    }
+
+    private void spawnEntity(Context ctx) {
+        if (!authorized(ctx)) return;
+        final WebConsoleEntities.Request request;
+        try { request = WebConsoleEntities.Request.parse(ctx.body()); }
+        catch (RuntimeException e) {
+            json(ctx, 400, Map.of("error", e instanceof IllegalArgumentException ? e.getMessage() : "实体参数格式错误。")); return;
+        }
+        logicAction(ctx, "生成实体", () -> WebConsoleEntities.spawn(request));
     }
 
     private void monsters(Context ctx) {

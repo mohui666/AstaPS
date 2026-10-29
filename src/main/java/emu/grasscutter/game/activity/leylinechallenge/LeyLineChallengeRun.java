@@ -72,6 +72,7 @@ public final class LeyLineChallengeRun {
         var monster = new EntityMonster(scene, GameData.getMonsterDataMap().get(plan.monsterId()),
                 new Position(499.994f, 249.873f, 500.002f), new Position(0, 90, 0), plan.level());
         monster.setGroupId(groupId);
+        monster.setShowBossBar(true);
         monster.setConfigId(CONFIG_ID);
         scene.addEntity(monster);
         challenge = new WorldChallenge(scene, SceneGroup.of(groupId), 197, 1,

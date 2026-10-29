@@ -69,6 +69,9 @@ final class TowerAuthoredLuaRuntimeTest {
             EXPECTED_MONSTERS.add(LeyLineChallengeRun.plan(difficulty, battle).monsterId());
         loadTable(GameData.getGadgetDataMap(), GadgetData.class, "GadgetExcelConfigData.json", null);
         loadTable(GameData.getMonsterCurveDataMap(), MonsterCurveData.class, "MonsterCurveExcelConfigData.json", null);
+        loadTable(GameData.getMonsterTitleDataMap(), MonsterTitleData.class, "MonsterTitleExcelConfigData.json", null);
+        loadTable(GameData.getMonsterSpecialNameDataMap(), MonsterSpecialNameData.class, "MonsterSpecialNameExcelConfigData.json", null);
+        loadTable(GameData.getMonsterDescribeDataMap(), MonsterDescribeData.class, "MonsterDescribeExcelConfigData.json", null);
         loadTable(GameData.getMonsterDataMap(), MonsterData.class, "MonsterExcelConfigData.json", EXPECTED_MONSTERS);
         loadTable(GameData.getDungeonDataMap(), DungeonData.class, "DungeonExcelConfigData.json", null);
         loadTable(GameData.getDungeonPassConfigDataMap(), DungeonPassConfigData.class, "DungeonPassExcelConfigData.json", Set.of(50, 173));
@@ -154,6 +157,14 @@ final class TowerAuthoredLuaRuntimeTest {
                 && gadget.getContent() instanceof GadgetWorktop).map(e -> (EntityGadget)e).findFirst().orElseThrow();
         assertEquals(Set.of(175), ((GadgetWorktop)worktop.getContent()).getWorktopOptions());
         select(worktop, 175);
+        if (authoredScene == 33902) {
+            assertEquals(25133802, monsters().getFirst().getEntityTypeId(), "use the native dungeon variant");
+            assertEquals(5_535_346f, monsters().getFirst().getFightProperty(FightProperty.FIGHT_PROP_MAX_HP));
+            var info = monsters().getFirst().toProto().getMonster();
+            assertTrue(info.getIsElite(), "the solo boss carries the client display flag");
+            assertEquals(9032, info.getTitleId());
+            assertEquals(2904701, info.getSpecialNameId());
+        }
         assertNotNull(scene.getChallenge());
         assertTrue(scene.getChallenge().inProgress());
         var guard = scene.getEntities().values().stream().filter(e -> e instanceof EntityGadget gadget
@@ -252,6 +263,74 @@ final class TowerAuthoredLuaRuntimeTest {
             assertEquals(List.of(DungeonEndReason.COMPLETED), scene.settlements);
             assertTrue(monsters().isEmpty());
         }
+    }
+
+    @Test
+    void operatorMonsterPropertiesStayLocalAndSurviveRecalculation() throws Exception {
+        var owner = new BattlePlayer();
+        var world = TestWorld.create(owner);
+        scene = new BattleScene(world, 33902);
+        var data = GameData.getMonsterDataMap().get(25133802);
+        var monster = new EntityMonster(scene, data, new Position(), new Position(), 95);
+        var other = new EntityMonster(scene, data, new Position(), new Position(), 95);
+        float originalHp = other.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP);
+        monster.setSpawnFightProperties(Map.of(FightProperty.FIGHT_PROP_MAX_HP, 1000f,
+                FightProperty.FIGHT_PROP_BASE_ATTACK, 100f, FightProperty.FIGHT_PROP_ATTACK_PERCENT, .5f,
+                FightProperty.FIGHT_PROP_FIRE_SUB_HURT, -.2f, FightProperty.FIGHT_PROP_CRITICAL, .5f));
+        assertEquals(1000, monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP));
+        assertEquals(150, monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_ATTACK));
+        monster.setFightProperty(FightProperty.FIGHT_PROP_CUR_HP, 800f);
+        monster.recalcStats();
+        assertEquals(800, monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP));
+        assertEquals(-.2f, monster.getFightProperty(FightProperty.FIGHT_PROP_FIRE_SUB_HURT));
+        assertEquals(.5f, monster.getFightProperty(FightProperty.FIGHT_PROP_CRITICAL));
+        other.recalcStats();
+        assertEquals(originalHp, other.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP));
+        assertNotEquals(1000, other.getFightProperty(FightProperty.FIGHT_PROP_MAX_HP));
+        assertThrows(IllegalArgumentException.class, () -> monster.setSpawnFightProperties(Map.of(
+                FightProperty.FIGHT_PROP_MAX_HP, 1000f, FightProperty.FIGHT_PROP_CUR_HP, 1001f)));
+    }
+
+    @Test
+    void archerBlinkProtectionEndsAtTheNativeCountdownWithoutRemovingOtherProtection() throws Exception {
+        var owner = new BattlePlayer();
+        var world = TestWorld.create(owner);
+        scene = new BattleScene(world, 33902);
+        var monster = new EntityMonster(scene, GameData.getMonsterDataMap().get(25133802), new Position(), new Position(), 95);
+        var path = FileUtils.getResourcePath("BinOutput/Ability/Temp/MonsterAbilities/ConfigAbility_Monster_Volkodlak_Greyhound.json");
+        var rows = JsonParser.parseString(Files.readString(path)).getAsJsonArray();
+        emu.grasscutter.data.binout.AbilityData blink = null;
+        for (var row : rows) {
+            var ability = row.getAsJsonObject().getAsJsonObject("Default");
+            if (ability != null && "Monster_Volkodlak_Greyhound_Furiosa_Blink".equals(ability.get("abilityName").getAsString()))
+                blink = JsonUtils.decode(ability, emu.grasscutter.data.binout.AbilityData.class);
+        }
+        assertNotNull(blink);
+        assertEquals(2f, blink.modifiers.get("Invisible_CountDown").duration.get());
+        var invincible = blink.modifiers.get("Blink_Invincible");
+        var controller = new emu.grasscutter.game.ability.AbilityModifierController(null, blink, invincible);
+        monster.getInstancedModifiers().put(100, controller);
+        monster.onAddAbilityModifier(invincible);
+        float hp = monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
+        monster.damage(1000f, 0, ElementType.None);
+        assertEquals(hp, monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP));
+        var phase = new VolkodlakBlinkState();
+        phase.tick(monster, 10); phase.tick(monster, 11);
+        assertTrue(monster.isModifierInvincible());
+        phase.tick(monster, 12);
+        assertFalse(monster.isModifierInvincible());
+        monster.damage(1000f, 0, ElementType.None);
+        assertEquals(hp - 1000f, monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP));
+        monster.getInstancedModifiers().put(101, controller);
+        monster.onAddAbilityModifier(invincible);
+        var other = new emu.grasscutter.data.binout.AbilityModifier();
+        other.state = emu.grasscutter.data.binout.AbilityModifier.State.Invincible;
+        monster.getInstancedModifiers().put(102, new emu.grasscutter.game.ability.AbilityModifierController(null,
+                new emu.grasscutter.data.binout.AbilityData(), other));
+        phase.tick(monster, 20); phase.tick(monster, 22);
+        assertTrue(monster.isModifierInvincible(), "independent protection must remain");
+        assertTrue(monster.getInstancedModifiers().containsKey(102));
+        assertFalse(monster.getInstancedModifiers().containsKey(101));
     }
 
     private void select(EntityGadget worktop, int option) throws Exception {

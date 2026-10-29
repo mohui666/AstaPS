@@ -33,6 +33,8 @@ public final class DebugCommand implements CommandHandler {
         var commandLine = new CommandLine(new Root(sender));
         commandLine.addSubcommand("abilities", new Abilities(sender, targetPlayer));
         commandLine.addSubcommand("entity", new CurrentEntity(sender, targetPlayer));
+        commandLine.addSubcommand("scene", new SceneState(sender, targetPlayer));
+        commandLine.addSubcommand("combat", new CombatTrace(sender, targetPlayer));
         commandLine.addSubcommand("setvar", new SetVar(sender, targetPlayer));
         commandLine.addSubcommand("dynamicmap", new DynamicMap(sender, targetPlayer));
         return commandLine;
@@ -141,6 +143,46 @@ public final class DebugCommand implements CommandHandler {
                             + avatarEntity.getAvatar().getAvatarId()
                             + " configId="
                             + avatarEntity.getConfigId());
+        }
+    }
+
+    @CommandLine.Command(name = "scene")
+    private record SceneState(Player sender, Player targetPlayer) implements Runnable {
+        @Override public void run() {
+            if (targetPlayer == null || !targetPlayer.isOnline() || targetPlayer.getScene() == null) {
+                CommandOutput.sendMessage(sender, "请先进入游戏场景。");
+                return;
+            }
+            var scene = targetPlayer.getScene();
+            CommandOutput.sendMessage(sender, "场景：" + scene.getId() + "；实体数：" + scene.getEntities().size());
+            for (var entity : scene.getEntities().values()) {
+                if (!(entity instanceof emu.grasscutter.game.entity.EntityMonster monster)) continue;
+                CommandOutput.sendMessage(sender, "怪物：" + monster.getMonsterData().getId() + "；实体：" + monster.getId()
+                        + "；组/配置：" + monster.getGroupId() + "/" + monster.getConfigId()
+                        + "；生命：" + monster.getFightProperty(emu.grasscutter.game.props.FightProperty.FIGHT_PROP_CUR_HP)
+                        + "/" + monster.getFightProperty(emu.grasscutter.game.props.FightProperty.FIGHT_PROP_MAX_HP)
+                        + "；无敌：" + monster.isModifierInvincible() + "；锁血：" + monster.isLockHP()
+                        + "；状态：" + monster.getInstancedModifiers().values().stream()
+                                .filter(java.util.Objects::nonNull)
+                                .map(c -> c.getAbilityData().abilityName + ":" + c.getModifierData().state).toList());
+            }
+        }
+    }
+
+    @CommandLine.Command(name = "combat")
+    private static final class CombatTrace implements Runnable {
+        private final Player sender, targetPlayer;
+        @Parameters(index = "0", paramLabel = "<on|off>") private String mode;
+        private CombatTrace(Player sender, Player targetPlayer) { this.sender = sender; this.targetPlayer = targetPlayer; }
+        @Override public void run() {
+            if (targetPlayer == null || !targetPlayer.isOnline() || targetPlayer.getScene() == null) {
+                CommandOutput.sendMessage(sender, "请先进入游戏场景。"); return;
+            }
+            if (!mode.equals("on") && !mode.equals("off")) {
+                CommandOutput.sendMessage(sender, "用法：debug combat on 或 off，需指定在线玩家。"); return;
+            }
+            targetPlayer.getScene().setCombatDebug(mode.equals("on"));
+            CommandOutput.sendMessage(sender, mode.equals("on") ? "已记录本场景接下来最多 32 次伤害到服务端日志。" : "已关闭伤害诊断。");
         }
     }
 

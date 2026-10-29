@@ -442,6 +442,7 @@ public final class WorldBossSpawnHelper {
     public static void onWorldBossKilled(EntityMonster var0) {
         int var1;
         if (var0 == null || var0.getScene() == null) return;
+        if (var0.getScene().getSceneType() != emu.grasscutter.game.props.SceneType.SCENE_WORLD) return;
         var1 = var0.getGroupId();
         if (!WorldBossSpawnHelper.isWorldBossGroup(var1)) {
             if (var0.getMonsterData() != null

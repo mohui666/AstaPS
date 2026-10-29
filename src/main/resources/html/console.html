@@ -311,7 +311,7 @@
   <main>
     <nav class="console-nav" aria-label="GM tools">
       <a href="#activity-tool" data-zh="活动档案" data-en="Events"></a><a href="#player-tools" data-zh="玩家实验台" data-en="Player lab"></a>
-      <a href="#gacha-tool" data-zh="历史卡池" data-en="Wish banners"></a><a href="#item-tool" data-zh="物品发放" data-en="Items"></a><a href="#monster-tool" data-zh="刷任意怪物" data-en="Spawn monsters"></a><a href="#artifact-tool" data-zh="DIY 圣遗物" data-en="DIY artifacts"></a>
+      <a href="#gacha-tool" data-zh="历史卡池" data-en="Wish banners"></a><a href="#item-tool" data-zh="物品发放" data-en="Items"></a><a href="#monster-tool">生成实体</a><a href="#artifact-tool" data-zh="DIY 圣遗物" data-en="DIY artifacts"></a>
     </nav>
     <section class="panel" id="activity-tool">
       <div class="panel-head item-heading"><div><h2 data-zh="活动档案与重开" data-en="Event archive & replay"></h2><p data-zh="配置保存在服务器；关闭和重开默认保留玩家进度。" data-en="Schedules are saved on the server. Closing and reopening preserve progress."></p></div>
@@ -405,31 +405,31 @@
       </div>
     </section>
     <section class="panel" id="monster-tool" aria-labelledby="monster-title">
-      <div class="panel-head item-heading">
-        <div><h2 id="monster-title" data-zh="刷任意怪物" data-en="Spawn monsters"></h2><p data-zh="按名称或 ID 找怪物，在选定玩家前方生成。" data-en="Find a monster by name or ID and spawn it in front of an online player."></p></div>
-        <div class="tools"><span class="meta" id="monster-version"></span><button type="button" id="monster-reload" data-zh="刷新怪物" data-en="Reload monsters"></button></div>
-      </div>
-      <div class="item-layout">
-        <div class="item-browser">
-          <input type="search" id="monster-search" placeholder="搜索中文名称、英文名称或怪物 ID…" aria-label="搜索怪物" autocomplete="off">
-          <div class="gm-row"><label for="monster-type" data-zh="类型" data-en="Type"></label><select id="monster-type" aria-label="怪物类型"></select></div>
-          <div class="item-common" id="monster-common"></div>
-          <div class="item-results" id="monster-results" aria-label="怪物搜索结果"></div>
-          <div class="item-pager"><span id="monster-count" aria-live="polite"></span><button type="button" id="monster-prev" aria-label="上一页">←</button><span id="monster-page"></span><button type="button" id="monster-next" aria-label="下一页">→</button></div>
-          <p class="gm-note" data-zh="包括当前服务端怪物表中的全部 ID 和内部变体；未收录中文名的条目显示内部名和 ID。特殊首领的阶段玩法仍依赖原场景脚本。" data-en="Lists every loaded monster ID, including internal variants. Unnamed entries show internal names and IDs. Special boss phases still depend on scene scripts."></p>
-        </div>
-        <form id="monster-form" class="give-form">
-          <div class="selected-item"><span class="item-mark" aria-hidden="true">⚔</span><div><h3 id="monster-selected-name"></h3><p id="monster-selected-meta"></p></div></div>
-          <fieldset id="monster-fields">
-            <div class="give-field"><div class="give-player-label"><label for="monster-player" data-zh="生成在谁附近" data-en="Spawn near"></label><button type="button" id="monster-player-refresh" data-i18n="refreshPlayers"></button></div><select id="monster-player" required></select></div>
-            <div class="give-pair"><div class="give-field"><label for="monster-amount" data-zh="数量" data-en="Quantity"></label><input type="number" id="monster-amount" min="1" max="2147483647" step="1" value="1" required></div><div class="give-field"><label for="monster-level" data-zh="等级" data-en="Level"></label><input type="number" id="monster-level" min="1" step="1" value="90" list="monster-levels" required><datalist id="monster-levels"></datalist></div></div>
-            <div class="give-field"><label for="monster-distance" data-zh="玩家前方距离（米）" data-en="Distance in front (meters)"></label><input type="number" id="monster-distance" min="0" max="100" step="1" value="5" required></div>
-            <div class="amount-presets" id="monster-amount-presets"><button type="button" data-monster-amount="1">1</button><button type="button" data-monster-amount="5">5</button><button type="button" data-monster-amount="10">10</button><button type="button" data-monster-amount="50">50</button></div>
-            <button type="submit" class="primary" id="monster-spawn" disabled data-zh="生成怪物" data-en="Spawn monsters"></button>
-            <p class="give-hint" id="monster-hint" aria-live="polite"></p>
-          </fieldset><p class="gm-feedback" id="monster-feedback" role="status" aria-live="polite"></p>
-        </form>
-      </div>
+      <div class="panel-head item-heading"><div><h2 id="monster-title">生成任意实体</h2><p>选择当前资源中的实体，在在线玩家附近或指定坐标生成。</p></div><div class="tools"><span class="meta" id="monster-version"></span><button type="button" id="monster-reload">刷新实体</button></div></div>
+      <div class="item-layout"><div class="item-browser">
+        <input type="search" id="monster-search" placeholder="搜索中文名称或实体编号…" aria-label="搜索实体" autocomplete="off">
+        <div class="gm-row"><label for="monster-type">实体类型</label><select id="monster-type" aria-label="实体类型"></select></div>
+        <div class="item-common" id="monster-common"></div><div class="item-results" id="monster-results" aria-label="实体搜索结果"></div>
+        <div class="item-pager"><span id="monster-count" aria-live="polite"></span><button type="button" id="monster-prev" aria-label="上一页">←</button><span id="monster-page"></span><button type="button" id="monster-next" aria-label="下一页">→</button></div>
+        <p class="gm-note">支持怪物、角色模型、装置、载具与掉落物。角色模型仅展示模型；装置交互和首领特殊机制仍需要对应场景脚本。未收录中文名的实体按编号显示。</p>
+      </div><form id="monster-form" class="give-form">
+        <div class="selected-item"><span class="item-mark" aria-hidden="true">✦</span><div><h3 id="monster-selected-name"></h3><p id="monster-selected-meta"></p></div></div>
+        <fieldset id="monster-fields">
+          <div class="give-field"><div class="give-player-label"><label for="monster-player">生成在谁附近</label><button type="button" id="monster-player-refresh">刷新玩家</button></div><select id="monster-player" required></select></div>
+          <div class="give-pair"><div class="give-field"><label for="monster-amount">数量</label><input type="number" id="monster-amount" min="1" max="2147483647" step="1" value="1" required></div><div class="give-field" id="monster-level-field"><label for="monster-level">怪物等级</label><input type="number" id="monster-level" min="1" step="1" value="90" list="monster-levels"><datalist id="monster-levels"></datalist></div></div>
+          <div class="give-field"><label for="monster-distance">玩家前方距离（米）</label><input type="number" id="monster-distance" min="0" max="100" step="any" value="5" required></div>
+          <details><summary>指定坐标与朝向</summary><p class="gm-note">坐标三项全部留空时使用玩家前方位置；朝向三项全部留空时跟随玩家。</p><div class="give-pair" id="entity-transform"></div></details>
+          <div class="give-field hidden" id="entity-state-field"><label for="entity-state">装置状态（留空使用默认）</label><input type="number" id="entity-state" min="0" step="1"></div>
+          <details id="entity-monster-options"><summary>自定义怪物属性</summary><p class="gm-note">留空沿用怪物默认值。百分比直接填写百分数，例如暴击率填 50 表示 50%。生命上限改变后，未填当前生命值时自动满血。最终属性优先于基础属性与加成。</p>
+            <div class="give-pair" id="entity-monster-extra"></div>
+            <div class="give-pair"><div class="give-field"><label for="entity-invincible">无敌保护</label><select id="entity-invincible"><option value="">使用默认</option><option value="true">开启</option><option value="false">关闭额外保护</option></select></div><div class="give-field"><label for="entity-lock-hp">锁定生命值</label><select id="entity-lock-hp"><option value="">使用默认</option><option value="true">开启</option><option value="false">关闭额外锁血</option></select></div></div>
+            <input type="search" id="entity-property-search" placeholder="搜索属性，例如生命、暴击、火元素…" aria-label="搜索怪物属性"><button type="button" id="entity-property-clear">清空自定义属性</button>
+            <div id="entity-properties" class="give-pair" style="max-height:360px;overflow:auto;margin-top:12px;padding:2px"></div>
+          </details>
+          <div class="amount-presets" id="monster-amount-presets"><button type="button" data-monster-amount="1">1</button><button type="button" data-monster-amount="5">5</button><button type="button" data-monster-amount="10">10</button><button type="button" data-monster-amount="50">50</button></div>
+          <button type="submit" class="primary" id="monster-spawn" disabled>生成实体</button><p class="give-hint" id="monster-hint" aria-live="polite"></p>
+        </fieldset><p class="gm-feedback" id="monster-feedback" role="status" aria-live="polite"></p>
+      </form></div>
     </section>
     <section class="panel" id="item-tool" aria-labelledby="item-title">
       <div class="panel-head item-heading">
@@ -1642,127 +1642,98 @@
   });
 
   let monsterCatalog = [], monsterLoaded = false, monsterLoading = false, monsterBusy = false;
-  let monsterSelected = null, monsterPage = 0, monsterLevels = new Set(), monsterEntityLimit = 0;
+  let monsterSelected = null, monsterPage = 0, monsterLevels = new Set(), monsterEntityLimit = 0, entityProperties = [];
   const MONSTER_PAGE_SIZE = 30;
-  const monsterName = monster => lang === "en" && monster.en ? monster.en : monster.name;
-  function monsterType(type) {
-    const names = {
-      MONSTER_ORDINARY: ["普通怪物", "Enemies"], MONSTER_BOSS: ["首领", "Bosses"],
-      MONSTER_ENV_ANIMAL: ["动物", "Animals"], MONSTER_LITTLE_MONSTER: ["小型怪物", "Small monsters"],
-      MONSTER_FISH: ["鱼类", "Fish"], MONSTER_NONE: ["其他", "Other"], "": ["未分类", "Unclassified"]
-    };
-    return names[type] ? names[type][lang === "en" ? 1 : 0] : type;
-  }
+  const entityKinds = {monster:"怪物",npc:"角色模型",gadget:"装置",vehicle:"载具",item:"掉落物"};
+  const monsterName = entity => entity.name;
   function renderMonsterFilters() {
-    const current = $("monster-type").value;
-    fillArtifactSelect("monster-type", [{value:"", label:text2("全部类型", "All types")},
-      ...[...new Set(monsterCatalog.map(monster => monster.type))].filter(Boolean).sort().map(type => ({value:type, label:monsterType(type)}))], current);
-    $("monster-search").placeholder = text2("搜索中文名称、英文名称或怪物 ID…", "Search by Chinese / English name or monster ID…");
+    fillArtifactSelect("monster-type", [{value:"",label:"全部实体"},...Object.entries(entityKinds).map(([value,label])=>({value,label}))], $("monster-type").value);
     $("monster-common").replaceChildren();
-    for (const [zh, en] of [["史莱姆", "Slime"], ["丘丘人", "Hilichurl"], ["愚人众", "Fatui"], ["遗迹", "Ruin"], ["深渊", "Abyss"]]) {
-      const button = document.createElement("button"); button.type = "button"; button.textContent = text2(zh, en);
-      button.addEventListener("click", () => { $("monster-search").value = text2(zh, en); monsterPage = 0; renderMonsterResults(); });
-      $("monster-common").appendChild(button);
+    for (const zh of ["史莱姆","丘丘人","宝箱","传送","载具"]) {
+      const button=document.createElement("button");button.type="button";button.textContent=zh;
+      button.onclick=()=>{$("monster-search").value=zh;monsterPage=0;renderMonsterResults();};$("monster-common").appendChild(button);
     }
   }
   function matchingMonsters() {
-    const query = $("monster-search").value.trim().toLocaleLowerCase(), type = $("monster-type").value;
-    const score = monster => !query ? monster.named ? 0 : 1 : String(monster.id) === query ? -2
-      : monster.name.toLocaleLowerCase() === query || monster.en.toLocaleLowerCase() === query ? -1 : monster.named ? 0 : 1;
-    return monsterCatalog.filter(monster => (!type || type === monster.type) && (!query
-      || String(monster.id).includes(query) || monster.name.toLocaleLowerCase().includes(query)
-      || monster.en.toLocaleLowerCase().includes(query) || monster.internalName.toLocaleLowerCase().includes(query)))
-      .sort((a, b) => score(a) - score(b) || a.id - b.id);
+    const query=$("monster-search").value.trim(),kind=$("monster-type").value;
+    const score=e=>String(e.id)===query?-2:e.name===query?-1:e.named?0:1;
+    return monsterCatalog.filter(e=>(!kind||e.kind===kind)&&(!query||String(e.id).includes(query)||e.name.includes(query)||e.type.includes(query)))
+      .sort((a,b)=>score(a)-score(b)||a.id-b.id);
   }
   function renderMonsterResults() {
-    const results = $("monster-results"); results.replaceChildren();
-    const matches = matchingMonsters(), pages = Math.max(1, Math.ceil(matches.length / MONSTER_PAGE_SIZE));
-    monsterPage = Math.max(0, Math.min(monsterPage, pages - 1));
-    if (!monsterLoaded || !matches.length) {
-      const empty = document.createElement("div"); empty.className = "empty";
-      empty.textContent = monsterLoading ? text2("正在读取怪物表…", "Loading monsters…")
-        : !monsterLoaded ? text2("怪物表尚未载入，请点击刷新怪物。", "Reload the monster catalog to continue.")
-        : text2("没有匹配的怪物。", "No monsters match your search.");
-      results.appendChild(empty);
+    const results=$("monster-results");results.replaceChildren();
+    const matches=matchingMonsters(),pages=Math.max(1,Math.ceil(matches.length/MONSTER_PAGE_SIZE));monsterPage=Math.max(0,Math.min(monsterPage,pages-1));
+    if(!monsterLoaded||!matches.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=monsterLoading?"正在读取实体表…":!monsterLoaded?"实体表尚未载入，请刷新实体。":"没有匹配的实体。";results.appendChild(empty);}
+    for(const entity of matches.slice(monsterPage*MONSTER_PAGE_SIZE,(monsterPage+1)*MONSTER_PAGE_SIZE)){
+      const row=document.createElement("button");row.type="button";row.className="item-row";row.setAttribute("aria-pressed",String(monsterSelected?.id===entity.id&&monsterSelected?.kind===entity.kind));
+      const text=document.createElement("span");text.className="item-row-text";const name=document.createElement("span");name.className="item-row-name";name.textContent=entity.name;
+      const meta=document.createElement("span");meta.className="item-row-meta";meta.textContent=`编号 ${entity.id} · ${entity.type}`;text.append(name,meta);row.appendChild(text);
+      row.onclick=()=>{if(monsterBusy)return;monsterSelected=entity;renderMonsterSelection();renderMonsterResults();};results.appendChild(row);
     }
-    for (const monster of matches.slice(monsterPage * MONSTER_PAGE_SIZE, (monsterPage + 1) * MONSTER_PAGE_SIZE)) {
-      const row = document.createElement("button"); row.type = "button"; row.className = "item-row";
-      row.setAttribute("aria-pressed", String(monsterSelected?.id === monster.id));
-      const text = document.createElement("span"); text.className = "item-row-text";
-      const name = document.createElement("span"); name.className = "item-row-name"; name.textContent = monsterName(monster);
-      const meta = document.createElement("span"); meta.className = "item-row-meta"; meta.textContent = `ID ${monster.id} · ${monsterType(monster.type)}`;
-      text.append(name, meta); row.appendChild(text);
-      row.addEventListener("click", () => { if (monsterBusy) return; monsterSelected = monster; renderMonsterSelection(); renderMonsterResults(); });
-      results.appendChild(row);
-    }
-    $("monster-count").textContent = monsterLoaded ? `${matches.length.toLocaleString()} ${text2("条匹配", "matches")}` : "";
-    $("monster-page").textContent = `${monsterPage + 1} / ${pages}`;
-    $("monster-prev").disabled = !monsterLoaded || monsterPage === 0;
-    $("monster-next").disabled = !monsterLoaded || monsterPage + 1 >= pages;
+    $("monster-count").textContent=monsterLoaded?`${matches.length.toLocaleString()} 条匹配`:"";$("monster-page").textContent=`${monsterPage+1} / ${pages}`;
+    $("monster-prev").disabled=!monsterLoaded||monsterPage===0;$("monster-next").disabled=!monsterLoaded||monsterPage+1>=pages;
   }
   function renderMonsterSelection() {
-    $("monster-selected-name").textContent = monsterSelected ? monsterName(monsterSelected) : text2("先选择一个怪物", "Select a monster");
-    $("monster-selected-meta").textContent = !monsterSelected ? "" : `ID ${monsterSelected.id} · ${monsterType(monsterSelected.type)}`
-      + (monsterSelected.internalName ? ` · ${monsterSelected.internalName}` : "");
+    $("monster-selected-name").textContent=monsterSelected?.name||"先选择一个实体";$("monster-selected-meta").textContent=monsterSelected?`编号 ${monsterSelected.id} · ${monsterSelected.type}`:"";
+    const monster=monsterSelected?.kind==="monster";
+    $("entity-monster-options").classList.toggle("hidden",!monster);$("monster-level-field").classList.toggle("hidden",!monster);$("monster-level").disabled=!monster;
+    $("entity-state-field").classList.toggle("hidden",monsterSelected?.kind!=="gadget");$("entity-state").disabled=monsterSelected?.kind!=="gadget";
+    $("entity-monster-options").querySelectorAll("input,select").forEach(input=>input.disabled=!monster);
     updateMonsterAvailability();
   }
-  function renderMonsterPlayers() { playerOptions("monster-player"); updateMonsterAvailability(); }
-  function updateMonsterAvailability() {
-    const online = playersReady && onlinePlayers.some(player => player.uid === Number($("monster-player").value));
-    $("monster-fields").disabled = monsterBusy || !monsterLoaded;
-    $("monster-reload").disabled = monsterBusy || monsterLoading;
-    $("monster-spawn").disabled = monsterBusy || !monsterLoaded || !monsterSelected || !online;
-    $("monster-hint").textContent = !monsterSelected ? text2("选择怪物、数量和等级后生成。", "Choose a monster, quantity and level.")
-      : !online ? text2("需要选择在线且已进入世界的玩家。", "Select an online player who has entered the world.")
-      : text2(`在所选玩家前方生成；沿用场景实体上限 ${monsterEntityLimit}，结果会显示实际生成数。`,
-        `Spawns in front of the selected player. Scene entity limit: ${monsterEntityLimit}. The result reports the actual count.`);
+  function renderMonsterPlayers(){playerOptions("monster-player");updateMonsterAvailability();}
+  function updateMonsterAvailability(){
+    const online=playersReady&&onlinePlayers.some(p=>p.uid===Number($("monster-player").value));
+    $("monster-fields").disabled=monsterBusy||!monsterLoaded;$("monster-reload").disabled=monsterBusy||monsterLoading;$("monster-spawn").disabled=monsterBusy||!monsterLoaded||!monsterSelected||!online;
+    $("monster-hint").textContent=!monsterSelected?"选择实体类型、条目和数量后生成。":!online?"需要选择在线且已进入世界的玩家。":`场景实体上限 ${monsterEntityLimit}；结果显示实际生成数量。`;
   }
-  async function refreshMonsters() {
-    if (monsterLoading || monsterBusy) return;
-    monsterLoading = true; updateMonsterAvailability(); renderMonsterResults();
-    try {
-      const body = await getJSON("/console/api/monsters");
-      monsterCatalog = body.monsters; monsterLevels = new Set(body.levels); monsterEntityLimit = body.entityLimit;
-      monsterLoaded = true;
-      if (monsterSelected) monsterSelected = monsterCatalog.find(monster => monster.id === monsterSelected.id) || null;
-      $("monster-version").textContent = `${body.version} · ${monsterCatalog.length.toLocaleString()} ${text2("个 ID", "IDs")}`;
-      $("monster-levels").replaceChildren(...body.levels.map(level => { const option = document.createElement("option"); option.value = level; return option; }));
-      $("monster-level").min = body.levels[0] || 1;
-      $("monster-level").max = body.levels.at(-1) || 1;
-      if (!monsterLevels.has(Number($("monster-level").value))) $("monster-level").value = monsterLevels.has(90) ? 90 : body.levels[0] || 1;
-      renderMonsterFilters(); renderMonsterSelection();
-    } catch (e) { monsterLoaded = false; message("monster-feedback", e.message, true); }
-    finally { monsterLoading = false; renderMonsterResults(); updateMonsterAvailability(); }
+  function entityNumberField(container,id,label,min=null,step="any"){
+    const field=document.createElement("div");field.className="give-field";const l=document.createElement("label");l.htmlFor=id;l.textContent=label;
+    const input=document.createElement("input");input.type="number";input.id=id;input.step=step;if(min!==null)input.min=min;input.placeholder="使用默认";field.append(l,input);$(container).appendChild(field);return field;
   }
-  $("monster-search").addEventListener("input", () => { monsterPage = 0; renderMonsterResults(); });
-  $("monster-type").addEventListener("change", () => { monsterPage = 0; renderMonsterResults(); });
-  $("monster-prev").addEventListener("click", () => { monsterPage--; renderMonsterResults(); });
-  $("monster-next").addEventListener("click", () => { monsterPage++; renderMonsterResults(); });
-  $("monster-reload").addEventListener("click", refreshMonsters);
-  $("monster-player-refresh").addEventListener("click", refreshPlayers);
-  $("monster-player").addEventListener("change", updateMonsterAvailability);
-  document.querySelectorAll("[data-monster-amount]").forEach(button => button.addEventListener("click", () => { $("monster-amount").value = button.dataset.monsterAmount; }));
-  $("monster-form").addEventListener("submit", async event => {
-    event.preventDefault();
-    const uid = Number($("monster-player").value), amount = Number($("monster-amount").value),
-      level = Number($("monster-level").value), distance = Number($("monster-distance").value), monster = monsterSelected;
-    if (monsterBusy || !monster || !playersReady || !onlinePlayers.some(player => player.uid === uid)) return;
-    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 2147483647 || !monsterLevels.has(level)
-      || !Number.isFinite(distance) || distance < 0 || distance > 100) {
-      message("monster-feedback", text2("请填写正整数数量、资源支持的等级及 0–100 米距离。", "Enter a positive integer quantity, a supported level and a distance from 0 to 100 meters."), true); return;
-    }
-    monsterBusy = true; updateMonsterAvailability(); message("monster-feedback", text2("正在生成…", "Spawning…"));
-    try {
-      const result = await getJSON("/console/api/monsters/spawn", {method:"POST", body:JSON.stringify({uid, monsterId:monster.id, amount, level, distance})});
-      const heading = result.spawned === 0
-        ? text2(`未生成怪物（请求 ${result.requested} 个 ${monsterName(monster)}，场景 ${result.sceneId}）。`,
-          `No monsters spawned (requested ${result.requested} ${monsterName(monster)}, scene ${result.sceneId}).`)
-        : text2(`已实际生成 ${result.spawned} / ${result.requested} 个 ${monsterName(monster)}（等级 ${level}，场景 ${result.sceneId}）。`,
-          `Spawned ${result.spawned} / ${result.requested} ${monsterName(monster)} (level ${level}, scene ${result.sceneId}).`);
-      message("monster-feedback", heading + (result.output?.length ? "\n" + result.output.join("\n") : ""), result.spawned !== result.requested);
-    } catch (e) { message("monster-feedback", `${e.message}\n${text2("请求没有自动重发；请先在游戏中确认实际怪物数量。", "The request was not retried. Check the actual monsters in game before spawning again.")}`, true); }
-    finally { monsterBusy = false; updateMonsterAvailability(); }
-  });
+  for(const [key,label] of [["position","位置"],["rotation","朝向"]])for(const [axis,zh] of [["x","横轴"],["y","纵轴"],["z","深度轴"]])entityNumberField("entity-transform",`entity-${key}-${axis}`,`${label}：${zh}`);
+  for(const [key,label] of [["ai","人工智能配置编号"],["pose","姿态编号"],["camp","阵营编号"]])entityNumberField("entity-monster-extra",`entity-${key}`,label,0,"1");
+  function renderEntityProperties(){
+    const previous=new Map([...$("entity-properties").querySelectorAll("input")].map(i=>[i.dataset.property,i.value]));$("entity-properties").replaceChildren();
+    for(const prop of entityProperties){const field=entityNumberField("entity-properties",`entity-prop-${prop.id}`,prop.name+(prop.percent?"（%）":""));field.dataset.name=prop.name;
+      const input=field.querySelector("input");input.dataset.property=prop.id;input.value=previous.get(String(prop.id))||"";if(prop.id===1010||prop.id===2000)input.min="0.000001";}
+    filterEntityProperties();
+  }
+  function filterEntityProperties(){const q=$("entity-property-search").value.trim();for(const f of $("entity-properties").children)f.classList.toggle("hidden",!f.dataset.name.includes(q));}
+  $("entity-property-search").oninput=filterEntityProperties;
+  $("entity-property-clear").onclick=()=>{$("entity-monster-options").querySelectorAll("input,select").forEach(i=>i.value="");filterEntityProperties();};
+  async function refreshMonsters(){
+    if(monsterLoading||monsterBusy)return;monsterLoading=true;updateMonsterAvailability();renderMonsterResults();
+    try{const body=await getJSON("/console/api/entities");monsterCatalog=body.entities;entityProperties=body.properties;monsterLevels=new Set(body.levels);monsterEntityLimit=body.entityLimit;monsterLoaded=true;
+      if(monsterSelected)monsterSelected=monsterCatalog.find(e=>e.id===monsterSelected.id&&e.kind===monsterSelected.kind)||null;
+      $("monster-version").textContent=`${body.version} · ${monsterCatalog.length.toLocaleString()} 个实体 · ${entityProperties.length} 项属性`;
+      $("monster-levels").replaceChildren(...body.levels.map(level=>{const o=document.createElement("option");o.value=level;return o;}));
+      $("monster-level").min=body.levels[0]||1;$("monster-level").max=body.levels.at(-1)||1;
+      if(!monsterLevels.has(Number($("monster-level").value)))$("monster-level").value=monsterLevels.has(90)?90:body.levels[0]||1;
+      renderMonsterFilters();renderEntityProperties();renderMonsterSelection();
+    }catch(e){monsterLoaded=false;message("monster-feedback",e.message,true);}finally{monsterLoading=false;renderMonsterResults();updateMonsterAvailability();}
+  }
+  $("monster-search").oninput=()=>{monsterPage=0;renderMonsterResults();};$("monster-type").onchange=()=>{monsterPage=0;renderMonsterResults();};
+  $("monster-prev").onclick=()=>{monsterPage--;renderMonsterResults();};$("monster-next").onclick=()=>{monsterPage++;renderMonsterResults();};$("monster-reload").onclick=refreshMonsters;
+  $("monster-player-refresh").onclick=refreshPlayers;$("monster-player").onchange=updateMonsterAvailability;
+  document.querySelectorAll("[data-monster-amount]").forEach(b=>b.onclick=()=>{$("monster-amount").value=b.dataset.monsterAmount;});
+  $("monster-form").onsubmit=async event=>{
+    event.preventDefault();const entity=monsterSelected,uid=Number($("monster-player").value);if(monsterBusy||!entity||!onlinePlayers.some(p=>p.uid===uid))return;
+    const request={uid,kind:entity.kind,id:entity.id,amount:Number($("monster-amount").value),level:Number($("monster-level").value),distance:Number($("monster-distance").value)};
+    if(!Number.isSafeInteger(request.amount)||request.amount<1||request.amount>2147483647||!Number.isFinite(request.distance)||request.distance<0||request.distance>100||(entity.kind==="monster"&&!monsterLevels.has(request.level))){message("monster-feedback","请填写有效的数量、怪物等级和生成距离。",true);return;}
+    try{
+      for(const key of ["position","rotation"]){const values=["x","y","z"].map(a=>$("entity-"+key+"-"+a).value);if(values.some(v=>v!=="")){if(values.some(v=>v===""))throw Error("坐标或朝向须完整填写三项，或全部留空。");request[key]=Object.fromEntries(["x","y","z"].map((a,i)=>[a,Number(values[i])]));}}
+      if(entity.kind==="monster"){
+        request.properties={};for(const i of $("entity-properties").querySelectorAll("input"))if(i.value!=="")request.properties[i.dataset.property]=Number(i.value);
+        for(const key of ["ai","pose","camp"]){const value=$("entity-"+key).value;if(value!=="")request[key]=Number(value);}
+        for(const [key,id] of [["invincible","entity-invincible"],["lockHp","entity-lock-hp"]])if($(id).value!=="")request[key]=$(id).value==="true";
+      }else if(entity.kind==="gadget"&&$("entity-state").value!=="")request.state=Number($("entity-state").value);
+    }catch(e){message("monster-feedback",e.message,true);return;}
+    monsterBusy=true;updateMonsterAvailability();message("monster-feedback","正在生成实体…");
+    try{const result=await getJSON("/console/api/entities/spawn",{method:"POST",body:JSON.stringify(request)});
+      message("monster-feedback",`已实际生成 ${result.spawned} / ${result.requested} 个 ${entity.name}（场景 ${result.sceneId}）。`+(result.output?.length?"\n"+result.output.join("\n"):""),result.spawned!==result.requested);
+    }catch(e){message("monster-feedback",`${e.message}\n请求没有自动重发，请先核对游戏里的实际实体数量。`,true);}finally{monsterBusy=false;updateMonsterAvailability();}
+  };
 
   applyLanguage();
   if (token) showApp(); else showLogin();
