@@ -57,6 +57,7 @@ import lombok.*;
 import static emu.grasscutter.GameConstants.ENTITY_ID_BIT_SHIFT;
 
 public class Scene {
+    @Getter @Setter private emu.grasscutter.game.activity.leylinechallenge.LeyLineChallengeRun leyLineChallengeRun;
     @Getter private final World world;
     @Getter private final SceneData sceneData;
     @Getter private final List<Player> players;

@@ -41,9 +41,8 @@ public class HandlerCombatInvocationsNotify extends PacketHandler {
 
                     int duelHit = PvpDuels.checkReportedHit(player, attackResult);
                     if (duelHit < 0) break;
-                    if (duelHit == 0 && attackResult.getAttackerId()
-                                    != player.getTeamManager().getCurrentAvatarEntity().getId()
-                            && player.getAbilityManager().isAbilityInvulnerable()) break;
+                    // Scene.handleAttack checks the defender's invulnerability. Filtering by
+                    // attacker ID here also discarded the caster's own skill/projectile hits.
 
                     if (duelHit == 0) {
                         int defenseId = attackResult.getDefenseId();

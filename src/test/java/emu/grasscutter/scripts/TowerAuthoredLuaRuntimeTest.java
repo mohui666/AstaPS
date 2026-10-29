@@ -11,6 +11,7 @@ import emu.grasscutter.data.excels.GadgetData;
 import emu.grasscutter.data.excels.dungeon.*;
 import emu.grasscutter.data.excels.monster.*;
 import emu.grasscutter.game.activity.ActivityManager;
+import emu.grasscutter.game.activity.leylinechallenge.LeyLineChallengeRun;
 import emu.grasscutter.game.battlepass.BattlePassManager;
 import emu.grasscutter.game.dungeons.*;
 import emu.grasscutter.game.dungeons.dungeon_results.BaseDungeonResult.DungeonEndReason;
@@ -64,11 +65,13 @@ final class TowerAuthoredLuaRuntimeTest {
         for (var room : manifest) for (var half : room.getAsJsonObject().getAsJsonArray("halves"))
             for (var wave : half.getAsJsonObject().getAsJsonArray("waves")) for (var monster : wave.getAsJsonArray())
                 EXPECTED_MONSTERS.add(monster.getAsJsonObject().get("monsterId").getAsInt());
+        for (int difficulty = 1; difficulty <= 6; difficulty++) for (int battle = 1; battle <= 3; battle++)
+            EXPECTED_MONSTERS.add(LeyLineChallengeRun.plan(difficulty, battle).monsterId());
         loadTable(GameData.getGadgetDataMap(), GadgetData.class, "GadgetExcelConfigData.json", null);
         loadTable(GameData.getMonsterCurveDataMap(), MonsterCurveData.class, "MonsterCurveExcelConfigData.json", null);
         loadTable(GameData.getMonsterDataMap(), MonsterData.class, "MonsterExcelConfigData.json", EXPECTED_MONSTERS);
         loadTable(GameData.getDungeonDataMap(), DungeonData.class, "DungeonExcelConfigData.json", null);
-        loadTable(GameData.getDungeonPassConfigDataMap(), DungeonPassConfigData.class, "DungeonPassExcelConfigData.json", Set.of(50));
+        loadTable(GameData.getDungeonPassConfigDataMap(), DungeonPassConfigData.class, "DungeonPassExcelConfigData.json", Set.of(50, 173));
         loadTable(GameData.getDungeonChallengeConfigDataMap(), DungeonChallengeConfigData.class,
                 "DungeonChallengeConfigData.json", Set.of(188, 197, 198));
         String name = "SceneObj_Gear_Operator_Mamolu_Entity";
@@ -179,6 +182,10 @@ final class TowerAuthoredLuaRuntimeTest {
         select(worktop, 176);
         assertNotNull(scene.getChallenge());
         assertTrue(scene.getChallenge().inProgress());
+        if (authoredScene == 33902) {
+            assertEquals(1, monsters().size(), "12-1 lower starts with the Baptist alone");
+            assertEquals(22100301, monsters().get(0).getEntityTypeId());
+        }
         if (guard != null) {
             assertSame(guard, scene.getChallenge().getGuardEntity());
             assertEquals(90, scene.getChallenge().getGuardEntityHpPercent());
@@ -197,6 +204,56 @@ final class TowerAuthoredLuaRuntimeTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 3, 4, 5, 6})
+    void independentStygianBattlesSpawnAtTheSelectedLevelAndSettleOnlyAfterActualDeath(int difficulty) throws Exception {
+        int[] expectedLevels = {40, 70, 90, 100, 105, 110};
+        for (int battle = 1; battle <= 3; battle++) {
+            var owner = new BattlePlayer();
+            owner.setUid(901);
+            var world = TestWorld.create(owner);
+            var system = allocate(DungeonSystem.class);
+            set(system, DungeonSystem.class, "passCondHandlers", new Int2ObjectOpenHashMap<DungeonBaseHandler>());
+            var server = allocate(GameServer.class);
+            set(server, GameServer.class, "dungeonSystem", system);
+            set(world, World.class, "server", server);
+            var plan = LeyLineChallengeRun.plan(difficulty, battle);
+            var dungeon = GameData.getDungeonDataMap().get(plan.dungeonId());
+            scene = new BattleScene(world, dungeon.getSceneId());
+            owner.setScene(scene);
+            owner.setSceneId(scene.getId());
+            owner.setSceneLoadState(Player.SceneLoadState.LOADING);
+            owner.getPlayerProgress().setPlayer(owner);
+            owner.team.setEntity(new EntityTeam(owner));
+            scene.getPlayers().add(owner);
+            scene.setDungeonManager(new DungeonManager(scene, dungeon));
+            scene.addDungeonSettleObserver((ignored, reason) -> scene.settlements.add(reason));
+            var run = new LeyLineChallengeRun(scene, plan);
+            run.tick();
+            assertTrue(monsters().isEmpty(), "wait for the actual scene handshake before starting");
+            owner.setSceneLoadState(Player.SceneLoadState.LOADED);
+            run.tick();
+            run.tick();
+            assertEquals(1, monsters().size(), "one boss per independent battlefield, with no duplicate tick spawn");
+            var monster = monsters().get(0);
+            assertEquals(expectedLevels[difficulty - 1], monster.getLevel());
+            assertEquals(difficulty <= 3 ? 600 : 120, scene.getChallenge().getTimeLimit());
+            assertTrue(scene.settlements.isEmpty());
+            float hp = monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
+            assertTrue(Float.isFinite(hp) && hp > 0);
+            monster.damage(hp * .1f, 0, ElementType.None);
+            assertTrue(monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP) < hp);
+            DAMAGED_MONSTERS.add(monster.getEntityTypeId());
+            assertTrue(scene.getChallenge().inProgress());
+            monster.damage(hp * 2, 0, ElementType.None);
+            scene.scripts.awaitEvents();
+            run.tick();
+            run.tick();
+            assertEquals(List.of(DungeonEndReason.COMPLETED), scene.settlements);
+            assertTrue(monsters().isEmpty());
+        }
+    }
+
     private void select(EntityGadget worktop, int option) throws Exception {
         scene.scripts.callEvent(new ScriptArgs(worktop.getGroupId(), EventType.EVENT_SELECT_OPTION,
                 worktop.getConfigId(), option).setUid(901)).get(10, TimeUnit.SECONDS);
@@ -209,6 +266,8 @@ final class TowerAuthoredLuaRuntimeTest {
     }
 
     private void defeatHalf() throws Exception {
+        int killedAtStart = scene.getKilledMonsterCount();
+        if (scene.getId() == 33899) assertEquals(3, monsters().size());
         for (int round = 0; round < 20 && !monsters().isEmpty(); round++) {
             for (var monster : monsters()) {
                 float hp = monster.getFightProperty(FightProperty.FIGHT_PROP_CUR_HP);
@@ -220,6 +279,11 @@ final class TowerAuthoredLuaRuntimeTest {
                 monster.damage(hp * 2f, 0, ElementType.None);
                 assertFalse(scene.getEntities().containsKey(monster.getId()), "real death did not remove the monster");
                 scene.scripts.awaitEvents();
+                if (scene.getId() == 33899) {
+                    int remaining = 24 - (scene.getKilledMonsterCount() - killedAtStart);
+                    assertEquals(Math.min(3, remaining), monsters().size(),
+                            "11-1 replenishes each vacancy immediately, rather than waiting for three deaths");
+                }
             }
         }
         assertTrue(monsters().isEmpty(), "wave progression did not terminate");
@@ -238,6 +302,7 @@ final class TowerAuthoredLuaRuntimeTest {
         @Override public BattlePassManager getBattlePassManager() { return quietPass; }
         @Override public ActivityManager getActivityManager() { return activities; }
         @Override public void save() {}
+        @Override public void dropMessage(Object message) {}
     }
 
     private static class QuietActivities extends ActivityManager {

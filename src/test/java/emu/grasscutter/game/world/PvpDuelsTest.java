@@ -17,6 +17,13 @@ import emu.grasscutter.game.entity.GameEntity;
 import emu.grasscutter.game.player.Player;
 import emu.grasscutter.game.player.BasePlayerManager;
 import emu.grasscutter.game.player.TeamManager;
+import emu.grasscutter.game.player.InvokeHandler;
+import emu.grasscutter.game.managers.energy.EnergyManager;
+import emu.grasscutter.net.proto.CombatInvocationsNotifyOuterClass.CombatInvocationsNotify;
+import emu.grasscutter.net.proto.CombatInvokeEntryOuterClass.CombatInvokeEntry;
+import emu.grasscutter.net.proto.CombatTypeArgumentOuterClass.CombatTypeArgument;
+import emu.grasscutter.net.proto.EvtBeingHitInfoOuterClass.EvtBeingHitInfo;
+import emu.grasscutter.server.packet.send.PacketCombatInvocationsNotify;
 import emu.grasscutter.game.props.ElementType;
 import emu.grasscutter.game.props.FightProperty;
 import emu.grasscutter.net.packet.BasePacket;
@@ -463,6 +470,34 @@ final class PvpDuelsTest {
     }
 
     @Test
+    void actualCombatPacketsKeepOutgoingSkillDamageDuringBurstInvulnerabilityAndBlockIncomingDamage() throws Exception {
+        set(first.abilities, AbilityManager.class, "abilityInvulnerable", true);
+        set(first, Player.class, "attackResults", new java.util.concurrent.LinkedBlockingQueue<AttackResult>());
+        set(first, Player.class, "combatInvokeHandler", new InvokeHandler<CombatInvokeEntry>(PacketCombatInvocationsNotify.class));
+        set(first, Player.class, "energyManager", new EnergyManager(first) {
+            @Override public void handleAttackHit(EvtBeingHitInfo hit) {}
+        });
+        var monster = allocate(RecordingMonster.class);
+        monster.scene = scene;
+        monster.hp = 100;
+        monster.setId(0x400001);
+        scene.entities.put(monster.getId(), monster);
+        var arrow = gadget(first, attacker.getId(), 0x900001);
+        var handler = new HandlerCombatInvocationsNotify();
+        for (var hit : List.of(hit(arrow.getId(), monster.getId(), 25),
+                               hit(attacker.getId(), monster.getId(), 10),
+                               hit(monster.getId(), attacker.getId(), 40))) {
+            var entry = CombatInvokeEntry.newBuilder()
+                    .setArgumentType(CombatTypeArgument.CombatTypeArgument_COMBAT_EVT_BEING_HIT)
+                    .setCombatData(EvtBeingHitInfo.newBuilder().setAttackResult(hit).build().toByteString()).build();
+            handler.handle(first.session, new byte[0], CombatInvocationsNotify.newBuilder().addInvokeList(entry).build().toByteArray());
+        }
+        assertEquals(65, monster.hp, "own skill gadget and normal attack must both reach monster HP");
+        assertEquals(0, attacker.damageCalls, "incoming monster damage still respects burst invulnerability");
+        assertTrue(first.getAttackResults().isEmpty());
+    }
+
+    @Test
     void leaveThenRejoinAndReplacingTheLoginSessionCannotReactivateTheDuel() throws Exception {
         PvpDuels.enable(first, second);
         PvpDuels.onPlayerLeave(first);
@@ -742,6 +777,15 @@ final class PvpDuelsTest {
         @Override public boolean isActive() { return true; }
         @Override public Player getPlayer() { return player; }
         @Override public GameServer getServer() { return server; }
+    }
+
+    private static final class RecordingMonster extends EntityMonster {
+        private Scene scene;
+        private float hp;
+        private RecordingMonster() { super(null, null, null, null, 1); }
+        @Override public Scene getScene() { return scene; }
+        @Override public float getFightProperty(FightProperty property) { return hp; }
+        @Override public void damage(float amount, int killerId, ElementType element) { hp -= amount; }
     }
 
     private static final class RecordingPlayer extends Player {

@@ -1,0 +1,33 @@
+{
+  "scheduleId": 124,
+  "period": "2026-10-16/2026-11-16 (7.1)",
+  "source": "https://wiki.biligame.com/ys/index.php?title=渊月螺旋&oldid=689651",
+  "attribution": "原神 BWIKI contributors, CC BY-NC-SA 4.0; factual counts and wave limits cross-checked with installed client previews. Coordinates and unspecified replacement order authored by MGC.",
+  "format": "Each wave has maxAlive and enemies [describeId,count,optional monsterId]. Replenish vacancies immediately within a wave; finish the wave before starting the next.",
+  "halves": {
+    "9-1-1": [{"maxAlive":3,"enemies":[[51301,5],[51302,10]]}],
+    "9-1-2": [{"maxAlive":1,"enemies":[[30851,1]]}],
+    "9-2-1": [{"maxAlive":3,"enemies":[[51301,4],[51312,4,25131202],[51312,4,25131203]]}],
+    "9-2-2": [{"maxAlive":1,"enemies":[[30853,2]]}],
+    "9-3-1": [{"maxAlive":2,"enemies":[[51380,2]]},{"maxAlive":3,"enemies":[[51370,1],[51380,2]]}],
+    "9-3-2": [{"maxAlive":2,"enemies":[[30853,1],[30851,1]]}],
+    "10-1-1": [{"maxAlive":3,"enemies":[[51310,7],[51315,8]]}],
+    "10-1-2": [{"maxAlive":1,"enemies":[[30791,2]]}],
+    "10-2-1": [{"maxAlive":2,"enemies":[[51326,4],[51328,4]]}],
+    "10-2-2": [{"maxAlive":1,"enemies":[[30793,2]]}],
+    "10-3-1": [{"maxAlive":2,"enemies":[[51350,2]]},{"maxAlive":3,"enemies":[[51351,1],[51350,2]]}],
+    "10-3-2": [{"maxAlive":3,"enemies":[[30793,1],[30771,2]]},{"maxAlive":2,"enemies":[[30793,1],[30791,1]]}],
+    "11-1-1": [{"maxAlive":3,"enemies":[[30731,4],[30701,8],[30801,2],[30804,4],[30802,2],[30805,4]]}],
+    "11-1-2": [{"maxAlive":3,"enemies":[[111,24]]}],
+    "11-2-1": [{"maxAlive":2,"enemies":[[10402,2]]},{"maxAlive":1,"enemies":[[63002,1]]}],
+    "11-2-2": [{"maxAlive":2,"enemies":[[20502,1],[20501,1]]},{"maxAlive":2,"enemies":[[20502,1],[20501,1]]}],
+    "11-3-1": [{"maxAlive":1,"enemies":[[30793,1]]},{"maxAlive":1,"enemies":[[30791,1]]},{"maxAlive":1,"enemies":[[63001,1]]}],
+    "11-3-2": [{"maxAlive":1,"enemies":[[61801,1]]}],
+    "12-1-1": [{"maxAlive":1,"enemies":[[51338,1]]}],
+    "12-1-2": [{"maxAlive":1,"enemies":[[21003,1]]},{"maxAlive":2,"enemies":[[20701,1],[20703,1]]}],
+    "12-2-1": [{"maxAlive":1,"enemies":[[63011,1]]}],
+    "12-2-2": [{"maxAlive":1,"enemies":[[56001,1]]}],
+    "12-3-1": [{"maxAlive":1,"enemies":[[63105,1]]}],
+    "12-3-2": [{"maxAlive":1,"enemies":[[40905,1]]}]
+  }
+}

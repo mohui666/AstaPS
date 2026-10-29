@@ -27,7 +27,7 @@ public final class LeyLineChallengeGroupLoader {
 
     /** Spawn the entrance group when the player walks into range. Neutral until ids are known. */
     public static void ensureNearby(Scene scene) {
-        // no-op
+        if (scene.getLeyLineChallengeRun() != null) scene.getLeyLineChallengeRun().tick();
     }
 
     /**
