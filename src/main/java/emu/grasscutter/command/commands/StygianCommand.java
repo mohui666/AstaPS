@@ -12,6 +12,11 @@ import picocli.CommandLine.Parameters;
         permissionTargeted = "player.enterdungeon.others")
 public final class StygianCommand implements CommandHandler {
     @Override
+    public String getDescriptionKey() {
+        return "commands.enter_dungeon.description";
+    }
+
+    @Override
     public CommandLine createCommandLine(Player sender, Player targetPlayer) {
         return new CommandLine(new Args(sender, targetPlayer));
     }
